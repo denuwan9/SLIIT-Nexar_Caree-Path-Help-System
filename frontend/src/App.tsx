@@ -7,6 +7,7 @@ import { Layout } from './components/layout/Layout';
 // Lazy load pages
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 
 const App: React.FC = () => {
   return (
@@ -26,7 +27,7 @@ const App: React.FC = () => {
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<div className="card">Profile Page Skeleton</div>} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/interviews" element={<div className="card">Interview Scheduling Skeleton</div>} />
               <Route path="/study-plan" element={<div className="card">Study Plan Generator Skeleton</div>} />
               <Route path="/jobs" element={<div className="card">Job Postings Skeleton</div>} />
