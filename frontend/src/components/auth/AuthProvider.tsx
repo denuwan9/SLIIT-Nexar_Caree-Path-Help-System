@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/axios';
-import { User, AuthState } from '../types/auth';
+import api from '../../api/axios';
+import type { User, AuthState } from '../../types/auth';
 
 interface AuthContextType extends AuthState {
     login: (token: string, user: User) => void;
