@@ -36,6 +36,9 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 
+// ── Static files: serve uploaded avatars ──────────────────────────
+app.use('/uploads', express.static('uploads'));
+
 // ── Global rate limiter ────────────────────────────────────────────
 app.use('/api', globalLimiter);
 

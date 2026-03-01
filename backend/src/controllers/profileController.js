@@ -1,68 +1,71 @@
+const path = require('path');
+const fs = require('fs');
 const StudentProfile = require('../models/StudentProfile');
 const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
-// ── Helper: sanitize body — remove protected fields ────────────────
+// ═══════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════════
+
 const PROTECTED_FIELDS = ['user', '_id', 'profileCompleteness', '__v', 'createdAt', 'updatedAt'];
 const sanitize = (body) => {
     PROTECTED_FIELDS.forEach((f) => delete body[f]);
     return body;
 };
 
-// ── Helper: enforce no duplicate skills ───────────────────────────
-const deduplicateByName = (arr) => {
-    if (!Array.isArray(arr)) return arr;
-    const seen = new Set();
-    return arr.filter((item) => {
-        const key = (item.name || '').toLowerCase().trim();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
+/** Case-insensitive duplicate check for arrays that have a `name` field */
+const hasDuplicate = (arr, name) =>
+    arr.some((item) => item.name.toLowerCase().trim() === name.toLowerCase().trim());
+
+/** Delete a file from disk safely (used when replacing avatar) */
+const deleteFile = (filePath) => {
+    if (!filePath) return;
+    try {
+        const fullPath = path.join(process.cwd(), 'uploads', 'avatars', path.basename(filePath));
+        if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+    } catch (err) {
+        logger.warn(`Could not delete old avatar: ${err.message}`);
+    }
 };
 
+// ═══════════════════════════════════════════════════════════════════
+//  1. GET MY PROFILE — auto-create if first access
+// ═══════════════════════════════════════════════════════════════════
 /**
  * GET /api/v1/profile/me
- * Student — get own profile (auto-creates empty profile on first access)
+ * 200 — returns own profile (creates empty one on first call)
  */
 exports.getMyProfile = async (req, res, next) => {
     try {
-        let profile = await StudentProfile.findOne({ user: req.user._id }).populate('user', 'name email');
+        let profile = await StudentProfile.findOne({ user: req.user._id })
+            .populate('user', 'name email');
 
         if (!profile) {
-            const nameParts = req.user.name?.split(' ') || [];
+            const nameParts = (req.user.name || '').split(' ');
             profile = await StudentProfile.create({
                 user: req.user._id,
                 firstName: nameParts[0] || '',
                 lastName: nameParts.slice(1).join(' ') || '',
             });
+            logger.info(`Auto-created profile for user ${req.user._id}`);
         }
 
         res.status(200).json({ status: 'success', data: { profile } });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
 
+// ═══════════════════════════════════════════════════════════════════
+//  2. CREATE / UPDATE PROFILE — partial update via PUT
+// ═══════════════════════════════════════════════════════════════════
 /**
  * PUT /api/v1/profile/me
- * Student — full or partial update of own profile
+ * 200 — updates profile fields (upserts if no profile yet)
+ * Ownership: only the authenticated student can modify their own profile.
  */
 exports.updateMyProfile = async (req, res, next) => {
     try {
         const data = sanitize(req.body);
-
-        // Deduplicate skills and languages before saving
-        if (data.technicalSkills) data.technicalSkills = deduplicateByName(data.technicalSkills);
-        if (data.softSkills) data.softSkills = deduplicateByName(data.softSkills);
-        if (data.languages) {
-            const seen = new Set();
-            data.languages = data.languages.filter((l) => {
-                const key = (l.name || '').toLowerCase().trim();
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            });
-        }
 
         const profile = await StudentProfile.findOneAndUpdate(
             { user: req.user._id },
@@ -71,14 +74,52 @@ exports.updateMyProfile = async (req, res, next) => {
         ).populate('user', 'name email');
 
         res.status(200).json({ status: 'success', data: { profile } });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
 
+// ═══════════════════════════════════════════════════════════════════
+//  3. AVATAR UPLOAD
+// ═══════════════════════════════════════════════════════════════════
+/**
+ * POST /api/v1/profile/me/avatar
+ * 200 — stores image on disk, returns the public URL
+ * - Only JPEG/PNG/WebP allowed (enforced by multer middleware)
+ * - Max 2MB (enforced by multer middleware)
+ */
+exports.uploadAvatar = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return next(new AppError('No image file provided.', 400));
+        }
+
+        const publicUrl = `/uploads/avatars/${req.file.filename}`;
+
+        // Get old avatar to delete it from disk
+        const existing = await StudentProfile.findOne({ user: req.user._id }).select('avatarUrl');
+
+        const profile = await StudentProfile.findOneAndUpdate(
+            { user: req.user._id },
+            { $set: { avatarUrl: publicUrl } },
+            { new: true, upsert: true }
+        );
+
+        // Delete old avatar file after successful save
+        if (existing?.avatarUrl) deleteFile(existing.avatarUrl);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Profile image uploaded successfully.',
+            data: { avatarUrl: publicUrl },
+        });
+    } catch (error) { next(error); }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  4. EDUCATION
+// ═══════════════════════════════════════════════════════════════════
 /**
  * POST /api/v1/profile/me/education
- * Student — add an education entry
+ * 201 — pushes a new education entry
  */
 exports.addEducation = async (req, res, next) => {
     try {
@@ -89,14 +130,12 @@ exports.addEducation = async (req, res, next) => {
         );
         if (!profile) return next(new AppError('Profile not found.', 404));
         res.status(201).json({ status: 'success', data: { education: profile.education } });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
 
 /**
  * DELETE /api/v1/profile/me/education/:eduId
- * Student — remove an education entry
+ * 200 — removes an education entry by its sub-document _id
  */
 exports.removeEducation = async (req, res, next) => {
     try {
@@ -107,14 +146,15 @@ exports.removeEducation = async (req, res, next) => {
         );
         if (!profile) return next(new AppError('Profile not found.', 404));
         res.status(200).json({ status: 'success', data: { education: profile.education } });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
 
+// ═══════════════════════════════════════════════════════════════════
+//  5. EXPERIENCE
+// ═══════════════════════════════════════════════════════════════════
 /**
  * POST /api/v1/profile/me/experience
- * Student — add an experience entry
+ * 201 — pushes a new experience entry
  */
 exports.addExperience = async (req, res, next) => {
     try {
@@ -125,14 +165,12 @@ exports.addExperience = async (req, res, next) => {
         );
         if (!profile) return next(new AppError('Profile not found.', 404));
         res.status(201).json({ status: 'success', data: { experience: profile.experience } });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
 
 /**
  * DELETE /api/v1/profile/me/experience/:expId
- * Student — remove an experience entry
+ * 200 — removes an experience entry by its sub-document _id
  */
 exports.removeExperience = async (req, res, next) => {
     try {
@@ -143,14 +181,179 @@ exports.removeExperience = async (req, res, next) => {
         );
         if (!profile) return next(new AppError('Profile not found.', 404));
         res.status(200).json({ status: 'success', data: { experience: profile.experience } });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  6. TECHNICAL SKILLS — unique by name
+// ═══════════════════════════════════════════════════════════════════
+/**
+ * POST /api/v1/profile/me/skills/technical
+ * 201 — adds a technical skill
+ * 409 — if skill name already exists (case-insensitive)
+ */
+exports.addTechnicalSkill = async (req, res, next) => {
+    try {
+        const profile = await StudentProfile.findOne({ user: req.user._id });
+        if (!profile) return next(new AppError('Profile not found.', 404));
+
+        // Duplicate check
+        if (hasDuplicate(profile.technicalSkills, req.body.name)) {
+            return next(new AppError(
+                `Technical skill "${req.body.name}" already exists on your profile.`, 409
+            ));
+        }
+
+        // Max-30 cap
+        if (profile.technicalSkills.length >= 30) {
+            return next(new AppError('Maximum of 30 technical skills reached.', 400));
+        }
+
+        profile.technicalSkills.push(req.body);
+        await profile.save();
+
+        res.status(201).json({
+            status: 'success',
+            message: 'Technical skill added.',
+            data: { technicalSkills: profile.technicalSkills },
+        });
+    } catch (error) { next(error); }
 };
 
 /**
+ * DELETE /api/v1/profile/me/skills/technical/:skillId
+ * 200 — removes a technical skill by sub-document _id
+ */
+exports.removeTechnicalSkill = async (req, res, next) => {
+    try {
+        const profile = await StudentProfile.findOneAndUpdate(
+            { user: req.user._id },
+            { $pull: { technicalSkills: { _id: req.params.skillId } } },
+            { new: true }
+        );
+        if (!profile) return next(new AppError('Profile not found.', 404));
+        res.status(200).json({
+            status: 'success',
+            message: 'Technical skill removed.',
+            data: { technicalSkills: profile.technicalSkills },
+        });
+    } catch (error) { next(error); }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  7. SOFT SKILLS — unique by name
+// ═══════════════════════════════════════════════════════════════════
+/**
+ * POST /api/v1/profile/me/skills/soft
+ * 201 — adds a soft skill
+ * 409 — if skill name already exists
+ */
+exports.addSoftSkill = async (req, res, next) => {
+    try {
+        const profile = await StudentProfile.findOne({ user: req.user._id });
+        if (!profile) return next(new AppError('Profile not found.', 404));
+
+        if (hasDuplicate(profile.softSkills, req.body.name)) {
+            return next(new AppError(
+                `Soft skill "${req.body.name}" already exists on your profile.`, 409
+            ));
+        }
+
+        if (profile.softSkills.length >= 20) {
+            return next(new AppError('Maximum of 20 soft skills reached.', 400));
+        }
+
+        profile.softSkills.push(req.body);
+        await profile.save();
+
+        res.status(201).json({
+            status: 'success',
+            message: 'Soft skill added.',
+            data: { softSkills: profile.softSkills },
+        });
+    } catch (error) { next(error); }
+};
+
+/**
+ * DELETE /api/v1/profile/me/skills/soft/:skillId
+ * 200 — removes a soft skill by sub-document _id
+ */
+exports.removeSoftSkill = async (req, res, next) => {
+    try {
+        const profile = await StudentProfile.findOneAndUpdate(
+            { user: req.user._id },
+            { $pull: { softSkills: { _id: req.params.skillId } } },
+            { new: true }
+        );
+        if (!profile) return next(new AppError('Profile not found.', 404));
+        res.status(200).json({
+            status: 'success',
+            message: 'Soft skill removed.',
+            data: { softSkills: profile.softSkills },
+        });
+    } catch (error) { next(error); }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  8. LANGUAGES
+// ═══════════════════════════════════════════════════════════════════
+/**
+ * POST /api/v1/profile/me/languages
+ * 201 — adds a language entry
+ * 409 — if language name already exists
+ */
+exports.addLanguage = async (req, res, next) => {
+    try {
+        const profile = await StudentProfile.findOne({ user: req.user._id });
+        if (!profile) return next(new AppError('Profile not found.', 404));
+
+        if (hasDuplicate(profile.languages, req.body.name)) {
+            return next(new AppError(
+                `Language "${req.body.name}" already exists on your profile.`, 409
+            ));
+        }
+
+        if (profile.languages.length >= 10) {
+            return next(new AppError('Maximum of 10 languages reached.', 400));
+        }
+
+        profile.languages.push(req.body);
+        await profile.save();
+
+        res.status(201).json({
+            status: 'success',
+            message: 'Language added.',
+            data: { languages: profile.languages },
+        });
+    } catch (error) { next(error); }
+};
+
+/**
+ * DELETE /api/v1/profile/me/languages/:langId
+ * 200 — removes a language entry by sub-document _id
+ */
+exports.removeLanguage = async (req, res, next) => {
+    try {
+        const profile = await StudentProfile.findOneAndUpdate(
+            { user: req.user._id },
+            { $pull: { languages: { _id: req.params.langId } } },
+            { new: true }
+        );
+        if (!profile) return next(new AppError('Profile not found.', 404));
+        res.status(200).json({
+            status: 'success',
+            message: 'Language removed.',
+            data: { languages: profile.languages },
+        });
+    } catch (error) { next(error); }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  ADMIN ROUTES
+// ═══════════════════════════════════════════════════════════════════
+/**
  * GET /api/v1/profile
- * Admin — paginated list of all student profiles
+ * Admin — paginated list with optional filters & full-text search
  */
 exports.getAllProfiles = async (req, res, next) => {
     try {
@@ -158,23 +361,18 @@ exports.getAllProfiles = async (req, res, next) => {
         const limit = parseInt(req.query.limit, 10) || 10;
         const skip = (page - 1) * limit;
 
-        // Filters
         const filter = {};
         if (req.query.careerField) filter.careerField = req.query.careerField;
         if (req.query.isActivelyLooking) filter.isActivelyLooking = req.query.isActivelyLooking === 'true';
+        if (req.query.search) filter.$text = { $search: req.query.search };
 
-        // Full-text search
-        if (req.query.search) {
-            filter.$text = { $search: req.query.search };
-        }
-
-        const profiles = await StudentProfile.find(filter)
-            .populate('user', 'name email')
-            .skip(skip)
-            .limit(limit)
-            .sort({ profileCompleteness: -1, createdAt: -1 });
-
-        const total = await StudentProfile.countDocuments(filter);
+        const [profiles, total] = await Promise.all([
+            StudentProfile.find(filter)
+                .populate('user', 'name email')
+                .skip(skip).limit(limit)
+                .sort({ profileCompleteness: -1, createdAt: -1 }),
+            StudentProfile.countDocuments(filter),
+        ]);
 
         res.status(200).json({
             status: 'success',
@@ -184,14 +382,12 @@ exports.getAllProfiles = async (req, res, next) => {
             pages: Math.ceil(total / limit),
             data: { profiles },
         });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
 
 /**
  * GET /api/v1/profile/:id
- * Admin — get any profile by user ID
+ * Admin — get a single profile by user ID
  */
 exports.getProfileById = async (req, res, next) => {
     try {
@@ -199,7 +395,5 @@ exports.getProfileById = async (req, res, next) => {
             .populate('user', 'name email role');
         if (!profile) return next(new AppError('Profile not found.', 404));
         res.status(200).json({ status: 'success', data: { profile } });
-    } catch (error) {
-        next(error);
-    }
+    } catch (error) { next(error); }
 };
