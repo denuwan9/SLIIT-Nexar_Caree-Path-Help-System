@@ -1,0 +1,22 @@
+const express = require('express');
+const router = express.Router();
+const jobPostController = require('../controllers/jobPostController');
+const { protect, restrictTo } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const { jobPostValidator } = require('../middleware/validators');
+
+router.use(protect);
+
+// Student routes
+router.post('/', restrictTo('student'), jobPostValidator, validate, jobPostController.createJobPost);
+router.get('/me', restrictTo('student'), jobPostController.getMyJobPosts);
+router.delete('/:id', restrictTo('student'), jobPostController.deleteJobPost);
+
+// Admin routes
+router.get('/', restrictTo('admin'), jobPostController.getAllJobPosts);
+router.patch('/:id/review', restrictTo('admin'), jobPostController.reviewJobPost);
+
+// Shared (student own + admin)
+router.get('/:id', jobPostController.getJobPostById);
+
+module.exports = router;
