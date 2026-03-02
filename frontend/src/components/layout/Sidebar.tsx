@@ -27,13 +27,13 @@ const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string
         to={to}
         title={label}
         className={({ isActive }) => `
-            group relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-500
+            group relative flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-500
             ${isActive
-                ? 'bg-gradient-to-br from-purple-500 to-cyan-500 text-white shadow-[0_4px_12px_rgba(139,92,246,0.3)] rotate-3 scale-110'
+                ? 'bg-gradient-to-br from-purple-500 to-cyan-500 text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)] scale-105'
                 : 'text-slate-400 hover:bg-slate-100 hover:text-slate-900'}
         `}
     >
-        <Icon size={22} className="transition-transform group-hover:scale-95" />
+        <Icon size={18} className="transition-transform group-hover:scale-95" />
         {/* Advanced Tooltip */}
         <span className="pointer-events-none absolute left-full ml-4 px-3 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 translate-x-[-10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 z-50 shadow-xl">
             {label}
@@ -68,32 +68,32 @@ export const Sidebar: React.FC = () => {
     return (
         <>
             {/* ─── Desktop Sidebar (md+) ───────────────────── */}
-            <aside className="hidden md:flex w-20 lg:w-24 h-screen flex-col py-8 bg-white/90 backdrop-blur-3xl border-r border-slate-200/50 z-40 flex-shrink-0 relative overflow-visible">
+            <aside className="hidden md:flex w-14 lg:w-16 h-screen flex-col py-6 bg-white/90 backdrop-blur-3xl border-r border-slate-200/50 z-40 flex-shrink-0 relative overflow-visible">
                 <div className="flex flex-col items-center h-full w-full">
                     {/* Logo */}
-                    <div className="relative group cursor-pointer mb-12 shrink-0">
+                    <div className="relative group cursor-pointer mb-8 shrink-0">
                         <div className="absolute inset-0 bg-purple-500 blur-xl opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                        <div className="relative w-12 h-12 rounded-[1.25rem] bg-gradient-to-tr from-purple-600 to-cyan-500 flex items-center justify-center shadow-lg transition-transform active:scale-90">
-                            <span className="text-white font-black text-2xl tracking-tighter">N</span>
+                        <div className="relative w-9 h-9 rounded-lg bg-gradient-to-tr from-purple-600 to-cyan-500 flex items-center justify-center shadow-lg transition-transform active:scale-90">
+                            <span className="text-white font-black text-lg tracking-tighter">N</span>
                         </div>
                     </div>
 
                     {/* Nav Items */}
-                    <nav className="flex-1 flex flex-col gap-6 w-full items-center overflow-y-auto scrollbar-hide">
+                    <nav className="flex-1 flex flex-col gap-4 w-full items-center overflow-y-auto scrollbar-hide">
                         {navItems.map(item => (
                             <SidebarItem key={item.to} {...item} />
                         ))}
                     </nav>
 
                     {/* Bottom Actions */}
-                    <div className="flex flex-col gap-6 mt-auto pt-6 shrink-0 w-full items-center">
+                    <div className="flex flex-col gap-4 mt-auto pt-6 shrink-0 w-full items-center">
                         <SidebarItem to="/settings" icon={Settings} label="Settings" />
                         <button
                             onClick={logout}
                             title="Logout"
-                            className="group flex items-center justify-center w-12 h-12 rounded-2xl text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all duration-300"
+                            className="group flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all duration-300"
                         >
-                            <LogOut size={22} className="transition-transform group-hover:rotate-12" />
+                            <LogOut size={18} className="transition-transform group-hover:rotate-12" />
                         </button>
                     </div>
                 </div>

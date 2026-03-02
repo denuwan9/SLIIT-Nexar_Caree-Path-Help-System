@@ -93,7 +93,7 @@ body {
 
   /* Card — glass styles inlined */
   .card {
-    @apply bg-white/40 backdrop-blur-3xl border border-white/50 shadow-2xl rounded-[2.5rem] p-10 transition-all duration-500 hover:border-white/80 hover:bg-white/50;
+    @apply bg-white/40 backdrop-blur-3xl border border-white/50 shadow-2xl rounded-2xl p-4 md:p-6 transition-all duration-500 hover:border-white/80 hover:bg-white/50;
   }
 
   .scrollbar-hide::-webkit-scrollbar {

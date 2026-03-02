@@ -22,7 +22,7 @@ const BentoCard: React.FC<{
 }> = ({ children, className = "", title, subtitle, headerRight, noPadding = false }) => (
     <div className={`bg-white/90 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl flex flex-col overflow-hidden transition-all hover:bg-white hover:border-slate-300 group ${className}`}>
         {(title || subtitle || headerRight) && (
-            <div className="flex justify-between items-start p-4 shrink-0 bg-slate-50/50 border-b border-slate-100">
+            <div className="flex justify-between items-start p-3 shrink-0 bg-slate-50/50 border-b border-slate-100">
                 <div className="min-w-0">
                     {title && <h3 className="text-slate-900 font-black text-sm md:text-base leading-tight tracking-tight truncate">{title}</h3>}
                     {subtitle && <p className="text-purple-600 text-[8px] font-black uppercase tracking-[0.2em] mt-0.5">{subtitle}</p>}
@@ -30,7 +30,7 @@ const BentoCard: React.FC<{
                 {headerRight && <div className="ml-2">{headerRight}</div>}
             </div>
         )}
-        <div className={`flex-1 w-full overflow-y-auto scrollbar-hide flex flex-col ${noPadding ? '' : 'p-4 md:p-5'}`}>
+        <div className={`flex-1 w-full overflow-y-auto scrollbar-hide flex flex-col ${noPadding ? '' : 'p-3 md:p-3.5'}`}>
             {children}
         </div>
     </div>
@@ -38,17 +38,17 @@ const BentoCard: React.FC<{
 
 // Top metric pill widget - High Contrast
 const MetricWidget: React.FC<{ title: string, value: string, icon: React.ElementType, change?: string, positive?: boolean }> = ({ title, value, icon: Icon, change, positive = true }) => (
-    <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-sm rounded-[1.5rem] p-3.5 flex items-center justify-between group hover:bg-white hover:border-slate-300 transition-all cursor-default">
-        <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${positive ? 'bg-gradient-to-br from-cyan-500 to-blue-600' : 'bg-gradient-to-br from-purple-500 to-indigo-700'}`}>
-                <Icon className="text-white" size={16} />
+    <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-sm rounded-xl p-3 flex items-center justify-between group hover:bg-white hover:border-slate-300 transition-all cursor-default">
+        <div className="flex items-center gap-2.5">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${positive ? 'bg-gradient-to-br from-cyan-500 to-blue-600' : 'bg-gradient-to-br from-purple-500 to-indigo-700'}`}>
+                <Icon className="text-white" size={12} />
             </div>
             <div>
-                <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">{title}</p>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-slate-900 font-black text-lg leading-none">{value}</span>
+                <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest">{title}</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-slate-900 font-black text-base leading-none">{value}</span>
                     {change && (
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${positive ? 'text-cyan-700 bg-cyan-100/50' : 'text-purple-700 bg-purple-100/50'}`}>
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${positive ? 'text-cyan-700 bg-cyan-100/50' : 'text-purple-700 bg-purple-100/50'}`}>
                             {change}
                         </span>
                     )}
@@ -71,7 +71,7 @@ const Dashboard: React.FC = () => {
                         <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]"></div>
                         <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Nexar Intelligence</span>
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter leading-none">
+                    <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tighter leading-none">
                         Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-cyan-500">{user?.name?.split(' ')[0] ?? 'Student'}!</span>
                     </h2>
                 </div>
@@ -94,7 +94,7 @@ const Dashboard: React.FC = () => {
             </header>
 
             {/* Quick Metrics */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
                 <MetricWidget title="Readiness" value="82%" icon={Target} change="+5%" />
                 <MetricWidget title="Learning Streak" value="14 Days" icon={Activity} change="+2" positive={false} />
                 <MetricWidget title="Growth" value="Level 4" icon={TrendingUp} change="+1 Lvl" />
@@ -102,23 +102,23 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Main Analytical Grid */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-0 overflow-hidden">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 overflow-hidden">
 
                 {/* Left Section */}
-                <div className="lg:col-span-3 flex flex-col gap-5 h-full">
+                <div className="lg:col-span-3 flex flex-col gap-4 h-full">
                     <BentoCard title="Profile Integrity" className="shrink-0">
-                        <div className="flex items-center lg:flex-col xl:flex-row justify-between gap-4 py-1">
-                            <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
+                        <div className="flex items-center lg:flex-col xl:flex-row justify-between gap-3 py-1">
+                            <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
                                 <svg className="w-full h-full transform -rotate-90">
                                     <circle cx="50%" cy="50%" r="42%" className="stroke-slate-100 fill-none" strokeWidth="5" />
                                     <circle cx="50%" cy="50%" r="42%" className="stroke-purple-500 fill-none" strokeWidth="7" strokeDasharray="264" strokeDashoffset="47" strokeLinecap="round" />
                                     <circle cx="50%" cy="50%" r="42%" className="stroke-cyan-400 fill-none" strokeWidth="3" strokeDasharray="264" strokeDashoffset="120" strokeLinecap="round" />
                                 </svg>
                                 <div className="absolute flex flex-col items-center">
-                                    <span className="text-lg font-black text-slate-900 leading-none">82%</span>
+                                    <span className="text-base font-black text-slate-900 leading-none">82%</span>
                                 </div>
                             </div>
-                            <div className="flex-1 w-full space-y-2.5">
+                            <div className="flex-1 w-full space-y-2">
                                 {[
                                     { l: 'Skills', v: '90%', c: 'bg-cyan-400' },
                                     { l: 'Exp', v: '65%', c: 'bg-purple-500' },

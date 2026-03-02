@@ -16,12 +16,12 @@ export const Layout: React.FC = () => {
             <Sidebar />
             <main className="
                 flex-1 overflow-x-hidden overflow-y-auto relative z-10
-                pt-4 pb-6 px-4
-                md:pt-6 md:pb-8 md:px-6
-                lg:pt-8 lg:pb-10 lg:px-10
+                pt-3 pb-5 px-3
+                md:pt-4 md:pb-6 md:px-5
+                lg:pt-5 lg:pb-7 lg:px-6
                 mt-14 mb-20 md:mt-0 md:mb-0
             ">
-                <div className="max-w-[1600px] mx-auto w-full min-h-full">
+                <div className="max-w-[1360px] mx-auto w-full min-h-full">
                     <Outlet />
                 </div>
             </main>
