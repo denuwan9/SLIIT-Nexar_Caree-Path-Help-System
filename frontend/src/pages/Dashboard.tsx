@@ -5,24 +5,55 @@ import {
     Zap,
     Users,
     Bell,
-    ChevronRight
+    TrendingUp,
+    Target,
+    Activity,
+    BookOpen
 } from 'lucide-react';
 
+// Premium White Glass-morphism Bento card - High Density
 const BentoCard: React.FC<{
     children: React.ReactNode,
     className?: string,
-    title?: string,
-    subtitle?: string
-}> = ({ children, className = "", title, subtitle }) => (
-    <div className={`card group flex flex-col items-start ${className}`}>
-        {(title || subtitle) && (
-            <div className="mb-6 w-full">
-                {title && <h3 className="text-slate-900 font-extrabold tracking-tight text-xl md:text-2xl">{title}</h3>}
-                {subtitle && <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">{subtitle}</p>}
+    title?: React.ReactNode,
+    subtitle?: string,
+    headerRight?: React.ReactNode,
+    noPadding?: boolean
+}> = ({ children, className = "", title, subtitle, headerRight, noPadding = false }) => (
+    <div className={`bg-white/90 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl flex flex-col overflow-hidden transition-all hover:bg-white hover:border-slate-300 group ${className}`}>
+        {(title || subtitle || headerRight) && (
+            <div className="flex justify-between items-start p-4 shrink-0 bg-slate-50/50 border-b border-slate-100">
+                <div className="min-w-0">
+                    {title && <h3 className="text-slate-900 font-black text-sm md:text-base leading-tight tracking-tight truncate">{title}</h3>}
+                    {subtitle && <p className="text-purple-600 text-[8px] font-black uppercase tracking-[0.2em] mt-0.5">{subtitle}</p>}
+                </div>
+                {headerRight && <div className="ml-2">{headerRight}</div>}
             </div>
         )}
-        <div className="flex-1 w-full">
+        <div className={`flex-1 w-full overflow-y-auto scrollbar-hide flex flex-col ${noPadding ? '' : 'p-4 md:p-5'}`}>
             {children}
+        </div>
+    </div>
+);
+
+// Top metric pill widget - High Contrast
+const MetricWidget: React.FC<{ title: string, value: string, icon: React.ElementType, change?: string, positive?: boolean }> = ({ title, value, icon: Icon, change, positive = true }) => (
+    <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-sm rounded-[1.5rem] p-3.5 flex items-center justify-between group hover:bg-white hover:border-slate-300 transition-all cursor-default">
+        <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${positive ? 'bg-gradient-to-br from-cyan-500 to-blue-600' : 'bg-gradient-to-br from-purple-500 to-indigo-700'}`}>
+                <Icon className="text-white" size={16} />
+            </div>
+            <div>
+                <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">{title}</p>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                    <span className="text-slate-900 font-black text-lg leading-none">{value}</span>
+                    {change && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${positive ? 'text-cyan-700 bg-cyan-100/50' : 'text-purple-700 bg-purple-100/50'}`}>
+                            {change}
+                        </span>
+                    )}
+                </div>
+            </div>
         </div>
     </div>
 );
@@ -31,175 +62,182 @@ const Dashboard: React.FC = () => {
     const { user } = useAuth();
 
     return (
-        <div className="flex flex-col gap-8 md:gap-10 lg:gap-12">
+        <div className="h-full flex flex-col pb-2 gap-4 lg:gap-5 overflow-hidden">
 
-            {/* Header */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-                <div>
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-2">Career Path Simulator</p>
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter leading-none">
-                        Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">{user?.name?.split(' ')[0] ?? 'Student'}!</span>
+            {/* Header - White Theme */}
+            <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 gap-3">
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]"></div>
+                        <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Nexar Intelligence</span>
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter leading-none">
+                        Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-cyan-500">{user?.name?.split(' ')[0] ?? 'Student'}!</span>
                     </h2>
                 </div>
 
-                {/* Bell + Avatar */}
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-white/40 p-1.5 rounded-2xl border border-white">
-                        <button className="p-2.5 text-slate-500 hover:text-purple-600 transition-colors rounded-xl hover:bg-white/60">
-                            <Bell size={20} />
-                        </button>
-                        <div className="w-px h-5 bg-slate-200 mx-0.5"></div>
-                        <div className="flex items-center gap-2.5 pl-1.5 pr-3">
-                            <div className="w-9 h-9 rounded-xl overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
-                                <img src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.name}&background=6366f1&color=fff`} alt={user?.name} className="w-full h-full object-cover" />
-                            </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto self-end sm:self-center">
+                    <button className="relative p-2 text-slate-400 hover:text-slate-900 transition-all bg-white border border-slate-200 shadow-sm rounded-xl hover:bg-slate-50">
+                        <Bell size={18} />
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+                    </button>
+                    <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl p-1 pr-4 shadow-sm hover:bg-slate-50 transition-colors cursor-pointer group">
+                        <div className="w-8 h-8 rounded-xl overflow-hidden border border-slate-100 shadow-sm shrink-0 transition-transform group-hover:scale-95">
+                            <img src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.name}&background=8b5cf6&color=fff`} alt={user?.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[11px] font-black text-slate-900 leading-none mb-0.5">{user?.name}</span>
+                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Pro Developer</span>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Bento Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-5 md:gap-7 lg:gap-10">
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+                <MetricWidget title="Readiness" value="82%" icon={Target} change="+5%" />
+                <MetricWidget title="Learning Streak" value="14 Days" icon={Activity} change="+2" positive={false} />
+                <MetricWidget title="Growth" value="Level 4" icon={TrendingUp} change="+1 Lvl" />
+                <MetricWidget title="Interviews" value="2 Slots" icon={Users} change="This week" />
+            </div>
 
-                {/* Profile Readiness */}
-                <BentoCard
-                    className="sm:col-span-2 lg:col-span-7 !p-6 md:!p-10 lg:!p-12"
-                    title="Profile Readiness"
-                >
-                    <div className="flex flex-col sm:flex-row items-center gap-8 lg:gap-16">
-                        <div className="relative w-44 h-44 sm:w-56 sm:h-56 lg:w-72 lg:h-72 flex-shrink-0 flex items-center justify-center">
-                            <div className="absolute inset-0 bg-purple-500/10 blur-[60px] rounded-full"></div>
-                            <svg className="w-full h-full transform -rotate-90 relative z-10">
-                                <circle cx="50%" cy="50%" r="45%" className="stroke-slate-200 fill-none" strokeWidth="10" />
-                                <circle cx="50%" cy="50%" r="45%" className="stroke-purple-500 fill-none transition-all duration-1000 ease-out" strokeWidth="14" strokeDasharray="283" strokeDashoffset="51" strokeLinecap="round" />
-                            </svg>
-                            <div className="absolute flex flex-col items-center z-20">
-                                <span className="text-5xl sm:text-6xl lg:text-7xl font-black text-slate-900 leading-none tracking-tighter">82%</span>
-                                <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1.5">Readiness</span>
+            {/* Main Analytical Grid */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-0 overflow-hidden">
+
+                {/* Left Section */}
+                <div className="lg:col-span-3 flex flex-col gap-5 h-full">
+                    <BentoCard title="Profile Integrity" className="shrink-0">
+                        <div className="flex items-center lg:flex-col xl:flex-row justify-between gap-4 py-1">
+                            <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle cx="50%" cy="50%" r="42%" className="stroke-slate-100 fill-none" strokeWidth="5" />
+                                    <circle cx="50%" cy="50%" r="42%" className="stroke-purple-500 fill-none" strokeWidth="7" strokeDasharray="264" strokeDashoffset="47" strokeLinecap="round" />
+                                    <circle cx="50%" cy="50%" r="42%" className="stroke-cyan-400 fill-none" strokeWidth="3" strokeDasharray="264" strokeDashoffset="120" strokeLinecap="round" />
+                                </svg>
+                                <div className="absolute flex flex-col items-center">
+                                    <span className="text-lg font-black text-slate-900 leading-none">82%</span>
+                                </div>
+                            </div>
+                            <div className="flex-1 w-full space-y-2.5">
+                                {[
+                                    { l: 'Skills', v: '90%', c: 'bg-cyan-400' },
+                                    { l: 'Exp', v: '65%', c: 'bg-purple-500' },
+                                    { l: 'Portf', v: '75%', c: 'bg-indigo-500' }
+                                ].map((s, i) => (
+                                    <div key={i} className="flex flex-col gap-1">
+                                        <div className="flex justify-between items-center px-0.5">
+                                            <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider">{s.l}</span>
+                                            <span className="text-[8px] font-black text-slate-900">{s.v}</span>
+                                        </div>
+                                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className={`h-full ${s.c} rounded-full`} style={{ width: s.v }}></div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
+                    </BentoCard>
 
-                        <div className="flex-1 w-full space-y-5 md:space-y-8">
+                    <BentoCard title="Focus Areas" className="flex-1 min-h-0">
+                        <div className="space-y-2.5 overflow-y-auto scrollbar-hide pr-1">
                             {[
-                                { label: 'Skills', val: '90%', w: 'w-[90%]' },
-                                { label: 'Experience', val: '65%', w: 'w-[65%]' },
-                                { label: 'Portfolio', val: '75%', w: 'w-[75%]' }
+                                { title: 'Database Normalization', type: 'Study', time: '45m', color: 'cyan' },
+                                { title: 'Portfolio Update', type: 'Profile', time: 'Required', color: 'purple' },
+                                { title: 'Mock Tech Interview', type: 'Prep', time: 'Tomorrow', color: 'indigo' },
+                                { title: 'API Documentation', type: 'Doc', time: 'Today', color: 'emerald' }
+                            ].map((task, i) => (
+                                <div key={i} className="p-3 bg-white/40 border border-slate-100 rounded-xl hover:bg-white transition-all cursor-pointer group/task flex items-center gap-3 shadow-xs">
+                                    <div className={`w-8 h-8 rounded-lg bg-${task.color}-50 border border-${task.color}-100 flex items-center justify-center shrink-0`}>
+                                        <BookOpen className={`text-${task.color}-500`} size={14} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-slate-900 font-bold text-xs truncate leading-tight">{task.title}</h4>
+                                        <div className="flex items-center justify-between mt-1">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">{task.type}</span>
+                                            <span className="text-[9px] font-black text-purple-600">{task.time}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </BentoCard>
+                </div>
+
+                {/* Middle Column */}
+                <BentoCard
+                    className="lg:col-span-5 h-full"
+                    title="Skill Acquisition"
+                    headerRight={
+                        <select className="bg-slate-50 border border-slate-200 text-slate-500 text-[8px] font-black uppercase tracking-widest rounded-lg px-2 py-1 outline-none focus:border-purple-300">
+                            <option>30D</option>
+                            <option>YTD</option>
+                        </select>
+                    }
+                >
+                    <div className="flex-1 flex flex-col pt-1">
+                        <div className="flex-1 bg-slate-50/50 rounded-2xl border border-slate-100 relative overflow-hidden flex items-center justify-center">
+                            <svg className="w-full h-full p-2" viewBox="0 0 400 200" preserveAspectRatio="none">
+                                <path
+                                    d="M0,180 Q50,165 100,110 T200,90 T300,130 T400,40"
+                                    className="fill-none stroke-purple-400/40"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                />
+                                <circle cx="100" cy="110" r="4" className="fill-white stroke-cyan-500" strokeWidth="2" />
+                                <circle cx="200" cy="90" r="4" className="fill-white stroke-purple-500" strokeWidth="2" />
+                            </svg>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 mt-4 shrink-0">
+                            {[
+                                { l: 'Backend', v: '+12%', c: 'text-cyan-600' },
+                                { l: 'Frontend', v: '+8%', c: 'text-purple-600' },
+                                { l: 'DevOps', v: '+3%', c: 'text-blue-600' }
                             ].map((stat, i) => (
-                                <div key={i} className="space-y-2">
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
-                                        <span className="text-sm font-black text-slate-900">{stat.val}</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                        <div className={`h-full bg-gradient-to-r from-blue-400 to-purple-500 ${stat.w} rounded-full shadow-[0_0_15px_rgba(157,80,255,0.3)]`}></div>
-                                    </div>
+                                <div key={i} className="bg-white/40 border border-slate-100 p-2.5 rounded-xl text-center shadow-xs">
+                                    <span className="text-[8px] uppercase font-black tracking-widest text-slate-500 block mb-0.5">{stat.l}</span>
+                                    <span className={`text-sm font-black ${stat.c}`}>{stat.v}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </BentoCard>
 
-                {/* Interview Slots */}
-                <div className="sm:col-span-2 lg:col-span-5 grid grid-cols-1 gap-5 md:gap-7 lg:gap-10">
-                    <BentoCard title="Interview Slots" subtitle="Upcoming">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-5 border border-white shadow-sm hover:shadow-md transition-all">
-                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Readiness</p>
-                                <span className="text-3xl font-black text-slate-900 italic tracking-tighter">82%</span>
-                                <div className="h-1.5 w-full bg-slate-100 rounded-full mt-3">
-                                    <div className="h-full bg-blue-500 w-[82%] rounded-full"></div>
-                                </div>
-                            </div>
-                            <div className="bg-white rounded-2xl p-5 border border-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-                                <div>
-                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Upcoming</p>
-                                    <span className="text-3xl font-black text-slate-900 tracking-tighter">2 <span className="text-base text-slate-400">Slots</span></span>
-                                </div>
-                                <div className="flex gap-1.5 mt-3">
-                                    <div className="h-1.5 flex-1 bg-emerald-500 rounded-full"></div>
-                                    <div className="h-1.5 flex-1 bg-emerald-500 rounded-full"></div>
-                                </div>
-                            </div>
-
-                            <div className="col-span-2 bg-slate-50 rounded-2xl p-4 md:p-5 border border-white flex items-center justify-between group cursor-pointer hover:bg-slate-100 transition-all">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center flex-shrink-0">
-                                        <Zap className="text-purple-500" size={16} />
-                                    </div>
-                                    <div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Upcoming</p>
-                                        <span className="text-slate-900 font-bold text-sm">1 Interview Slot</span>
-                                    </div>
-                                </div>
-                                <ChevronRight className="text-slate-300 group-hover:translate-x-1 transition-transform flex-shrink-0" size={18} />
-                            </div>
-
-                            <div className="col-span-2 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-2xl p-4 md:p-5 border border-purple-100 flex items-center justify-between group cursor-pointer hover:bg-purple-50 transition-all">
-                                <div>
-                                    <p className="text-purple-500 text-[10px] font-black uppercase tracking-widest">Next Exam</p>
-                                    <span className="text-slate-900 font-bold text-sm block mt-0.5">Dynamic Entity</span>
-                                </div>
-                                <div className="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
-                                    <Zap size={16} fill="currentColor" />
-                                </div>
-                            </div>
-                        </div>
-                    </BentoCard>
-                </div>
-
-                {/* Next Exam Task */}
+                {/* Right Column */}
                 <BentoCard
-                    className="sm:col-span-1 lg:col-span-4"
-                    title="Next Exam Task"
-                    subtitle="Software Engineering"
+                    className="lg:col-span-4 h-full"
+                    title="AI Career Copilot"
+                    noPadding
                 >
-                    <div className="mt-2 flex flex-col justify-between h-full">
-                        <h4 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 mb-6 lg:mb-10 tracking-tighter leading-tight">Database<br />Normalization</h4>
-                        <button className="btn-primary w-full h-12 md:h-14 uppercase tracking-widest text-xs font-black">
-                            Launch Practice
-                        </button>
-                    </div>
-                </BentoCard>
-
-                {/* AI Mentor */}
-                <BentoCard className="sm:col-span-2 lg:col-span-8 bg-slate-900 !p-6 md:!p-8 lg:!p-10">
-                    <div className="flex items-center justify-between mb-6 pb-5 border-b border-white/10 w-full">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border border-white/20 shadow-lg flex-shrink-0">
-                                <MessageSquare className="text-white" size={22} />
+                    <div className="flex flex-col h-full bg-slate-50/30">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+                            <div className="flex gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
+                                    <MessageSquare size={14} className="text-white" />
+                                </div>
+                                <div className="bg-white border border-slate-100 p-3 rounded-2xl rounded-tl-none text-[11px] text-slate-600 leading-relaxed shadow-sm max-w-[85%]">
+                                    Readiness Score is up! Mock interview?
+                                </div>
                             </div>
-                            <div>
-                                <h4 className="text-white font-black text-lg tracking-tight">AI Mentor</h4>
-                                <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Personalized Help</span>
+                            <div className="flex gap-3 flex-row-reverse">
+                                <div className="bg-purple-600 text-white p-3 rounded-2xl rounded-tr-none text-[11px] shadow-sm max-w-[85%]">
+                                    Let's do Architecture tradeoffs.
+                                </div>
                             </div>
                         </div>
-                        <button className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 hover:text-white transition-all">
-                            <Users size={16} />
-                        </button>
-                    </div>
-
-                    <div className="flex gap-4 mb-7">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-slate-700 shadow-lg flex-shrink-0">
-                            <img src="https://ui-avatars.com/api/?name=AI+Mentor&background=4f46e5&color=fff" alt="AI Mentor" className="w-full h-full object-cover" />
+                        <div className="p-3 border-t border-slate-100 bg-white/60">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Type answer..."
+                                    className="w-full bg-slate-50 border border-slate-200 text-[11px] text-slate-900 rounded-xl py-2.5 pl-4 pr-12 focus:outline-none focus:border-purple-300"
+                                />
+                                <button className="absolute right-1 top-1 bottom-1 w-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-sm">
+                                    <Zap size={14} className="text-white" fill="currentColor" />
+                                </button>
+                            </div>
                         </div>
-                        <div className="bg-slate-800 rounded-3xl rounded-tl-none p-5 text-slate-200 border border-slate-700 shadow-xl max-w-[85%] leading-relaxed font-medium text-sm md:text-base">
-                            <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1.5">AI Mentor</p>
-                            How can I help you today?
-                        </div>
-                    </div>
-
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Send a message..."
-                            className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl pl-5 pr-16 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all font-medium text-sm md:text-base"
-                        />
-                        <button className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all">
-                            <Zap size={20} fill="currentColor" />
-                        </button>
                     </div>
                 </BentoCard>
-
             </div>
         </div>
     );
