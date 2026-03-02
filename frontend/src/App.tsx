@@ -8,6 +8,7 @@ import { Layout } from './components/layout/Layout';
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
+const ComingSoon = React.lazy(() => import('./pages/ComingSoon'));
 
 const App: React.FC = () => {
   return (
@@ -28,9 +29,22 @@ const App: React.FC = () => {
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/interviews" element={<div className="card">Interview Scheduling Skeleton</div>} />
-              <Route path="/study-plan" element={<div className="card">Study Plan Generator Skeleton</div>} />
-              <Route path="/jobs" element={<div className="card">Job Postings Skeleton</div>} />
+              <Route
+                path="/interviews"
+                element={<ComingSoon title="Interview Scheduling" description="Prepare for your dream role with our upcoming AI-powered interview simulators and scheduling system." />}
+              />
+              <Route
+                path="/study"
+                element={<ComingSoon title="Study Plan Generator" description="Master any skill with personalized, AI-curated study paths and resource tracking coming soon." />}
+              />
+              <Route
+                path="/careers"
+                element={<ComingSoon title="Career Explored" description="Discover your ideal career path with our advanced matching engine and job market analysis tools." />}
+              />
+              <Route
+                path="/settings"
+                element={<ComingSoon title="Settings & Privacy" description="Customize your experience and manage your data with our upcoming settings portal." />}
+              />
 
               {/* Admin Only */}
               <Route
