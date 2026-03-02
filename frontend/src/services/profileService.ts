@@ -1,5 +1,5 @@
 import api from '../api/axios';
-import type { StudentProfile, ProfileUpdateData, Education, Experience, TechnicalSkill, SoftSkill, Language } from '../types/profile';
+import type { StudentProfile, ProfileUpdateData, Education, Experience, TechnicalSkill, SoftSkill, Language, Project, SocialLinks } from '../types/profile';
 import type { ApiResponse } from '../types/auth';
 
 const profileService = {
@@ -46,6 +46,17 @@ const profileService = {
         return response.data.data.experience;
     },
 
+    // Projects
+    addProject: async (data: Omit<Project, '_id'>) => {
+        const response = await api.post<ApiResponse<{ projects: Project[] }>>('/profile/me/projects', data);
+        return response.data.data.projects;
+    },
+
+    removeProject: async (projectId: string) => {
+        const response = await api.delete<ApiResponse<{ projects: Project[] }>>(`/profile/me/projects/${projectId}`);
+        return response.data.data.projects;
+    },
+
     // Technical Skills
     addTechnicalSkill: async (data: Omit<TechnicalSkill, '_id'>) => {
         const response = await api.post<ApiResponse<{ technicalSkills: TechnicalSkill[] }>>('/profile/me/skills/technical', data);
@@ -77,6 +88,12 @@ const profileService = {
     removeLanguage: async (langId: string) => {
         const response = await api.delete<ApiResponse<{ languages: Language[] }>>(`/profile/me/languages/${langId}`);
         return response.data.data.languages;
+    },
+
+    // Social Links
+    updateSocialLinks: async (data: SocialLinks) => {
+        const response = await api.patch<ApiResponse<{ socialLinks: SocialLinks }>>('/profile/me/social-links', data);
+        return response.data.data.socialLinks;
     },
 };
 

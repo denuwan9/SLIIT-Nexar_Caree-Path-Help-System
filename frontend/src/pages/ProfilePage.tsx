@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { User, GraduationCap, Briefcase, Award, FileText, CheckCircle2, ChevronRight, Share2 } from 'lucide-react';
+import {
+    Award, Share2, Pencil, MapPin,
+    CheckCircle2, Rocket, ExternalLink, Mail, Camera
+} from 'lucide-react';
 import profileService from '../services/profileService';
 import type { StudentProfile } from '../types/profile';
-import { PersonalInfo } from '../features/profile/PersonalInfo';
-import { AcademicInfo } from '../features/profile/AcademicInfo';
-import { EducationList } from '../features/profile/EducationList';
-import { ExperienceList } from '../features/profile/ExperienceList';
-import { SkillManager } from '../features/profile/SkillManager';
-
-type TabType = 'personal' | 'academic' | 'experience' | 'skills';
+import { ProfileStats } from '../features/profile/ProfileStats';
+import {
+    AboutMeView,
+    SkillsView,
+    ExperienceEducationView,
+    ProjectsView
+} from '../features/profile/ProfileViewSections';
+import { ProfileEditModal } from '../features/profile/ProfileEditModal';
 
 const ProfilePage: React.FC = () => {
     const [profile, setProfile] = useState<StudentProfile | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<TabType>('personal');
     const [error, setError] = useState<string | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     useEffect(() => {
         fetchProfile();
@@ -32,176 +36,131 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    const handleUpdate = async (data: any) => {
-        try {
-            const updated = await profileService.updateMe(data);
-            setProfile(updated);
-        } catch (err: any) {
-            alert(err.response?.data?.message || 'Update failed');
-        }
-    };
-
-    const handleAvatarUpload = async (file: File) => {
-        try {
-            const url = await profileService.uploadAvatar(file);
-            if (profile) setProfile({ ...profile, avatarUrl: url });
-        } catch (err: any) {
-            alert(err.response?.data?.message || 'Upload failed');
-        }
-    };
-
     if (loading) return (
-        <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <div className="relative h-16 w-16">
+                <div className="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+                <div className="absolute inset-0 rounded-full border-4 border-purple-600 border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Assembling Profile System</p>
         </div>
     );
 
     if (error || !profile) return (
-        <div className="card text-center py-12 border-red-100">
-            <p className="text-red-500 font-bold">{error || 'Could not find profile'}</p>
-            <button onClick={fetchProfile} className="btn-primary mt-4">Try Again</button>
+        <div className="p-20 text-center space-y-6 bg-red-50/30 rounded-[40px] border-2 border-dashed border-red-100">
+            <div className="h-20 w-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mx-auto text-red-500">
+                <Award size={40} className="rotate-180" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900">Connection Interrupted</h3>
+            <button onClick={fetchProfile} className="btn-primary">Reconnect</button>
         </div>
     );
 
-    const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-        { id: 'personal', label: 'Personal', icon: <User size={18} /> },
-        { id: 'academic', label: 'Academic', icon: <GraduationCap size={18} /> },
-        { id: 'experience', label: 'Experience', icon: <Briefcase size={18} /> },
-        { id: 'skills', label: 'Skills & Languages', icon: <Award size={18} /> },
-    ];
-
     return (
-        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-            {/* Header Banner */}
-            <div className="relative h-48 bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-[32px] overflow-hidden shadow-2xl">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
-                <div className="absolute top-6 right-8 flex gap-3">
-                    <button className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white p-2.5 rounded-2xl transition-all border border-white/10">
-                        <Share2 size={20} />
-                    </button>
-                    <button className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white flex items-center gap-2 px-5 py-2.5 rounded-2xl transition-all border border-white/10 font-bold text-sm">
-                        <FileText size={18} /> Export CV
-                    </button>
+        <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-1000">
+            {/* Massive Unique Profile Header */}
+            <div className="relative bg-white rounded-[48px] overflow-hidden shadow-2xl border border-slate-100 group">
+                {/* Banner Gradient */}
+                <div className="h-48 bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/hexellence.png')] opacity-30"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                 </div>
-                <div className="absolute -bottom-1 left-12 flex items-center gap-2 text-white/40 text-xs font-bold uppercase tracking-widest bg-black/20 px-4 py-2 rounded-t-xl">
-                    <CheckCircle2 size={12} className="text-emerald-400" /> Auto-saved to Cloud
-                </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                {/* Sidebar Nav */}
-                <aside className="lg:col-span-1 space-y-6">
-                    <div className="card overflow-hidden p-2">
-                        <div className="flex flex-col gap-1">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeTab === tab.id
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 translate-x-1'
-                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                                        }`}
-                                >
-                                    {tab.icon}
-                                    {tab.label}
-                                    {activeTab === tab.id && <ChevronRight size={16} className="ml-auto" />}
-                                </button>
-                            ))}
+                {/* Profile Info Overlay */}
+                <div className="px-12 pb-10 flex flex-col md:flex-row items-end gap-8 -mt-16 relative">
+                    {/* Avatar with Ring */}
+                    <div className="relative shrink-0">
+                        <div className="h-40 w-40 rounded-[48px] bg-slate-100 p-1 bg-gradient-to-br from-purple-500 to-blue-500 shadow-2xl">
+                            <div className="h-full w-full rounded-[44px] bg-white overflow-hidden relative border-4 border-white">
+                                {profile.avatarUrl ? (
+                                    <img src={profile.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                                ) : (
+                                    <div className="h-full w-full flex items-center justify-center bg-slate-50 text-slate-200">
+                                        <User size={64} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-emerald-500 rounded-2xl border-4 border-white flex items-center justify-center text-white shadow-lg">
+                            <CheckCircle2 size={20} />
                         </div>
                     </div>
 
-                    <div className="card bg-slate-900 text-white border-0 shadow-xl relative overflow-hidden">
-                        <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl"></div>
-                        <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Strength</h4>
-                        <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden mb-3">
-                            <div
-                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000"
-                                style={{ width: `${profile.profileCompleteness}%` }}
-                            ></div>
-                        </div>
-                        <p className="text-2xl font-black">{profile.profileCompleteness}%</p>
-                        <p className="text-xs text-slate-400 mt-1">Completion Score</p>
-                    </div>
-                </aside>
-
-                {/* Main Content Area */}
-                <main className="lg:col-span-3 space-y-8">
-                    <section className="card p-8 min-h-[500px] border-slate-100">
-                        {activeTab === 'personal' && (
-                            <PersonalInfo
-                                profile={profile}
-                                onUpdate={handleUpdate}
-                                onAvatarUpload={handleAvatarUpload}
-                            />
-                        )}
-
-                        {activeTab === 'academic' && (
-                            <div className="space-y-12">
-                                <AcademicInfo profile={profile} onUpdate={handleUpdate} />
-                                <div className="border-t border-slate-100 pt-12">
-                                    <EducationList
-                                        education={profile.education}
-                                        onAdd={async (data) => {
-                                            const list = await profileService.addEducation(data);
-                                            setProfile({ ...profile, education: list });
-                                        }}
-                                        onRemove={async (id) => {
-                                            const list = await profileService.removeEducation(id);
-                                            setProfile({ ...profile, education: list });
-                                        }}
-                                    />
+                    {/* Text Info */}
+                    <div className="flex-1 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-4xl font-black text-slate-900 tracking-tight">{profile.firstName} {profile.lastName}</h1>
+                                <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-blue-100">
+                                    Aspiring Professional
+                                </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-6 text-sm font-bold text-slate-400">
+                                <div className="flex items-center gap-2">
+                                    <MapPin size={16} className="text-slate-300" />
+                                    {profile.location?.city || 'Location not set'}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Mail size={16} className="text-slate-300" />
+                                    {typeof profile.user !== 'string' ? profile.user?.email : 'No Email'}
                                 </div>
                             </div>
-                        )}
+                        </div>
 
-                        {activeTab === 'experience' && (
-                            <ExperienceList
-                                experience={profile.experience}
-                                onAdd={async (data) => {
-                                    const list = await profileService.addExperience(data);
-                                    setProfile({ ...profile, experience: list });
-                                }}
-                                onRemove={async (id) => {
-                                    const list = await profileService.removeExperience(id);
-                                    setProfile({ ...profile, experience: list });
-                                }}
-                            />
-                        )}
-
-                        {activeTab === 'skills' && (
-                            <SkillManager
-                                technicalSkills={profile.technicalSkills}
-                                softSkills={profile.softSkills}
-                                languages={profile.languages}
-                                onAddTechnical={async (d) => {
-                                    const list = await profileService.addTechnicalSkill(d);
-                                    setProfile({ ...profile, technicalSkills: list });
-                                }}
-                                onRemoveTechnical={async (id) => {
-                                    const list = await profileService.removeTechnicalSkill(id);
-                                    setProfile({ ...profile, technicalSkills: list });
-                                }}
-                                onAddSoft={async (d) => {
-                                    const list = await profileService.addSoftSkill(d);
-                                    setProfile({ ...profile, softSkills: list });
-                                }}
-                                onRemoveSoft={async (id) => {
-                                    const list = await profileService.removeSoftSkill(id);
-                                    setProfile({ ...profile, softSkills: list });
-                                }}
-                                onAddLanguage={async (d) => {
-                                    const list = await profileService.addLanguage(d);
-                                    setProfile({ ...profile, languages: list });
-                                }}
-                                onRemoveLanguage={async (id) => {
-                                    const list = await profileService.removeLanguage(id);
-                                    setProfile({ ...profile, languages: list });
-                                }}
-                            />
-                        )}
-                    </section>
-                </main>
+                        <div className="flex items-center gap-6">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Profile Strength</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="h-2 w-32 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+                                            style={{ width: `${profile.profileCompleteness}%` }}
+                                        ></div>
+                                    </div>
+                                    <span className="text-xl font-black text-slate-900">{profile.profileCompleteness}%</span>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsEditModalOpen(true)}
+                                    className="btn-primary py-3 px-8 flex items-center gap-2 shadow-2xl shadow-blue-500/20"
+                                >
+                                    <Pencil size={18} /> Edit Profile
+                                </button>
+                                <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 hover:border-slate-400 transition-all shadow-sm">
+                                    <Share2 size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            {/* Stats Dashboard */}
+            <ProfileStats />
+
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                {/* Left Column: About & Skills */}
+                <div className="lg:col-span-1 space-y-10">
+                    <AboutMeView profile={profile} />
+                    <SkillsView profile={profile} />
+                </div>
+
+                {/* Right Column: Experience/Education & Projects */}
+                <div className="lg:col-span-2 space-y-10">
+                    <ExperienceEducationView profile={profile} />
+                    <ProjectsView profile={profile} />
+                </div>
+            </div>
+
+            {/* Edit Modal */}
+            <ProfileEditModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                profile={profile}
+                setProfile={setProfile}
+            />
         </div>
     );
 };

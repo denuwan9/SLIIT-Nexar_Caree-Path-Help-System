@@ -116,6 +116,13 @@ const experienceSchema = new mongoose.Schema(
             },
         },
         isCurrent: { type: Boolean, default: false },
+        duration: {
+            type: String,
+            trim: true,
+            maxlength: [60, 'Duration cannot exceed 60 characters'],
+            default: '',
+            // e.g. "Jan 2023 – Jun 2023" or "6 months"
+        },
         description: {
             type: String,
             trim: true,
@@ -137,6 +144,38 @@ const experienceSchema = new mongoose.Schema(
                 validator: (arr) => arr.length <= 15,
                 message: 'Cannot tag more than 15 skills per experience',
             },
+        },
+    },
+    { _id: true }
+);
+
+// ── Project Entry ────────────────────────────────────────────────
+const projectSchema = new mongoose.Schema(
+    {
+        title: {
+            type: String,
+            trim: true,
+            maxlength: [120, 'Project title cannot exceed 120 characters'],
+            default: '',
+        },
+        technologiesUsed: {
+            type: [String],
+            default: [],
+        },
+        description: {
+            type: String,
+            trim: true,
+            maxlength: [600, 'Description cannot exceed 600 characters'],
+            default: '',
+        },
+        githubLink: {
+            type: String,
+            trim: true,
+            match: [
+                /^(https?:\/\/)?(www\.)?github\.com\/.+/,
+                'Please provide a valid GitHub repository URL',
+            ],
+            default: '',
         },
     },
     { _id: true }
@@ -435,12 +474,30 @@ const studentProfileSchema = new mongoose.Schema(
         },
 
         // ── Professional Experience ───────────────────────────────────
+        experienceStatus: {
+            type: String,
+            enum: {
+                values: ['Has Experience', 'No Experience'],
+                message: '{VALUE} is not valid. Use: "Has Experience" or "No Experience"',
+            },
+            default: 'No Experience',
+        },
         experience: {
             type: [experienceSchema],
             default: [],
             validate: {
                 validator: (arr) => arr.length <= 20,
                 message: 'A profile can have at most 20 experience entries',
+            },
+        },
+
+        // ── Projects ──────────────────────────────────────────────────
+        projects: {
+            type: [projectSchema],
+            default: [],
+            validate: {
+                validator: (arr) => arr.length <= 20,
+                message: 'A profile can have at most 20 project entries',
             },
         },
 
@@ -566,6 +623,11 @@ studentProfileSchema.virtual('totalExperienceYears').get(function () {
 // ═══════════════════════════════════════════════════════════════════
 
 studentProfileSchema.pre('save', function (next) {
+    // If no experience, clear any stale work entries for consistency
+    if (this.experienceStatus === 'No Experience') {
+        this.experience = [];
+    }
+
     const checks = {
         basicInfo: !!(this.firstName && this.lastName && this.bio && this.headline),    // 20 pts
         contactInfo: !!(this.phone && this.location?.city),                               // 10 pts

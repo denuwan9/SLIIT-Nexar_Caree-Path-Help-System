@@ -8,10 +8,11 @@ export type LanguageProficiency = 'elementary' | 'limited-working' | 'profession
 export interface Education {
     _id?: string;
     institution: string;
-    degree: DegreeType;
+    degree: DegreeType | string;
     field: string;
     startDate: string;
     endDate?: string;
+    graduationYear?: number;
     isCurrentlyEnrolled: boolean;
     gpa?: number;
     grade?: string;
@@ -28,10 +29,19 @@ export interface Experience {
     isRemote: boolean;
     startDate: string;
     endDate?: string;
+    duration?: string;
     isCurrent: boolean;
     description?: string;
     responsibilities?: string[];
     skills?: string[];
+}
+
+export interface Project {
+    _id?: string;
+    title: string;
+    technologiesUsed: string[];
+    description?: string;
+    githubLink?: string;
 }
 
 export interface TechnicalSkill {
@@ -39,7 +49,7 @@ export interface TechnicalSkill {
     name: string;
     category: 'programming-language' | 'framework' | 'database' | 'cloud' | 'devops' | 'mobile' | 'design' | 'data-science' | 'testing' | 'other';
     level: SkillLevel;
-    yearsOfExp: number;
+    yearsOfExp?: number;
 }
 
 export interface SoftSkill {
@@ -50,14 +60,14 @@ export interface SoftSkill {
 
 export interface Language {
     _id?: string;
-    name: string;
-    proficiency: LanguageProficiency;
+    language: string;
+    proficiency: LanguageProficiency | string;
 }
 
 export interface SocialLinks {
     linkedin?: string;
     github?: string;
-    portfolio?: string;
+    portfolioWebsite?: string;
     website?: string;
     twitter?: string;
     stackoverflow?: string;
@@ -68,11 +78,14 @@ export interface StudentProfile {
     user: User | string;
     firstName: string;
     lastName: string;
+    fullName?: string; // Virtual from backend
     headline?: string;
     bio?: string;
     dateOfBirth?: string;
+    age?: number;
     gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | '';
     phone?: string;
+    address?: string;
     location?: {
         city?: string;
         country?: string;
@@ -84,11 +97,14 @@ export interface StudentProfile {
     yearOfStudy?: number;
     gpa?: number;
     studentId?: string;
+    preferredCareerField?: string;
     careerField?: string;
     careerObjective?: string;
     avatarUrl?: string;
     education: Education[];
+    experienceStatus: 'Has Experience' | 'No Experience';
     experience: Experience[];
+    projects: Project[];
     technicalSkills: TechnicalSkill[];
     softSkills: SoftSkill[];
     languages: Language[];
