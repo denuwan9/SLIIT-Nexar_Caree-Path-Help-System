@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
     Award, Share2, Pencil, MapPin,
-    CheckCircle2, Rocket, ExternalLink, Mail, Camera
+    CheckCircle2, Mail, User
 } from 'lucide-react';
 import profileService from '../services/profileService';
 import type { StudentProfile } from '../types/profile';
-import { ProfileStats } from '../features/profile/ProfileStats';
+import ProfileStats from '../features/profile/ProfileStats';
 import {
     AboutMeView,
     SkillsView,
@@ -137,7 +137,7 @@ const ProfilePage: React.FC = () => {
             </div>
 
             {/* Stats Dashboard */}
-            <ProfileStats />
+            <ProfileStats profile={profile} />
 
             {/* Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">

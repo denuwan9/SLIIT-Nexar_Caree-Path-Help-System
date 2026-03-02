@@ -24,10 +24,16 @@ const startServer = async () => {
     // ── Unhandled promise rejections ──────────────────────────────────
     process.on('unhandledRejection', (err) => {
         logger.error(`UNHANDLED REJECTION: ${err.name} — ${err.message}`);
-        server.close(() => {
-            logger.warn('Server closed due to unhandled rejection. Exiting...');
-            process.exit(1);
-        });
+        // In development, log the error but keep the server running
+        // so that a single bad request (e.g. Cloudinary config) doesn't kill dev workflow
+        if (process.env.NODE_ENV === 'production') {
+            server.close(() => {
+                logger.warn('Server closed due to unhandled rejection. Exiting...');
+                process.exit(1);
+            });
+        } else {
+            logger.warn('Unhandled rejection caught in development — server kept alive.');
+        }
     });
 
     // ── Graceful shutdown on SIGTERM (e.g., Docker / cloud platforms) ─

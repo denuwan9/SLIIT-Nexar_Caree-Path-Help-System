@@ -16,12 +16,12 @@ const profileService = {
     uploadAvatar: async (file: File) => {
         const formData = new FormData();
         formData.append('avatar', file);
-        const response = await api.post<ApiResponse<{ avatarUrl: string }>>('/profile/me/avatar', formData, {
+        const response = await api.post<ApiResponse<{ avatarUrl: string, profile: StudentProfile }>>('/profile/me/avatar', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
         });
-        return response.data.data.avatarUrl;
+        return response.data.data;
     },
 
     // Education
@@ -54,6 +54,18 @@ const profileService = {
 
     removeProject: async (projectId: string) => {
         const response = await api.delete<ApiResponse<{ projects: Project[] }>>(`/profile/me/projects/${projectId}`);
+        return response.data.data.projects;
+    },
+
+    uploadProjectImages: async (projectId: string, files: File[]) => {
+        const formData = new FormData();
+        files.forEach(file => formData.append('images', file));
+
+        const response = await api.post<ApiResponse<{ projects: Project[] }>>(`/profile/me/projects/${projectId}/images`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
         return response.data.data.projects;
     },
 

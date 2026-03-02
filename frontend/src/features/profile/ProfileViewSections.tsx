@@ -1,9 +1,9 @@
 import React from 'react';
 import {
     User, BookOpen, Briefcase, Rocket, Mail,
-    MapPin, Calendar, ExternalLink, Github, Award
+    MapPin, Award, Github
 } from 'lucide-react';
-import type { StudentProfile, Education, Experience, Project } from '../../types/profile';
+import type { StudentProfile } from '../../types/profile';
 
 interface SectionWrapperProps {
     title: string;
@@ -63,7 +63,7 @@ export const SkillsView: React.FC<{ profile: StudentProfile }> = ({ profile }) =
                 <div className="flex flex-wrap gap-2">
                     {profile.languages.map(lang => (
                         <span key={lang._id} className="px-3 py-1.5 bg-slate-50 text-slate-600 text-[11px] font-black uppercase tracking-wider rounded-lg border border-slate-100">
-                            {lang.name}
+                            {lang.language}
                         </span>
                     ))}
                     {profile.softSkills.map(skill => (

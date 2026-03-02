@@ -10,6 +10,8 @@ import {
     Activity,
     BookOpen
 } from 'lucide-react';
+import profileService from '../services/profileService';
+import type { StudentProfile } from '../types/profile';
 
 // Premium White Glass-morphism Bento card - High Density
 const BentoCard: React.FC<{
@@ -60,6 +62,22 @@ const MetricWidget: React.FC<{ title: string, value: string, icon: React.Element
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
+    const [profile, setProfile] = React.useState<StudentProfile | null>(null);
+
+    React.useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const data = await profileService.getMe();
+                setProfile(data);
+            } catch (err) {
+                console.error('Failed to fetch profile for dashboard', err);
+            }
+        };
+        fetchProfile();
+    }, []);
+
+    const completeness = profile?.profileCompleteness || 0;
+    const technicalSkillsCount = profile?.technicalSkills?.length || 0;
 
     return (
         <div className="h-full flex flex-col pb-2 gap-4 lg:gap-5 overflow-hidden">
@@ -95,10 +113,10 @@ const Dashboard: React.FC = () => {
 
             {/* Quick Metrics */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-                <MetricWidget title="Readiness" value="82%" icon={Target} change="+5%" />
-                <MetricWidget title="Learning Streak" value="14 Days" icon={Activity} change="+2" positive={false} />
-                <MetricWidget title="Growth" value="Level 4" icon={TrendingUp} change="+1 Lvl" />
-                <MetricWidget title="Interviews" value="2 Slots" icon={Users} change="This week" />
+                <MetricWidget title="Profile Strength" value={`${completeness}%`} icon={Target} change="Live" />
+                <MetricWidget title="Skills Listed" value={technicalSkillsCount.toString()} icon={Activity} change="Updated" positive={true} />
+                <MetricWidget title="Career Path" value={profile?.careerField ? 'Set' : 'Generic'} icon={TrendingUp} change={profile?.careerField || 'Not Set'} />
+                <MetricWidget title="Profile Mode" value={profile?.isPublic ? 'Public' : 'Private'} icon={Users} change={profile?.isPublic ? 'Visible' : 'Hidden'} />
             </div>
 
             {/* Main Analytical Grid */}
@@ -111,11 +129,10 @@ const Dashboard: React.FC = () => {
                             <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
                                 <svg className="w-full h-full transform -rotate-90">
                                     <circle cx="50%" cy="50%" r="42%" className="stroke-slate-100 fill-none" strokeWidth="5" />
-                                    <circle cx="50%" cy="50%" r="42%" className="stroke-purple-500 fill-none" strokeWidth="7" strokeDasharray="264" strokeDashoffset="47" strokeLinecap="round" />
-                                    <circle cx="50%" cy="50%" r="42%" className="stroke-cyan-400 fill-none" strokeWidth="3" strokeDasharray="264" strokeDashoffset="120" strokeLinecap="round" />
+                                    <circle cx="50%" cy="50%" r="42%" className="stroke-purple-500 fill-none" strokeWidth="7" strokeDasharray="264" strokeDashoffset={264 - (264 * completeness) / 100} strokeLinecap="round" />
                                 </svg>
                                 <div className="absolute flex flex-col items-center">
-                                    <span className="text-base font-black text-slate-900 leading-none">82%</span>
+                                    <span className="text-base font-black text-slate-900 leading-none">{completeness}%</span>
                                 </div>
                             </div>
                             <div className="flex-1 w-full space-y-2">

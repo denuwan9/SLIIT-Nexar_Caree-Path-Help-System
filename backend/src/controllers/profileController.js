@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const StudentProfile = require('../models/StudentProfile');
+const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 
@@ -18,15 +19,10 @@ const sanitize = (body) => {
 const hasDuplicate = (arr, name) =>
     arr.some((item) => item.name.toLowerCase().trim() === name.toLowerCase().trim());
 
-/** Delete a file from disk safely (used when replacing avatar) */
+/** Delete a file from disk safely (No longer used for Cloudinary) */
 const deleteFile = (filePath) => {
-    if (!filePath) return;
-    try {
-        const fullPath = path.join(process.cwd(), 'uploads', 'avatars', path.basename(filePath));
-        if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-    } catch (err) {
-        logger.warn(`Could not delete old avatar: ${err.message}`);
-    }
+    // Cloudinary deletion would require public_id or API call
+    // For now, we just update the URL in DB
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -67,11 +63,31 @@ exports.updateMyProfile = async (req, res, next) => {
     try {
         const data = sanitize(req.body);
 
-        const profile = await StudentProfile.findOneAndUpdate(
+        // If firstName/lastName changed, sync with User model first
+        if (data.firstName || data.lastName) {
+            // Get current profile to build full name
+            const current = await StudentProfile.findOne({ user: req.user._id }).select('firstName lastName');
+            const firstName = data.firstName || current?.firstName || '';
+            const lastName = data.lastName || current?.lastName || '';
+            const fullName = `${firstName} ${lastName}`.trim();
+            await User.findByIdAndUpdate(req.user._id, { name: fullName });
+        }
+
+        // Use findOneAndUpdate to bypass schema validators on untouched fields (e.g. avatarUrl)
+        let profile = await StudentProfile.findOneAndUpdate(
             { user: req.user._id },
             { $set: data },
-            { new: true, runValidators: true, upsert: true, context: 'query' }
-        ).populate('user', 'name email');
+            { new: true, runValidators: false, upsert: true }
+        ).populate('user', 'name email avatarUrl');
+
+        // Manually recalculate profileCompleteness and save quietly
+        if (profile) {
+            const completeness = profile.calculateCompleteness ? profile.calculateCompleteness() : null;
+            if (completeness !== null) {
+                await StudentProfile.findByIdAndUpdate(profile._id, { profileCompleteness: completeness });
+                profile.profileCompleteness = completeness;
+            }
+        }
 
         res.status(200).json({ status: 'success', data: { profile } });
     } catch (error) { next(error); }
@@ -92,10 +108,8 @@ exports.uploadAvatar = async (req, res, next) => {
             return next(new AppError('No image file provided.', 400));
         }
 
-        const publicUrl = `/uploads/avatars/${req.file.filename}`;
-
-        // Get old avatar to delete it from disk
-        const existing = await StudentProfile.findOne({ user: req.user._id }).select('avatarUrl');
+        // multer-storage-cloudinary provides the secure_url in path or file.path
+        const publicUrl = req.file.path;
 
         const profile = await StudentProfile.findOneAndUpdate(
             { user: req.user._id },
@@ -103,13 +117,12 @@ exports.uploadAvatar = async (req, res, next) => {
             { new: true, upsert: true }
         );
 
-        // Delete old avatar file after successful save
-        if (existing?.avatarUrl) deleteFile(existing.avatarUrl);
+        // Sync avatar with User model
+        await User.findByIdAndUpdate(req.user._id, { avatarUrl: publicUrl });
 
         res.status(200).json({
             status: 'success',
-            message: 'Profile image uploaded successfully.',
-            data: { avatarUrl: publicUrl },
+            data: { avatarUrl: publicUrl, profile },
         });
     } catch (error) { next(error); }
 };
@@ -181,6 +194,70 @@ exports.removeExperience = async (req, res, next) => {
         );
         if (!profile) return next(new AppError('Profile not found.', 404));
         res.status(200).json({ status: 'success', data: { experience: profile.experience } });
+    } catch (error) { next(error); }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  5.2 PROJECTS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/v1/profile/me/projects
+ * 201 — pushes a new project entry
+ */
+exports.addProject = async (req, res, next) => {
+    try {
+        const profile = await StudentProfile.findOneAndUpdate(
+            { user: req.user._id },
+            { $push: { projects: req.body } },
+            { new: true, runValidators: true }
+        );
+        if (!profile) return next(new AppError('Profile not found.', 404));
+        res.status(201).json({ status: 'success', data: { projects: profile.projects } });
+    } catch (error) { next(error); }
+};
+
+/**
+ * DELETE /api/v1/profile/me/projects/:projectId
+ * 200 — removes a project entry
+ */
+exports.removeProject = async (req, res, next) => {
+    try {
+        const profile = await StudentProfile.findOneAndUpdate(
+            { user: req.user._id },
+            { $pull: { projects: { _id: req.params.projectId } } },
+            { new: true }
+        );
+        if (!profile) return next(new AppError('Profile not found.', 404));
+        res.status(200).json({ status: 'success', data: { projects: profile.projects } });
+    } catch (error) { next(error); }
+};
+
+/**
+ * POST /api/v1/profile/me/projects/:projectId/images
+ * 200 — uploads multiple images for a project
+ */
+exports.uploadProjectImages = async (req, res, next) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return next(new AppError('No images provided.', 400));
+        }
+
+        const imageUrls = req.files.map(file => file.path);
+
+        const profile = await StudentProfile.findOneAndUpdate(
+            { user: req.user._id, 'projects._id': req.params.projectId },
+            { $push: { 'projects.$.images': { $each: imageUrls } } },
+            { new: true }
+        );
+
+        if (!profile) return next(new AppError('Project not found.', 404));
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Project images uploaded successfully.',
+            data: { projects: profile.projects }
+        });
     } catch (error) { next(error); }
 };
 

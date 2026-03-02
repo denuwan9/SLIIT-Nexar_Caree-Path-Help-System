@@ -177,6 +177,10 @@ const projectSchema = new mongoose.Schema(
             ],
             default: '',
         },
+        images: {
+            type: [String],
+            default: [],
+        },
     },
     { _id: true }
 );
@@ -382,6 +386,17 @@ const studentProfileSchema = new mongoose.Schema(
             match: [/^\+?[\d\s\-().]{7,20}$/, 'Please provide a valid phone number'],
             default: '',
         },
+        address: {
+            type: String,
+            trim: true,
+            maxlength: [200, 'Address cannot exceed 200 characters'],
+            default: '',
+        },
+        age: {
+            type: Number,
+            min: [16, 'Minimum age is 16'],
+            max: [100, 'Age seems unrealistic'],
+        },
         location: {
             city: { type: String, trim: true, maxlength: 80, default: '' },
             country: { type: String, trim: true, maxlength: 80, default: '' },
@@ -424,6 +439,12 @@ const studentProfileSchema = new mongoose.Schema(
             maxlength: [30, 'Student ID cannot exceed 30 characters'],
             default: '',
         },
+        preferredCareerField: {
+            type: String,
+            trim: true,
+            maxlength: [100, 'Career sector cannot exceed 100 characters'],
+            default: '',
+        },
 
         // ── Career Field ──────────────────────────────────────────────
         careerField: {
@@ -459,7 +480,6 @@ const studentProfileSchema = new mongoose.Schema(
         avatarUrl: {
             type: String,
             trim: true,
-            match: [/^https?:\/\/.+/, 'Avatar URL must start with http:// or https://'],
             default: '',
         },
 

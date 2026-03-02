@@ -1,5 +1,6 @@
 import React from 'react';
 import { Eye, Search, Award, TrendingUp } from 'lucide-react';
+import type { StudentProfile } from '../../types/profile';
 
 interface StatCardProps {
     label: string;
@@ -24,37 +25,39 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, change, icon: Icon, i
     </div>
 );
 
-export const ProfileStats: React.FC = () => {
+const ProfileStats: React.FC<{ profile: StudentProfile }> = ({ profile }) => {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
-                label="Profile Views"
-                value="1,240"
-                change="+12%"
+                label="Profile Strength"
+                value={`${profile.profileCompleteness}%`}
+                change="Increasing"
                 icon={Eye}
                 iconColor="bg-blue-500"
             />
             <StatCard
-                label="Search Appearances"
-                value="345"
-                change="+8%"
-                icon={Search}
-                iconColor="bg-purple-500"
-            />
-            <StatCard
                 label="Skills Verified"
-                value="18"
-                change="+4%"
+                value={profile.technicalSkills.length}
+                change="+1 this week"
                 icon={Award}
                 iconColor="bg-orange-500"
             />
             <StatCard
-                label="Reputation"
-                value="Top 10%"
-                change="Promising"
+                label="Search Visibility"
+                value={profile.isPublic ? 'Public' : 'Private'}
+                change="Optimal"
+                icon={Search}
+                iconColor="bg-purple-500"
+            />
+            <StatCard
+                label="Career Status"
+                value={profile.isActivelyLooking ? 'Looking' : 'Exploring'}
+                change="Active"
                 icon={TrendingUp}
                 iconColor="bg-emerald-500"
             />
         </div>
     );
 };
+
+export default ProfileStats;

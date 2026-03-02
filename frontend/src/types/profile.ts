@@ -42,6 +42,7 @@ export interface Project {
     technologiesUsed: string[];
     description?: string;
     githubLink?: string;
+    images?: string[];
 }
 
 export interface TechnicalSkill {

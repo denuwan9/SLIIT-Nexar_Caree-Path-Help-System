@@ -3,11 +3,15 @@ const router = express.Router();
 const profileController = require('../controllers/profileController');
 const { protect, restrictTo } = require('../middleware/auth');
 const validate = require('../middleware/validate');
-const { uploadAvatarMiddleware } = require('../middleware/upload');
+const {
+    uploadAvatarMiddleware,
+    uploadProjectImagesMiddleware
+} = require('../middleware/cloudinaryUpload');
 const {
     profileValidator,
     educationValidator,
     experienceValidator,
+    projectValidator,
     technicalSkillValidator,
     softSkillValidator,
     languageValidator,
@@ -29,11 +33,11 @@ router.put(
     profileController.updateMyProfile
 );
 
-// POST /api/v1/profile/me/avatar  → 200 — upload profile picture
+// POST /api/v1/profile/me/avatar  → 200 — upload profile picture (Cloudinary)
 router.post(
     '/me/avatar',
     restrictTo('student'),
-    uploadAvatarMiddleware,          // multer: validates type & size
+    uploadAvatarMiddleware,
     profileController.uploadAvatar
 );
 
@@ -69,6 +73,31 @@ router.delete(
     '/me/experience/:expId',
     restrictTo('student'),
     profileController.removeExperience
+);
+
+// ── Student: project sub-resource ────────────────────────────────
+
+// POST   /api/v1/profile/me/projects           → 201 — add entry
+router.post(
+    '/me/projects',
+    restrictTo('student'),
+    projectValidator, validate,
+    profileController.addProject
+);
+
+// DELETE /api/v1/profile/me/projects/:projectId → 200 — remove entry
+router.delete(
+    '/me/projects/:projectId',
+    restrictTo('student'),
+    profileController.removeProject
+);
+
+// POST   /api/v1/profile/me/projects/:projectId/images → 200 — upload images
+router.post(
+    '/me/projects/:projectId/images',
+    restrictTo('student'),
+    uploadProjectImagesMiddleware,
+    profileController.uploadProjectImages
 );
 
 // ── Student: technical skills ─────────────────────────────────────
