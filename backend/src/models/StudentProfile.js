@@ -597,7 +597,6 @@ studentProfileSchema.pre('save', function (next) {
 //  INDEXES
 // ═══════════════════════════════════════════════════════════════════
 
-studentProfileSchema.index({ user: 1 });                          // primary lookup
 studentProfileSchema.index({ careerField: 1 });                   // filter by field
 studentProfileSchema.index({ isPublic: 1, isActivelyLooking: 1 }); // "talent search" queries
 studentProfileSchema.index({ 'technicalSkills.name': 1 });        // skill search

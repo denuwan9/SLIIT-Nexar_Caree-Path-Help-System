@@ -33,28 +33,32 @@ body {
 }
 
 @layer components {
+  /* Tailwind v4: @apply cannot reference other custom classes in the same @layer.
+     All shared styles are inlined directly into each class. */
+
+  /* Glass morphism surface */
   .glass {
     @apply bg-white/40 backdrop-blur-3xl border border-white/50 shadow-2xl;
   }
 
+  /* Dark glass morphism surface */
   .glass-dark {
     @apply bg-[#0b3d66]/10 backdrop-blur-2xl border border-white/20 shadow-2xl;
   }
 
-  .btn {
-    @apply px-6 py-3 rounded-2xl font-bold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
-  }
-
+  /* Primary button — all styles inlined */
   .btn-primary {
-    @apply btn bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-xl shadow-purple-500/25 active:shadow-none;
+    @apply px-6 py-3 rounded-2xl font-bold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-xl shadow-purple-500/25 active:shadow-none;
   }
 
+  /* Secondary button — glass styles inlined */
   .btn-secondary {
-    @apply btn glass text-slate-700 hover:bg-white/60 border-white/60;
+    @apply px-6 py-3 rounded-2xl font-bold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none bg-white/40 backdrop-blur-3xl border border-white/60 shadow-2xl text-slate-700 hover:bg-white/60;
   }
 
+  /* Card — glass styles inlined */
   .card {
-    @apply glass rounded-[2.5rem] p-10 transition-all duration-500 hover:border-white/80 hover:bg-white/50;
+    @apply bg-white/40 backdrop-blur-3xl border border-white/50 shadow-2xl rounded-[2.5rem] p-10 transition-all duration-500 hover:border-white/80 hover:bg-white/50;
   }
 
   .scrollbar-hide::-webkit-scrollbar {
