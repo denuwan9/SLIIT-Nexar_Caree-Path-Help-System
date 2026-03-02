@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../components/auth/AuthProvider';
+import api from '../api/axios';
 import { Lock, Mail, ArrowRight } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const { login } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -16,19 +18,18 @@ const LoginPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setError('');
 
-        // Simulate API call for scaffolding
-        setTimeout(() => {
-            login("dummy-token", {
-                id: "1",
-                name: "Test User",
-                email: email,
-                role: "student",
-                isActive: true
-            });
-            setLoading(false);
+        try {
+            const response = await api.post('/auth/login', { email, password });
+            const { accessToken, data } = response.data;
+            login(accessToken, data.user);
             navigate(from, { replace: true });
-        }, 1000);
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Login failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -69,6 +70,12 @@ const LoginPage: React.FC = () => {
                             />
                         </div>
                     </div>
+
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium">
+                            {error}
+                        </div>
+                    )}
 
                     <button
                         type="submit"

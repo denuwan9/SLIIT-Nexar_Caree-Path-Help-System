@@ -1,28 +1,68 @@
 @import "tailwindcss";
 
+@theme {
+  --color-azure-deep: #0b3d66;
+  --color-azure-light: #e0e9f0;
+  --color-purple-electric: #9d50ff;
+  --color-white-soft: #f8fafc;
+
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
 :root {
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color-scheme: light dark;
+}
+
+html,
+body {
+  @apply bg-[#f1f5f9] text-slate-900 antialiased selection:bg-purple-500/20;
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
 }
 
 body {
   font-family: var(--font-family);
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(157, 80, 255, 0.08) 0, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(0, 102, 204, 0.08) 0, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(255, 255, 255, 0.4) 0, transparent 100%);
+  background-attachment: fixed;
+  background-color: #f1f5f9;
 }
 
 @layer components {
+  .glass {
+    @apply bg-white/40 backdrop-blur-3xl border border-white/50 shadow-2xl;
+  }
+
+  .glass-dark {
+    @apply bg-[#0b3d66]/10 backdrop-blur-2xl border border-white/20 shadow-2xl;
+  }
+
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+    @apply px-6 py-3 rounded-2xl font-bold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
   }
-  
+
   .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md;
+    @apply btn bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-xl shadow-purple-500/25 active:shadow-none;
   }
-  
+
   .btn-secondary {
-    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50;
+    @apply btn glass text-slate-700 hover:bg-white/60 border-white/60;
   }
-  
+
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm p-6;
+    @apply glass rounded-[2.5rem] p-10 transition-all duration-500 hover:border-white/80 hover:bg-white/50;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

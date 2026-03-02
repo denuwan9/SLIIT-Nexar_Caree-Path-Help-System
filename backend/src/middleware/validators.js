@@ -31,13 +31,158 @@ const loginValidator = [
         .notEmpty().withMessage('Password is required'),
 ];
 
-// ── Profile validators ─────────────────────────────────────────────
+// ── Profile: general update validator ─────────────────────────────
 const profileValidator = [
-    body('university').optional().trim().isLength({ max: 100 }),
+    body('firstName')
+        .optional().trim()
+        .isLength({ min: 2, max: 50 }).withMessage('First name must be 2–50 characters'),
+    body('lastName')
+        .optional().trim()
+        .isLength({ min: 2, max: 50 }).withMessage('Last name must be 2–50 characters'),
+    body('headline')
+        .optional().trim()
+        .isLength({ max: 120 }).withMessage('Headline cannot exceed 120 characters'),
+    body('bio')
+        .optional().trim()
+        .isLength({ max: 1000 }).withMessage('Bio cannot exceed 1000 characters'),
+    body('phone')
+        .optional({ checkFalsy: true })
+        .matches(/^\+?[\d\s\-().]{7,20}$/).withMessage('Please provide a valid phone number'),
+    body('dateOfBirth')
+        .optional({ checkFalsy: true })
+        .isISO8601().withMessage('Date of birth must be a valid date')
+        .custom((v) => { if (new Date(v) >= new Date()) throw new Error('Date of birth cannot be in the future'); return true; }),
+    body('gender')
+        .optional()
+        .isIn(['male', 'female', 'non-binary', 'prefer-not-to-say', '']).withMessage('Invalid gender value'),
+    body('university').optional().trim().isLength({ max: 150 }),
+    body('faculty').optional().trim().isLength({ max: 150 }),
     body('major').optional().trim().isLength({ max: 100 }),
-    body('yearOfStudy').optional().isInt({ min: 1, max: 6 }).withMessage('Year must be 1–6'),
-    body('gpa').optional().isFloat({ min: 0, max: 4.0 }).withMessage('GPA must be between 0 and 4.0'),
-    body('bio').optional().isLength({ max: 500 }).withMessage('Bio cannot exceed 500 characters'),
+    body('yearOfStudy').optional().isInt({ min: 1, max: 6 }).withMessage('Year of study must be 1–6'),
+    body('gpa').optional({ checkFalsy: true }).isFloat({ min: 0, max: 4.0 }).withMessage('GPA must be 0–4.0'),
+    body('careerField')
+        .optional()
+        .isIn(['software-engineering', 'data-science', 'cybersecurity', 'cloud-devops', 'ui-ux-design',
+            'mobile-development', 'networking', 'ai-machine-learning', 'business-analysis',
+            'project-management', 'other', ''])
+        .withMessage('Invalid career field'),
+    body('careerObjective').optional().trim().isLength({ max: 500 }),
+    body('isPublic').optional().isBoolean(),
+    body('isActivelyLooking').optional().isBoolean(),
+    body('socialLinks.linkedin')
+        .optional({ checkFalsy: true })
+        .matches(/^(https?:\/\/)?(www\.)?linkedin\.com\/in\/.+/).withMessage('Invalid LinkedIn URL'),
+    body('socialLinks.github')
+        .optional({ checkFalsy: true })
+        .matches(/^(https?:\/\/)?(www\.)?github\.com\/.+/).withMessage('Invalid GitHub URL'),
+    body('socialLinks.portfolio')
+        .optional({ checkFalsy: true })
+        .isURL().withMessage('Portfolio must be a valid URL'),
+    body('socialLinks.website')
+        .optional({ checkFalsy: true })
+        .isURL().withMessage('Website must be a valid URL'),
+    body('resumeUrl')
+        .optional({ checkFalsy: true })
+        .isURL().withMessage('Resume URL must be a valid URL'),
+];
+
+// ── Profile: education entry validator ────────────────────────────
+const educationValidator = [
+    body('institution')
+        .trim().notEmpty().withMessage('Institution name is required')
+        .isLength({ max: 150 }).withMessage('Institution name cannot exceed 150 characters'),
+    body('degree')
+        .notEmpty().withMessage('Degree is required')
+        .isIn(["Certificate", "Diploma", "HND", "Bachelor's", "Master's", "PhD", "Other"])
+        .withMessage('Invalid degree type'),
+    body('field')
+        .trim().notEmpty().withMessage('Field of study is required')
+        .isLength({ max: 100 }),
+    body('startDate')
+        .notEmpty().withMessage('Start date is required')
+        .isISO8601().withMessage('Start date must be a valid date'),
+    body('endDate')
+        .optional({ checkFalsy: true })
+        .isISO8601().withMessage('End date must be a valid date')
+        .custom((v, { req }) => {
+            if (v && new Date(v) <= new Date(req.body.startDate)) throw new Error('End date must be after start date');
+            return true;
+        }),
+    body('gpa').optional({ checkFalsy: true }).isFloat({ min: 0, max: 4.0 }).withMessage('GPA must be 0–4.0'),
+    body('description').optional().trim().isLength({ max: 300 }),
+    body('achievements').optional().isArray().withMessage('Achievements must be an array'),
+    body('achievements.*').optional().isString().trim().isLength({ max: 200 }),
+];
+
+// ── Profile: experience entry validator ───────────────────────────
+const experienceValidator = [
+    body('title')
+        .trim().notEmpty().withMessage('Job title is required')
+        .isLength({ max: 100 }),
+    body('company')
+        .trim().notEmpty().withMessage('Company name is required')
+        .isLength({ max: 100 }),
+    body('type')
+        .notEmpty().withMessage('Employment type is required')
+        .isIn(['full-time', 'part-time', 'internship', 'contract', 'freelance', 'volunteer', 'project'])
+        .withMessage('Invalid employment type'),
+    body('location').optional().trim().isLength({ max: 100 }),
+    body('isRemote').optional().isBoolean(),
+    body('startDate')
+        .notEmpty().withMessage('Start date is required')
+        .isISO8601().withMessage('Start date must be a valid date'),
+    body('endDate')
+        .optional({ checkFalsy: true })
+        .isISO8601().withMessage('End date must be a valid date')
+        .custom((v, { req }) => {
+            if (v && new Date(v) <= new Date(req.body.startDate)) throw new Error('End date must be after start date');
+            return true;
+        }),
+    body('isCurrent').optional().isBoolean(),
+    body('description').optional().trim().isLength({ max: 800 }),
+    body('responsibilities').optional().isArray().withMessage('Responsibilities must be an array'),
+    body('skills').optional().isArray().withMessage('Skills must be an array'),
+];
+
+// ── Profile: technical skill entry validator ──────────────────────
+const technicalSkillValidator = [
+    body('name')
+        .trim().notEmpty().withMessage('Skill name is required')
+        .isLength({ max: 60 }).withMessage('Skill name cannot exceed 60 characters'),
+    body('category')
+        .optional()
+        .isIn(['programming-language', 'framework', 'database', 'cloud', 'devops', 'mobile',
+            'design', 'data-science', 'testing', 'other'])
+        .withMessage('Invalid skill category'),
+    body('level')
+        .optional()
+        .isIn(['beginner', 'intermediate', 'advanced', 'expert'])
+        .withMessage('Level must be beginner, intermediate, advanced, or expert'),
+    body('yearsOfExp')
+        .optional()
+        .isFloat({ min: 0, max: 50 }).withMessage('Years of experience must be between 0 and 50'),
+];
+
+// ── Profile: soft skill entry validator ───────────────────────────
+const softSkillValidator = [
+    body('name')
+        .trim().notEmpty().withMessage('Soft skill name is required')
+        .isLength({ max: 60 }).withMessage('Soft skill name cannot exceed 60 characters'),
+    body('level')
+        .optional()
+        .isIn(['developing', 'proficient', 'advanced', 'expert'])
+        .withMessage('Invalid proficiency level'),
+];
+
+// ── Profile: language entry validator ─────────────────────────────
+const languageValidator = [
+    body('name')
+        .trim().notEmpty().withMessage('Language name is required')
+        .isLength({ max: 50 }),
+    body('proficiency')
+        .notEmpty().withMessage('Proficiency level is required')
+        .isIn(['elementary', 'limited-working', 'professional', 'full-professional', 'native'])
+        .withMessage('Invalid language proficiency level'),
 ];
 
 // ── Interview validators ───────────────────────────────────────────
@@ -100,6 +245,11 @@ module.exports = {
     registerValidator,
     loginValidator,
     profileValidator,
+    educationValidator,
+    experienceValidator,
+    technicalSkillValidator,
+    softSkillValidator,
+    languageValidator,
     interviewEventValidator,
     studyPlanValidator,
     jobPostValidator,
