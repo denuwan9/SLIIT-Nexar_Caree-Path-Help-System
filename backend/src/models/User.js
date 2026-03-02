@@ -70,7 +70,11 @@ userSchema.index({ role: 1 });
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password, 12);
-    this.passwordChangedAt = Date.now() - 1000; // ensure token created after
+    // Only set passwordChangedAt when it's a password change on an existing user,
+    // not on the initial registration (isNew === true)
+    if (!this.isNew) {
+        this.passwordChangedAt = Date.now() - 1000; // ensure token created after
+    }
     next();
 });
 
