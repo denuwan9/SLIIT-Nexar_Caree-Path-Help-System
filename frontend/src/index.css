@@ -96,6 +96,23 @@ body {
     @apply bg-white/40 backdrop-blur-3xl border border-white/50 shadow-2xl rounded-2xl p-4 md:p-6 transition-all duration-500 hover:border-white/80 hover:bg-white/50;
   }
 
+  /* Form Input */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-900 text-sm transition-all duration-300 focus:bg-white focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 placeholder-slate-400 outline-none;
+    min-height: 46px;
+  }
+
+  /* Target Webkit date/month inputs specifically to override default browser styles */
+  input[type="date"].input-field,
+  input[type="month"].input-field {
+    @apply appearance-none bg-white text-slate-600;
+  }
+
+  /* Make the native calendar click area match the elegant design */
+  ::-webkit-calendar-picker-indicator {
+    @apply cursor-pointer opacity-50 hover:opacity-100 transition-opacity;
+  }
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }

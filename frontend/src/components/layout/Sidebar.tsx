@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard,
     User,
+    Sparkles,
     Calendar,
     BookOpen,
     Briefcase,
@@ -16,6 +17,7 @@ import { useAuth } from '../auth/AuthProvider';
 const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/profile', icon: User, label: 'Profile' },
+    { to: '/advisor', icon: Sparkles, label: 'AI Advisor' },
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
     { to: '/study', icon: BookOpen, label: 'Study' },
     { to: '/careers', icon: Briefcase, label: 'Careers' },

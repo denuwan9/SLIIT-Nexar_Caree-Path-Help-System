@@ -1,83 +1,102 @@
-import api from '../api/axios';
-import type { StudentProfile, ProfileUpdateData, Education, Experience, TechnicalSkill, SoftSkill, Language } from '../types/profile';
-import type { ApiResponse } from '../types/auth';
+import axios from '../api/axios';
+import type {
+    StudentProfile,
+    ProfileUpdateData,
+    Education,
+    Experience,
+    Project,
+    TechnicalSkill,
+    SoftSkill,
+    SocialLinks,
+    CareerGoals
+} from '../types/profile';
 
-const profileService = {
-    getMe: async () => {
-        const response = await api.get<ApiResponse<{ profile: StudentProfile }>>('/profile/me');
+class ProfileService {
+    // ── Core
+    async getMe(): Promise<StudentProfile> {
+        const response = await axios.get('/profile/me');
         return response.data.data.profile;
-    },
+    }
 
-    updateMe: async (data: ProfileUpdateData) => {
-        const response = await api.put<ApiResponse<{ profile: StudentProfile }>>('/profile/me', data);
+    async updateMe(data: ProfileUpdateData): Promise<StudentProfile> {
+        const response = await axios.put('/profile/me', data);
         return response.data.data.profile;
-    },
+    }
 
-    uploadAvatar: async (file: File) => {
+    async uploadAvatar(file: File): Promise<{ avatarUrl: string; profile: StudentProfile }> {
         const formData = new FormData();
         formData.append('avatar', file);
-        const response = await api.post<ApiResponse<{ avatarUrl: string }>>('/profile/me/avatar', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+        const response = await axios.post('/profile/me/avatar', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
         });
-        return response.data.data.avatarUrl;
-    },
+        return response.data.data;
+    }
 
-    // Education
-    addEducation: async (data: Omit<Education, '_id'>) => {
-        const response = await api.post<ApiResponse<{ education: Education[] }>>('/profile/me/education', data);
+    // ── Arrays: Education
+    async addEducation(data: Omit<Education, '_id'>): Promise<Education[]> {
+        const response = await axios.post('/profile/me/education', data);
         return response.data.data.education;
-    },
+    }
 
-    removeEducation: async (eduId: string) => {
-        const response = await api.delete<ApiResponse<{ education: Education[] }>>(`/profile/me/education/${eduId}`);
+    async removeEducation(id: string): Promise<Education[]> {
+        const response = await axios.delete(`/profile/me/education/${id}`);
         return response.data.data.education;
-    },
+    }
 
-    // Experience
-    addExperience: async (data: Omit<Experience, '_id'>) => {
-        const response = await api.post<ApiResponse<{ experience: Experience[] }>>('/profile/me/experience', data);
+    // ── Arrays: Experience
+    async addExperience(data: Omit<Experience, '_id'>): Promise<Experience[]> {
+        const response = await axios.post('/profile/me/experience', data);
         return response.data.data.experience;
-    },
+    }
 
-    removeExperience: async (expId: string) => {
-        const response = await api.delete<ApiResponse<{ experience: Experience[] }>>(`/profile/me/experience/${expId}`);
+    async removeExperience(id: string): Promise<Experience[]> {
+        const response = await axios.delete(`/profile/me/experience/${id}`);
         return response.data.data.experience;
-    },
+    }
 
-    // Technical Skills
-    addTechnicalSkill: async (data: Omit<TechnicalSkill, '_id'>) => {
-        const response = await api.post<ApiResponse<{ technicalSkills: TechnicalSkill[] }>>('/profile/me/skills/technical', data);
+    // ── Arrays: Projects
+    async addProject(data: Omit<Project, '_id'>): Promise<Project[]> {
+        const response = await axios.post('/profile/me/projects', data);
+        return response.data.data.projects;
+    }
+
+    async removeProject(id: string): Promise<Project[]> {
+        const response = await axios.delete(`/profile/me/projects/${id}`);
+        return response.data.data.projects;
+    }
+
+    // ── Arrays: Technical Skills
+    async addTechnicalSkill(data: Omit<TechnicalSkill, '_id'>): Promise<TechnicalSkill[]> {
+        const response = await axios.post('/profile/me/skills/technical', data);
         return response.data.data.technicalSkills;
-    },
+    }
 
-    removeTechnicalSkill: async (skillId: string) => {
-        const response = await api.delete<ApiResponse<{ technicalSkills: TechnicalSkill[] }>>(`/profile/me/skills/technical/${skillId}`);
+    async removeTechnicalSkill(id: string): Promise<TechnicalSkill[]> {
+        const response = await axios.delete(`/profile/me/skills/technical/${id}`);
         return response.data.data.technicalSkills;
-    },
+    }
 
-    // Soft Skills
-    addSoftSkill: async (data: Omit<SoftSkill, '_id'>) => {
-        const response = await api.post<ApiResponse<{ softSkills: SoftSkill[] }>>('/profile/me/skills/soft', data);
+    // ── Arrays: Soft Skills
+    async addSoftSkill(data: Omit<SoftSkill, '_id'>): Promise<SoftSkill[]> {
+        const response = await axios.post('/profile/me/skills/soft', data);
         return response.data.data.softSkills;
-    },
+    }
 
-    removeSoftSkill: async (skillId: string) => {
-        const response = await api.delete<ApiResponse<{ softSkills: SoftSkill[] }>>(`/profile/me/skills/soft/${skillId}`);
+    async removeSoftSkill(id: string): Promise<SoftSkill[]> {
+        const response = await axios.delete(`/profile/me/skills/soft/${id}`);
         return response.data.data.softSkills;
-    },
+    }
 
-    // Languages
-    addLanguage: async (data: Omit<Language, '_id'>) => {
-        const response = await api.post<ApiResponse<{ languages: Language[] }>>('/profile/me/languages', data);
-        return response.data.data.languages;
-    },
+    // ── Objects: Social & Career
+    async updateSocialLinks(data: SocialLinks): Promise<SocialLinks> {
+        const response = await axios.patch('/profile/me/social', data);
+        return response.data.data.socialLinks;
+    }
 
-    removeLanguage: async (langId: string) => {
-        const response = await api.delete<ApiResponse<{ languages: Language[] }>>(`/profile/me/languages/${langId}`);
-        return response.data.data.languages;
-    },
-};
+    async updateCareerGoals(data: CareerGoals): Promise<CareerGoals> {
+        const response = await axios.patch('/profile/me/career-goals', data);
+        return response.data.data.careerGoals;
+    }
+}
 
-export default profileService;
+export default new ProfileService();

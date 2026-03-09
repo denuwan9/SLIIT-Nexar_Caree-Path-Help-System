@@ -14,6 +14,7 @@ const profileRoutes = require('./routes/profileRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const studyPlanRoutes = require('./routes/studyPlanRoutes');
 const jobPostRoutes = require('./routes/jobPostRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 const app = express();
 
@@ -32,8 +33,8 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // ── Body parsers ──────────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // ── Static files: serve uploaded avatars ──────────────────────────
@@ -58,6 +59,7 @@ app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/interviews', interviewRoutes);
 app.use('/api/v1/study-plans', studyPlanRoutes);
 app.use('/api/v1/jobs', jobPostRoutes);
+app.use('/api/v1/ai', aiRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────
 app.all('*', (req, res, next) => {

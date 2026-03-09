@@ -60,6 +60,9 @@ const profileValidator = [
     body('major').optional().trim().isLength({ max: 100 }),
     body('yearOfStudy').optional().isInt({ min: 1, max: 6 }).withMessage('Year of study must be 1–6'),
     body('gpa').optional({ checkFalsy: true }).isFloat({ min: 0, max: 4.0 }).withMessage('GPA must be 0–4.0'),
+    body('age').optional({ checkFalsy: true }).isInt({ min: 16 }).withMessage('Minimum age is 16'),
+    body('address').optional().trim().isLength({ max: 200 }).withMessage('Address cannot exceed 200 characters'),
+    body('preferredCareerField').optional().trim().isLength({ max: 100 }),
     body('careerField')
         .optional()
         .isIn(['software-engineering', 'data-science', 'cybersecurity', 'cloud-devops', 'ui-ux-design',
@@ -142,6 +145,18 @@ const experienceValidator = [
     body('description').optional().trim().isLength({ max: 800 }),
     body('responsibilities').optional().isArray().withMessage('Responsibilities must be an array'),
     body('skills').optional().isArray().withMessage('Skills must be an array'),
+];
+
+// ── Profile: project entry validator ──────────────────────────────
+const projectValidator = [
+    body('title')
+        .trim().notEmpty().withMessage('Project title is required')
+        .isLength({ max: 120 }),
+    body('description').optional().trim().isLength({ max: 600 }),
+    body('technologiesUsed').optional().isArray().withMessage('Technologies must be an array'),
+    body('githubLink')
+        .optional({ checkFalsy: true })
+        .matches(/^(https?:\/\/)?(www\.)?github\.com\/.+/).withMessage('Invalid GitHub repository URL'),
 ];
 
 // ── Profile: technical skill entry validator ──────────────────────
@@ -247,6 +262,7 @@ module.exports = {
     profileValidator,
     educationValidator,
     experienceValidator,
+    projectValidator,
     technicalSkillValidator,
     softSkillValidator,
     languageValidator,
