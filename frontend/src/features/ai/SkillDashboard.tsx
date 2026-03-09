@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import { BarChart2, Activity, Brain, Loader2 } from 'lucide-react';
 import profileService from '../../services/profileService';
-import type { TechnicalSkill, SoftSkill } from '../../types/profile';
+import type { TechnicalSkill, SoftSkill } from '../../types/profile.ts';
 
 // Level → numeric score
 const LEVEL_SCORE: Record<string, number> = {
