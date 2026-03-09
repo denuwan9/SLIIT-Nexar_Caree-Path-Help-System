@@ -1,23 +1,26 @@
-import type { User } from './auth';
+export interface User {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+    avatarUrl?: string;
+}
 
-export type DegreeType = 'Certificate' | 'Diploma' | 'HND' | "Bachelor's" | "Master's" | 'PhD' | 'Other';
-export type EmploymentType = 'full-time' | 'part-time' | 'internship' | 'contract' | 'freelance' | 'volunteer' | 'project';
-export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
-export type LanguageProficiency = 'elementary' | 'limited-working' | 'professional' | 'full-professional' | 'native';
+export type DegreeType = "Bachelor's" | "Master's" | "PhD" | "Diploma" | "HND" | "Certificate" | "Other";
+export type EmploymentType = "full-time" | "part-time" | "internship" | "contract" | "freelance" | "volunteer";
+export type SkillLevel = "beginner" | "intermediate" | "advanced" | "expert";
+export type SoftSkillLevel = "developing" | "proficient" | "advanced" | "expert";
 
 export interface Education {
     _id?: string;
     institution: string;
-    degree: DegreeType | string;
+    degree: DegreeType;
     field: string;
-    startDate: string;
-    endDate?: string;
-    graduationYear?: number;
-    isCurrentlyEnrolled: boolean;
+    startYear: number;
+    endYear?: number;
+    isCurrent: boolean;
     gpa?: number;
-    grade?: string;
     description?: string;
-    achievements?: string[];
 }
 
 export interface Experience {
@@ -29,64 +32,60 @@ export interface Experience {
     isRemote: boolean;
     startDate: string;
     endDate?: string;
-    duration?: string;
     isCurrent: boolean;
     description?: string;
-    responsibilities?: string[];
     skills?: string[];
 }
 
 export interface Project {
     _id?: string;
     title: string;
-    technologiesUsed: string[];
     description?: string;
-    githubLink?: string;
+    techStack?: string[];
+    githubUrl?: string;
+    liveUrl?: string;
+    impact?: string;
     images?: string[];
 }
 
 export interface TechnicalSkill {
     _id?: string;
     name: string;
-    category: 'programming-language' | 'framework' | 'database' | 'cloud' | 'devops' | 'mobile' | 'design' | 'data-science' | 'testing' | 'other';
+    category: string;
     level: SkillLevel;
-    yearsOfExp?: number;
 }
 
 export interface SoftSkill {
     _id?: string;
     name: string;
-    level: 'developing' | 'proficient' | 'advanced' | 'expert';
+    level: SoftSkillLevel;
 }
 
-export interface Language {
-    _id?: string;
-    language: string;
-    proficiency: LanguageProficiency | string;
+export interface CareerGoals {
+    targetRoles?: string[];
+    preferredIndustries?: string[];
+    careerObjective?: string;
 }
 
 export interface SocialLinks {
     linkedin?: string;
     github?: string;
-    portfolioWebsite?: string;
-    website?: string;
+    portfolio?: string;
     twitter?: string;
     stackoverflow?: string;
 }
 
 export interface StudentProfile {
-    id: string;
-    user: User | string;
+    _id: string;
+    user: string | User;
     firstName: string;
     lastName: string;
-    fullName?: string; // Virtual from backend
+    fullName?: string;
     headline?: string;
     bio?: string;
-    dateOfBirth?: string;
-    age?: number;
-    gender?: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say' | '';
     phone?: string;
-    address?: string;
+    avatarUrl?: string;
+    resumeUrl?: string;
     location?: {
         city?: string;
         country?: string;
@@ -98,22 +97,20 @@ export interface StudentProfile {
     yearOfStudy?: number;
     gpa?: number;
     studentId?: string;
-    preferredCareerField?: string;
-    careerField?: string;
-    careerObjective?: string;
-    avatarUrl?: string;
+
+    // Sub-arrays
     education: Education[];
-    experienceStatus: 'Has Experience' | 'No Experience';
     experience: Experience[];
     projects: Project[];
     technicalSkills: TechnicalSkill[];
     softSkills: SoftSkill[];
-    languages: Language[];
+
+    careerGoals: CareerGoals;
     socialLinks: SocialLinks;
-    resumeUrl?: string;
-    profileCompleteness: number;
+
     isPublic: boolean;
     isActivelyLooking: boolean;
+    profileCompleteness: number;
 }
 
-export interface ProfileUpdateData extends Partial<Omit<StudentProfile, 'id' | 'user' | 'profileCompleteness'>> { }
+export type ProfileUpdateData = Partial<Omit<StudentProfile, '_id' | 'user' | 'profileCompleteness' | 'fullName'>>;

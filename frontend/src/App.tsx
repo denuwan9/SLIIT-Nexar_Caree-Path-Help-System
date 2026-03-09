@@ -9,6 +9,7 @@ const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const ComingSoon = React.lazy(() => import('./pages/ComingSoon'));
+const AiAdvisorPage = React.lazy(() => import('./pages/AiAdvisorPage'));
 
 const App: React.FC = () => {
   return (
@@ -29,6 +30,7 @@ const App: React.FC = () => {
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/advisor" element={<AiAdvisorPage />} />
               <Route
                 path="/interviews"
                 element={<ComingSoon title="Interview Scheduling" description="Prepare for your dream role with our upcoming AI-powered interview simulators and scheduling system." />}

@@ -1,63 +1,44 @@
+/**
+ * ProfileStats.tsx
+ */
 import React from 'react';
-import { Eye, Search, Award, TrendingUp } from 'lucide-react';
+import { Target, Award, Code, Briefcase } from 'lucide-react';
 import type { StudentProfile } from '../../types/profile';
 
-interface StatCardProps {
-    label: string;
-    value: string | number;
-    change: string;
-    icon: React.ElementType;
-    iconColor: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, change, icon: Icon, iconColor }) => (
-    <div className="card flex items-center justify-between group hover:scale-[1.02] transition-all duration-300">
-        <div className="space-y-1">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-            <h4 className="text-2xl font-black text-slate-900">{value}</h4>
-            <p className="text-[10px] font-bold text-emerald-500 flex items-center gap-1">
-                {change} <TrendingUp size={10} />
-            </p>
-        </div>
-        <div className={`h-12 w-12 rounded-2xl ${iconColor} flex items-center justify-center text-white shadow-lg transition-transform group-hover:rotate-12`}>
-            <Icon size={24} />
+const StatCard: React.FC<{ icon: any; label: string; value: string | number; color: string; bg: string; subtitle?: string }> = ({ icon: Icon, label, value, color, bg, subtitle }) => (
+    <div className={`p-4 rounded-2xl border ${bg} flex items-center justify-between mb-2`}>
+        <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+                <Icon size={20} className="text-white" />
+            </div>
+            <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">{label}</p>
+                <div className="flex items-baseline gap-2">
+                    <p className="text-xl font-black text-slate-900 leading-none">{value}</p>
+                    {subtitle && <span className="text-xs font-bold text-slate-400">{subtitle}</span>}
+                </div>
+            </div>
         </div>
     </div>
 );
 
-const ProfileStats: React.FC<{ profile: StudentProfile }> = ({ profile }) => {
+export default function ProfileStats({ profile }: { profile: StudentProfile }) {
+    const techCount = (profile.technicalSkills || []).length;
+    const softCount = (profile.softSkills || []).length;
+
+    // Calculate total experience years
+    const expYears = (profile.experience || []).reduce((acc, exp) => {
+        const start = new Date(exp.startDate).getTime();
+        const end = exp.isCurrent ? Date.now() : new Date(exp.endDate!).getTime();
+        return acc + (end - start) / (1000 * 60 * 60 * 24 * 365.25);
+    }, 0);
+
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard
-                label="Profile Strength"
-                value={`${profile.profileCompleteness}%`}
-                change="Increasing"
-                icon={Eye}
-                iconColor="bg-blue-500"
-            />
-            <StatCard
-                label="Skills Verified"
-                value={profile.technicalSkills.length}
-                change="+1 this week"
-                icon={Award}
-                iconColor="bg-orange-500"
-            />
-            <StatCard
-                label="Search Visibility"
-                value={profile.isPublic ? 'Public' : 'Private'}
-                change="Optimal"
-                icon={Search}
-                iconColor="bg-purple-500"
-            />
-            <StatCard
-                label="Career Status"
-                value={profile.isActivelyLooking ? 'Looking' : 'Exploring'}
-                change="Active"
-                icon={TrendingUp}
-                iconColor="bg-emerald-500"
-            />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={Award} label="Skills Verified" value={techCount + softCount} subtitle={`${techCount} Tech, ${softCount} Soft`} color="bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/20" bg="bg-blue-50 border-blue-100" />
+            <StatCard icon={Briefcase} label="Experience" value={expYears.toFixed(1)} subtitle="Years" color="bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-purple-500/20" bg="bg-purple-50 border-purple-100" />
+            <StatCard icon={Code} label="Projects" value={(profile.projects || []).length} subtitle="Shipped" color="bg-gradient-to-br from-pink-500 to-rose-600 shadow-pink-500/20" bg="bg-pink-50 border-pink-100" />
+            <StatCard icon={Target} label="Completeness" value={`${profile.profileCompleteness || 0}%`} subtitle="AI Ranking" color="bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20" bg="bg-emerald-50 border-emerald-100" />
         </div>
     );
-};
-
-export default ProfileStats;
+}

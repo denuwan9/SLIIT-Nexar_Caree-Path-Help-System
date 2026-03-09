@@ -1,162 +1,47 @@
+/**
+ * profileRoutes.js (Rebuilt)
+ */
 const express = require('express');
-const router = express.Router();
-const profileController = require('../controllers/profileController');
-const { protect, restrictTo } = require('../middleware/auth');
-const validate = require('../middleware/validate');
-const {
-    uploadAvatarMiddleware,
-    uploadProjectImagesMiddleware
-} = require('../middleware/cloudinaryUpload');
-const {
-    profileValidator,
-    educationValidator,
-    experienceValidator,
-    projectValidator,
-    technicalSkillValidator,
-    softSkillValidator,
-    languageValidator,
-} = require('../middleware/validators');
+const { protect } = require('../middleware/auth');
+const { uploadAvatarMiddleware } = require('../middleware/cloudinaryUpload');
+const ctrl = require('../controllers/profileController');
 
-// All profile routes require a logged-in user
+const router = express.Router();
+
+// All profile routes require authentication
 router.use(protect);
 
-// ── Student: own profile ──────────────────────────────────────────
+// ── Core profile
+router.get('/me', ctrl.getMyProfile);
+router.put('/me', ctrl.updateMyProfile);
 
-// GET /api/v1/profile/me          → 200 — get own profile
-router.get('/me', restrictTo('student'), profileController.getMyProfile);
+// ── Avatar
+router.post('/me/avatar', uploadAvatarMiddleware, ctrl.uploadAvatar);
 
-// PUT /api/v1/profile/me          → 200 — update personal info / links etc.
-router.put(
-    '/me',
-    restrictTo('student'),
-    profileValidator, validate,
-    profileController.updateMyProfile
-);
+// ── Education
+router.post('/me/education', ctrl.addEducation);
+router.delete('/me/education/:id', ctrl.removeEducation);
 
-// POST /api/v1/profile/me/avatar  → 200 — upload profile picture (Cloudinary)
-router.post(
-    '/me/avatar',
-    restrictTo('student'),
-    uploadAvatarMiddleware,
-    profileController.uploadAvatar
-);
+// ── Experience
+router.post('/me/experience', ctrl.addExperience);
+router.delete('/me/experience/:id', ctrl.removeExperience);
 
-// ── Student: education sub-resource ──────────────────────────────
+// ── Projects
+router.post('/me/projects', ctrl.addProject);
+router.delete('/me/projects/:id', ctrl.removeProject);
 
-// POST   /api/v1/profile/me/education           → 201 — add entry
-router.post(
-    '/me/education',
-    restrictTo('student'),
-    educationValidator, validate,
-    profileController.addEducation
-);
+// ── Technical Skills
+router.post('/me/skills/technical', ctrl.addTechnicalSkill);
+router.delete('/me/skills/technical/:id', ctrl.removeTechnicalSkill);
 
-// DELETE /api/v1/profile/me/education/:eduId    → 200 — remove entry
-router.delete(
-    '/me/education/:eduId',
-    restrictTo('student'),
-    profileController.removeEducation
-);
+// ── Soft Skills
+router.post('/me/skills/soft', ctrl.addSoftSkill);
+router.delete('/me/skills/soft/:id', ctrl.removeSoftSkill);
 
-// ── Student: experience sub-resource ─────────────────────────────
+// ── Social Links
+router.patch('/me/social', ctrl.updateSocialLinks);
 
-// POST   /api/v1/profile/me/experience          → 201 — add entry
-router.post(
-    '/me/experience',
-    restrictTo('student'),
-    experienceValidator, validate,
-    profileController.addExperience
-);
-
-// DELETE /api/v1/profile/me/experience/:expId   → 200 — remove entry
-router.delete(
-    '/me/experience/:expId',
-    restrictTo('student'),
-    profileController.removeExperience
-);
-
-// ── Student: project sub-resource ────────────────────────────────
-
-// POST   /api/v1/profile/me/projects           → 201 — add entry
-router.post(
-    '/me/projects',
-    restrictTo('student'),
-    projectValidator, validate,
-    profileController.addProject
-);
-
-// DELETE /api/v1/profile/me/projects/:projectId → 200 — remove entry
-router.delete(
-    '/me/projects/:projectId',
-    restrictTo('student'),
-    profileController.removeProject
-);
-
-// POST   /api/v1/profile/me/projects/:projectId/images → 200 — upload images
-router.post(
-    '/me/projects/:projectId/images',
-    restrictTo('student'),
-    uploadProjectImagesMiddleware,
-    profileController.uploadProjectImages
-);
-
-// ── Student: technical skills ─────────────────────────────────────
-
-// POST   /api/v1/profile/me/skills/technical           → 201 — add (409 if duplicate)
-router.post(
-    '/me/skills/technical',
-    restrictTo('student'),
-    technicalSkillValidator, validate,
-    profileController.addTechnicalSkill
-);
-
-// DELETE /api/v1/profile/me/skills/technical/:skillId  → 200 — remove
-router.delete(
-    '/me/skills/technical/:skillId',
-    restrictTo('student'),
-    profileController.removeTechnicalSkill
-);
-
-// ── Student: soft skills ──────────────────────────────────────────
-
-// POST   /api/v1/profile/me/skills/soft                → 201 — add (409 if duplicate)
-router.post(
-    '/me/skills/soft',
-    restrictTo('student'),
-    softSkillValidator, validate,
-    profileController.addSoftSkill
-);
-
-// DELETE /api/v1/profile/me/skills/soft/:skillId       → 200 — remove
-router.delete(
-    '/me/skills/soft/:skillId',
-    restrictTo('student'),
-    profileController.removeSoftSkill
-);
-
-// ── Student: languages ────────────────────────────────────────────
-
-// POST   /api/v1/profile/me/languages           → 201 — add (409 if duplicate)
-router.post(
-    '/me/languages',
-    restrictTo('student'),
-    languageValidator, validate,
-    profileController.addLanguage
-);
-
-// DELETE /api/v1/profile/me/languages/:langId   → 200 — remove
-router.delete(
-    '/me/languages/:langId',
-    restrictTo('student'),
-    profileController.removeLanguage
-);
-
-// ── Admin: all profiles ───────────────────────────────────────────
-
-// GET /api/v1/profile              → paginated list, filterable
-router.get('/', restrictTo('admin'), profileController.getAllProfiles);
-
-// GET /api/v1/profile/:id          → single profile by user ObjectId
-router.get('/:id', restrictTo('admin'), profileController.getProfileById);
+// ── Career Goals
+router.patch('/me/career-goals', ctrl.updateCareerGoals);
 
 module.exports = router;
