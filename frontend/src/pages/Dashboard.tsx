@@ -115,7 +115,7 @@ const Dashboard: React.FC = () => {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
                 <MetricWidget title="Profile Strength" value={`${completeness}%`} icon={Target} change="Live" />
                 <MetricWidget title="Skills Listed" value={technicalSkillsCount.toString()} icon={Activity} change="Updated" positive={true} />
-                <MetricWidget title="Career Path" value={profile?.careerField ? 'Set' : 'Generic'} icon={TrendingUp} change={profile?.careerField || 'Not Set'} />
+                <MetricWidget title="Career Path" value={profile?.careerGoals?.targetRoles?.[0] ? 'Set' : 'Generic'} icon={TrendingUp} change={profile?.careerGoals?.targetRoles?.[0] || 'Not Set'} />
                 <MetricWidget title="Profile Mode" value={profile?.isPublic ? 'Public' : 'Private'} icon={Users} change={profile?.isPublic ? 'Visible' : 'Hidden'} />
             </div>
 

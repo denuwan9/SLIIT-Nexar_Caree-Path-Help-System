@@ -107,13 +107,13 @@ const OverviewTab: React.FC<Props> = ({ profile }) => {
             </div>
 
             {/* Career Goals Quick View */}
-            {profile.careerGoals?.targetRoles?.length > 0 && (
+            {(profile.careerGoals?.targetRoles?.length ?? 0) > 0 && (
                 <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-3 flex items-center gap-2">
                         <Building size={12} /> Target Roles
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                        {profile.careerGoals.targetRoles.map((role, i) => (
+                        {profile.careerGoals!.targetRoles!.map((role, i) => (
                             <span key={i} className="px-3 py-1 bg-white text-blue-700 text-xs font-black rounded-lg shadow-sm border border-blue-100/50">
                                 {role}
                             </span>
