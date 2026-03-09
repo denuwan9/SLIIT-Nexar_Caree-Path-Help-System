@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     User, Award,
     BookOpen, Briefcase, Code,
-    FileText, Network, Settings
+    FileText, Settings
 } from 'lucide-react';
 import profileService from '../services/profileService';
 import type { StudentProfile } from '../types/profile';

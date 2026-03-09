@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, Award, Loader2, AlertCircle } from 'lucide-react';
 import profileService from '../../../services/profileService';
-import type { StudentProfile, TechnicalSkill, SoftSkill } from '../../../types/profile';
+import type { StudentProfile } from '../../../types/profile';
 
 interface Props {
     profile: StudentProfile;
