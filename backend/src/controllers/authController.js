@@ -9,24 +9,31 @@ const logger = require('../utils/logger');
  */
 exports.register = async (req, res, next) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { fullName, eduEmail, password, currentMajor, skillSet, targetRole, role } = req.body;
 
-        // Prevent self-registration as admin — only existing admins can create admins
+        // Prevent self-registration as admin
         if (role === 'admin' && (!req.user || req.user.role !== 'admin')) {
             return next(new AppError('You are not authorized to create admin accounts.', 403));
         }
 
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ eduEmail });
         if (existingUser) {
-            return next(new AppError('An account with this email already exists.', 409));
+            return next(new AppError('An account with this institutional email already exists.', 409));
         }
 
-        const user = await User.create({ name, email, password, role: role || 'student' });
+        const user = await User.create({
+            fullName,
+            eduEmail,
+            password,
+            currentMajor,
+            skillSet: skillSet || [],
+            targetRole,
+            role: role || 'student'
+        });
 
-        logger.info(`New user registered: ${user.email} (${user.role})`);
+        logger.info(`New user registered: ${user.eduEmail} (${user.role})`);
         const refreshToken = sendTokenResponse(user, 201, res);
 
-        // Persist refresh token hash (optional hardening)
         user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });
     } catch (error) {
@@ -40,10 +47,10 @@ exports.register = async (req, res, next) => {
  */
 exports.login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        const { eduEmail, password } = req.body;
 
-        // Select password explicitly (it is excluded by default)
-        const user = await User.findOne({ email }).select('+password');
+        // Select password explicitly
+        const user = await User.findOne({ eduEmail }).select('+password');
 
         if (!user || !(await user.comparePassword(password))) {
             return next(new AppError('Incorrect email or password.', 401));
@@ -56,7 +63,7 @@ exports.login = async (req, res, next) => {
         user.lastLogin = Date.now();
         await user.save({ validateBeforeSave: false });
 
-        logger.info(`User logged in: ${user.email}`);
+        logger.info(`User logged in: ${user.eduEmail}`);
         const refreshToken = sendTokenResponse(user, 200, res);
 
         user.refreshToken = refreshToken;

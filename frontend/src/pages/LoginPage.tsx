@@ -1,100 +1,141 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, type LoginFields } from '../features/auth/authSchemas';
 import { useAuth } from '../components/auth/AuthProvider';
 import api from '../api/axios';
-import { Lock, Mail, ArrowRight } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { clsx } from 'clsx';
 
 const LoginPage: React.FC = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const { login } = useAuth();
-    const navigate = useNavigate();
-    const location = useLocation();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-    const from = (location.state as any)?.from?.pathname || "/dashboard";
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid, touchedFields },
+  } = useForm<LoginFields>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onChange',
+  });
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
+  const onSubmit = async (data: LoginFields) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await api.post('/auth/login', data);
+      const { accessToken, data: userData } = response.data;
+      login(accessToken, userData.user);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        try {
-            const response = await api.post('/auth/login', { email, password });
-            const { accessToken, data } = response.data;
-            login(accessToken, data.user);
-            navigate(from, { replace: true });
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 relative auth-bg"
+         style={{ backgroundImage: 'url("/images/auth-bg.png")' }}>
+      {/* Decorative background elements */}
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-600/10 blur-[120px] rounded-full animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/10 blur-[150px] rounded-full animate-pulse" 
+           style={{ animationDelay: '1s' }} />
 
-    return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-            <div className="max-w-md w-full bg-white rounded-3xl shadow-xl shadow-slate-200 border border-slate-100 p-10">
-                <div className="text-center mb-10">
-                    <h2 className="text-3xl font-extrabold text-slate-900">Career Path Simulator</h2>
-                    <p className="text-slate-500 mt-2 font-medium">Sign in to your account to continue</p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
-                        <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input
-                                type="email"
-                                required
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                placeholder="name@university.edu"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Password</label>
-                        <div className="relative">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input
-                                type="password"
-                                required
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium">
-                            {error}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full btn-primary py-4 flex items-center justify-center gap-2 text-lg"
-                    >
-                        {loading ? 'Signing in...' : 'Sign In'}
-                        {!loading && <ArrowRight size={20} />}
-                    </button>
-                </form>
-
-                <div className="mt-8 pt-8 border-t border-slate-100 text-center">
-                    <p className="text-slate-500 text-sm">
-                        Don't have an account? <a href="#" className="font-bold text-blue-600 hover:text-blue-700">Contact Admin</a>
-                    </p>
-                </div>
-            </div>
+      <div className="w-full max-w-[440px] z-10 animate-fade-in">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-6 backdrop-blur-xl">
+            <Sparkles className="text-indigo-400" size={32} />
+          </div>
+          <h1 className="text-4xl font-bold text-white tracking-tight mb-3">
+            Nexar <span className="text-indigo-400">Simulator</span>
+          </h1>
+          <p className="text-slate-400 font-medium">Precision Mapping for Professional Paths</p>
         </div>
-    );
+
+        <div className="glass-card rounded-[32px] p-8 md:p-10 relative group">
+          {/* Subtle line decoration */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+          
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Academic Identifier</label>
+              <div className="relative group">
+                <input
+                  {...register('eduEmail')}
+                  className={clsx(
+                    "glass-input w-full pl-5 pr-12 py-4 text-white placeholder:text-slate-600 transition-all duration-500",
+                    touchedFields.eduEmail && !errors.eduEmail && "input-valid",
+                    errors.eduEmail && "input-invalid"
+                  )}
+                  placeholder="name@university.edu"
+                />
+                <Mail className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-indigo-400 transition-colors" size={20} />
+              </div>
+              {errors.eduEmail && <p className="text-rose-500 text-[11px] mt-1 ml-1 font-medium">{errors.eduEmail.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center ml-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Secure Credentials</label>
+              </div>
+              <div className="relative group">
+                <input
+                  {...register('password')}
+                  type="password"
+                  className={clsx(
+                    "glass-input w-full pl-5 pr-12 py-4 text-white placeholder:text-slate-600 transition-all duration-500",
+                    touchedFields.password && !errors.password && "input-valid",
+                    errors.password && "input-invalid"
+                  )}
+                  placeholder="••••••••"
+                />
+                <Lock className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-indigo-400 transition-colors" size={20} />
+              </div>
+              {errors.password && <p className="text-rose-500 text-[11px] mt-1 ml-1 font-medium">{errors.password.message}</p>}
+            </div>
+
+            {error && (
+              <div className="bg-rose-500/5 border border-rose-500/10 text-rose-500 text-xs py-3 px-4 rounded-xl text-center font-medium">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !isValid}
+              className="glass-button w-full py-4 relative overflow-hidden group/btn"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 transition-transform duration-500 translate-y-full group-hover/btn:translate-y-0" />
+              <div className="relative flex items-center justify-center gap-2">
+                {loading ? <Loader2 className="animate-spin" size={20} /> : (
+                  <>
+                    <span className="font-bold tracking-wide">INITIALIZE SESSION</span>
+                    <ArrowRight className="group-hover/btn:translate-x-1 transition-transform" size={20} />
+                  </>
+                )}
+              </div>
+            </button>
+          </form>
+
+          <div className="mt-10 pt-8 border-t border-white/5 text-center">
+            <p className="text-slate-500 text-sm">
+              Incomplete Profile? <Link to="/signup" className="text-white hover:text-indigo-400 font-bold transition-colors ml-1 underline decoration-white/20 underline-offset-4">Register Now</Link>
+            </p>
+          </div>
+        </div>
+        
+        {/* Footer info */}
+        <p className="text-center text-slate-600 text-[10px] mt-8 uppercase tracking-[0.2em]">
+          Secured by SLIIT Nexar Protocol
+        </p>
+      </div>
+    </div>
+  );
 };
 
 export default LoginPage;

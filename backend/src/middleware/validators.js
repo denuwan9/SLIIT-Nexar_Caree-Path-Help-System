@@ -2,15 +2,24 @@ const { body } = require('express-validator');
 
 // ── Auth validators ────────────────────────────────────────────────
 const registerValidator = [
-    body('name')
+    body('fullName')
         .trim()
-        .notEmpty().withMessage('Name is required')
-        .isLength({ min: 2, max: 60 }).withMessage('Name must be 2–60 characters'),
-    body('email')
+        .notEmpty().withMessage('Full name is required')
+        .isLength({ min: 2, max: 100 }).withMessage('Name must be 2–100 characters'),
+    body('eduEmail')
         .trim()
-        .notEmpty().withMessage('Email is required')
+        .notEmpty().withMessage('Institutional email is required')
         .isEmail().withMessage('Please provide a valid email')
         .normalizeEmail(),
+    body('currentMajor')
+        .trim()
+        .notEmpty().withMessage('Current major is required'),
+    body('skillSet')
+        .optional()
+        .isArray().withMessage('Skill set must be an array'),
+    body('targetRole')
+        .trim()
+        .notEmpty().withMessage('Target role is required'),
     body('password')
         .notEmpty().withMessage('Password is required')
         .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
@@ -22,7 +31,7 @@ const registerValidator = [
 ];
 
 const loginValidator = [
-    body('email')
+    body('eduEmail')
         .trim()
         .notEmpty().withMessage('Email is required')
         .isEmail().withMessage('Please provide a valid email')

@@ -4,6 +4,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+
 const globalErrorHandler = require('./middleware/errorHandler');
 const AppError = require('./utils/AppError');
 const { globalLimiter } = require('./middleware/rateLimiter');
@@ -36,6 +40,11 @@ if (process.env.NODE_ENV === 'development') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// ── Data Sanitization ─────────────────────────────────────────────
+app.use(mongoSanitize()); // Prevent NoSQL Injection
+app.use(xss());           // Prevent XSS
+app.use(hpp());           // Prevent Parameter Pollution
 
 // ── Static files: serve uploaded avatars ──────────────────────────
 app.use('/uploads', express.static('uploads'));

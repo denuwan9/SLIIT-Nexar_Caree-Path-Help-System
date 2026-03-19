@@ -67,9 +67,68 @@ body {
   background-color: #f1f5f9;
 }
 
+@layer base {
+  body {
+    @apply antialiased bg-[#020617] text-slate-200 overflow-x-hidden;
+    background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+  }
+
+  /* Deep Mesh Gradient Background */
+  .mesh-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background-color: #020617;
+    background-image:
+      radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%),
+      radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(225,39%,30%,1) 0, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(253,16%,7%,1) 0, transparent 50%);
+    filter: blur(80px);
+    opacity: 0.6;
+  }
+}
+
 @layer components {
   /* Tailwind v4: @apply cannot reference other custom classes in the same @layer.
      All shared styles are inlined directly into each class. */
+
+  .glass-card {
+    @apply backdrop-blur-3xl bg-white/5 border border-white/10 shadow-2xl;
+  }
+
+  .glass-input {
+    @apply bg-white/10 border border-white/30 rounded-2xl px-5 py-4 outline-none transition-all duration-500 text-white placeholder:text-slate-500;
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-input:focus {
+    @apply bg-white/20 border-white/50 ring-4 ring-white/10;
+  }
+
+  /* Auth Background Image */
+  .auth-bg {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  .glass-button {
+    @apply bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 active:scale-95 shadow-lg shadow-indigo-500/20;
+  }
+
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 100px;
+    gap: 1rem;
+  }
 
   /* Glass morphism surface */
   .glass {

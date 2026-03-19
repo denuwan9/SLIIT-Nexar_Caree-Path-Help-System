@@ -6,6 +6,7 @@ import { Layout } from './components/layout/Layout';
 
 // Lazy load pages
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const SignupPage = React.lazy(() => import('./pages/SignupPage'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const ComingSoon = React.lazy(() => import('./pages/ComingSoon'));
@@ -22,9 +23,11 @@ const App: React.FC = () => {
             </div>
           }
         >
+          <div className="mesh-bg" />
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

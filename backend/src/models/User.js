@@ -3,20 +3,34 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
     {
-        name: {
+        fullName: {
             type: String,
-            required: [true, 'Name is required'],
+            required: [true, 'Full name is required'],
             trim: true,
             minlength: [2, 'Name must be at least 2 characters'],
-            maxlength: [60, 'Name must not exceed 60 characters'],
+            maxlength: [100, 'Name must not exceed 100 characters'],
         },
-        email: {
+        eduEmail: {
             type: String,
-            required: [true, 'Email is required'],
+            required: [true, 'Institutional email is required'],
             unique: true,
             lowercase: true,
             trim: true,
             match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
+        },
+        currentMajor: {
+            type: String,
+            required: [true, 'Current major is required'],
+            trim: true,
+        },
+        skillSet: {
+            type: [String],
+            default: [],
+        },
+        targetRole: {
+            type: String,
+            required: [true, 'Target role is required'],
+            trim: true,
         },
         avatarUrl: {
             type: String,
@@ -26,14 +40,11 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Password is required'],
             minlength: [8, 'Password must be at least 8 characters'],
-            select: false, // Never return password in queries by default
+            select: false,
         },
         role: {
             type: String,
-            enum: {
-                values: ['student', 'admin'],
-                message: 'Role must be either student or admin',
-            },
+            enum: ['student', 'admin'],
             default: 'student',
         },
         isActive: {
@@ -47,9 +58,7 @@ const userSchema = new mongoose.Schema(
         lastLogin: {
             type: Date,
         },
-        passwordChangedAt: {
-            type: Date,
-        },
+        passwordChangedAt: Date,
         passwordResetToken: {
             type: String,
             select: false,
