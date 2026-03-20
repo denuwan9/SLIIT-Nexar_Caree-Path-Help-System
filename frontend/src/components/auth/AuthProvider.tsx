@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../../api/axios';
-import type { User, AuthState } from '../../types/auth';
+import type { AuthState } from '../../types/auth';
+import type { SignupInput } from '../../features/auth/authSchemas';
 
 interface AuthContextType extends AuthState {
-    login: (token: string, user: User) => void;
+    login: (email: string, password: string) => Promise<void>;
+    signup: (data: SignupInput) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
 }
@@ -18,11 +20,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading: true,
     });
 
-    const login = (token: string, user: User) => {
-        localStorage.setItem('accessToken', token);
+    const login = async (email: string, password: string) => {
+        const response = await api.post('/auth/login', { email, password });
+        const { accessToken, user } = response.data.data;
+        localStorage.setItem('accessToken', accessToken);
         setState({
             user,
-            token,
+            token: accessToken,
+            isAuthenticated: true,
+            isLoading: false,
+        });
+    };
+
+    const signup = async (data: SignupInput) => {
+        const payload = {
+            ...data,
+            currentMajor: "Undeclared",
+            targetRole: "Student"
+        };
+        const response = await api.post('/auth/register', payload);
+        const { accessToken, user } = response.data.data;
+        localStorage.setItem('accessToken', accessToken);
+        setState({
+            user,
+            token: accessToken,
             isAuthenticated: true,
             isLoading: false,
         });
@@ -73,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     return (
-        <AuthContext.Provider value={{ ...state, login, logout, checkAuth }}>
+        <AuthContext.Provider value={{ ...state, login, signup, logout, checkAuth }}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,8 +1,9 @@
 export type UserRole = 'student' | 'admin';
 
 export interface User {
-    id: string;
-    name: string;
+    _id: string;
+    firstName: string;
+    lastName: string;
     email: string;
     role: UserRole;
     isActive: boolean;

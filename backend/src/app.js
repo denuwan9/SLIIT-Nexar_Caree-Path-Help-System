@@ -4,17 +4,23 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+
 const globalErrorHandler = require('./middleware/errorHandler');
 const AppError = require('./utils/AppError');
 const { globalLimiter } = require('./middleware/rateLimiter');
 
 // ── Route imports ──────────────────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
+const domainLock = require('./middleware/domainLock');
 const profileRoutes = require('./routes/profileRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const studyPlanRoutes = require('./routes/studyPlanRoutes');
 const jobPostRoutes = require('./routes/jobPostRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const systemRoutes = require('./routes/systemRoutes');
 
 const app = express();
 
@@ -37,6 +43,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// ── Data Sanitization ─────────────────────────────────────────────
+app.use(mongoSanitize()); // Prevent NoSQL Injection
+app.use(xss());           // Prevent XSS
+app.use(hpp());           // Prevent Parameter Pollution
+
 // ── Static files: serve uploaded avatars ──────────────────────────
 app.use('/uploads', express.static('uploads'));
 
@@ -54,12 +65,15 @@ app.get('/api/health', (req, res) => {
 });
 
 // ── API routes ────────────────────────────────────────────────────
+app.use('/api/v1/auth/login', domainLock);
+app.use('/api/v1/auth/register', domainLock);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/interviews', interviewRoutes);
 app.use('/api/v1/study-plans', studyPlanRoutes);
 app.use('/api/v1/jobs', jobPostRoutes);
 app.use('/api/v1/ai', aiRoutes);
+app.use('/api/v1/system', systemRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────
 app.all('*', (req, res, next) => {

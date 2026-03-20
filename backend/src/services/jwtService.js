@@ -29,9 +29,9 @@ const verifyRefreshToken = (token) => {
  * sendTokenResponse — creates tokens, optionally sets refresh cookie,
  * and sends the JSON response.
  */
-const sendTokenResponse = (user, statusCode, res) => {
+const sendTokenResponse = (user, statusCode, res, providedRefreshToken = null) => {
     const accessToken = signAccessToken(user._id, user.role);
-    const refreshToken = signRefreshToken(user._id);
+    const refreshToken = providedRefreshToken || signRefreshToken(user._id);
 
     // Store hashed refresh token in DB (handled in controller)
     const cookieOptions = {
@@ -43,17 +43,18 @@ const sendTokenResponse = (user, statusCode, res) => {
 
     res.cookie('refreshToken', refreshToken, cookieOptions);
 
-    // Remove sensitive fields
-    user.password = undefined;
-    user.refreshToken = undefined;
+    // Remove sensitive fields from a cloned object to prevent modifying the mongoose doc
+    const userObj = user.toObject ? user.toObject() : { ...user };
+    delete userObj.password;
+    delete userObj.refreshToken;
 
     res.status(statusCode).json({
         status: 'success',
         accessToken,
-        data: { user },
+        data: { user: userObj },
     });
 
-    return refreshToken; // caller stores this in DB
+    return refreshToken; 
 };
 
 module.exports = { signAccessToken, signRefreshToken, verifyRefreshToken, sendTokenResponse };

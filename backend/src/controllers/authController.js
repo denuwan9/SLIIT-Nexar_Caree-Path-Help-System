@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const StudentProfile = require('../models/StudentProfile');
 const AppError = require('../utils/AppError');
 const { sendTokenResponse, verifyRefreshToken, signAccessToken } = require('../services/jwtService');
 const logger = require('../utils/logger');
@@ -9,9 +10,9 @@ const logger = require('../utils/logger');
  */
 exports.register = async (req, res, next) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { firstName, lastName, email, password, currentMajor, skillSet, targetRole, role } = req.body;
 
-        // Prevent self-registration as admin — only existing admins can create admins
+        // Prevent self-registration as admin
         if (role === 'admin' && (!req.user || req.user.role !== 'admin')) {
             return next(new AppError('You are not authorized to create admin accounts.', 403));
         }
@@ -21,14 +22,33 @@ exports.register = async (req, res, next) => {
             return next(new AppError('An account with this email already exists.', 409));
         }
 
-        const user = await User.create({ name, email, password, role: role || 'student' });
+        const user = await User.create({
+            firstName,
+            lastName,
+            email,
+            password,
+            currentMajor,
+            skillSet: skillSet || [],
+            targetRole,
+            role: role || 'student'
+        });
 
-        logger.info(`New user registered: ${user.email} (${user.role})`);
-        const refreshToken = sendTokenResponse(user, 201, res);
+        // ── Proactive Profile Creation ───────────────────────────────────
+        // Ensures the dashboard can fetch a profile immediately
+        await StudentProfile.create({
+            user: user._id,
+            firstName,
+            lastName,
+            major: currentMajor || '',
+        });
 
-        // Persist refresh token hash (optional hardening)
+        const { signRefreshToken } = require('../services/jwtService');
+        const refreshToken = signRefreshToken(user._id);
         user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });
+
+        logger.info(`New user registered: ${user.email} (${user.role})`);
+        sendTokenResponse(user, 201, res, refreshToken);
     } catch (error) {
         next(error);
     }
@@ -42,7 +62,7 @@ exports.login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
-        // Select password explicitly (it is excluded by default)
+        // Select password explicitly
         const user = await User.findOne({ email }).select('+password');
 
         if (!user || !(await user.comparePassword(password))) {
@@ -53,14 +73,15 @@ exports.login = async (req, res, next) => {
             return next(new AppError('Your account has been deactivated. Contact support.', 403));
         }
 
+        const { signRefreshToken } = require('../services/jwtService');
+        const refreshToken = signRefreshToken(user._id);
+
         user.lastLogin = Date.now();
+        user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });
 
         logger.info(`User logged in: ${user.email}`);
-        const refreshToken = sendTokenResponse(user, 200, res);
-
-        user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave: false });
+        sendTokenResponse(user, 200, res, refreshToken);
     } catch (error) {
         next(error);
     }

@@ -2,20 +2,34 @@ const { body } = require('express-validator');
 
 // ── Auth validators ────────────────────────────────────────────────
 const registerValidator = [
-    body('name')
+    body('firstName')
         .trim()
-        .notEmpty().withMessage('Name is required')
-        .isLength({ min: 2, max: 60 }).withMessage('Name must be 2–60 characters'),
+        .notEmpty().withMessage('First name is required')
+        .isLength({ min: 2, max: 50 }).withMessage('First name must be 2–50 characters'),
+    body('lastName')
+        .trim()
+        .notEmpty().withMessage('Last name is required')
+        .isLength({ min: 2, max: 50 }).withMessage('Last name must be 2–50 characters'),
     body('email')
         .trim()
         .notEmpty().withMessage('Email is required')
-        .isEmail().withMessage('Please provide a valid email')
+        .matches(/^[a-zA-Z0-9._%+-]+@sliit\.lk$/).withMessage('Only @sliit.lk institutional emails are allowed')
         .normalizeEmail(),
+    body('currentMajor')
+        .trim()
+        .notEmpty().withMessage('Current major is required'),
+    body('skillSet')
+        .optional()
+        .isArray().withMessage('Skill set must be an array'),
+    body('targetRole')
+        .trim()
+        .notEmpty().withMessage('Target role is required'),
     body('password')
         .notEmpty().withMessage('Password is required')
         .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-        .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
-        .matches(/[0-9]/).withMessage('Password must contain a number'),
+        .matches(/[A-Z]/).withMessage('Password must include at least one uppercase letter')
+        .matches(/[!@#$%^&*(),.?":{}|<>]/).withMessage('Password must include at least one special character')
+        .matches(/[0-9]/).withMessage('Password must include at least one number'),
     body('role')
         .optional()
         .isIn(['student', 'admin']).withMessage('Role must be student or admin'),
@@ -25,7 +39,7 @@ const loginValidator = [
     body('email')
         .trim()
         .notEmpty().withMessage('Email is required')
-        .isEmail().withMessage('Please provide a valid email')
+        .matches(/^[a-zA-Z0-9._%+-]+@sliit\.lk$/).withMessage('Please use your @sliit.lk email')
         .normalizeEmail(),
     body('password')
         .notEmpty().withMessage('Password is required'),

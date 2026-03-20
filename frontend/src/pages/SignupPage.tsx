@@ -2,12 +2,12 @@ import React from 'react';
 import { LightAuthLayout } from '../features/auth/LightAuthLayout';
 import AuthModule from '../features/auth/AuthModule';
 
-const LoginPage: React.FC = () => {
+const SignupPage: React.FC = () => {
     return (
         <LightAuthLayout>
-            <AuthModule initialView="login" />
+            <AuthModule initialView="signup" />
         </LightAuthLayout>
     );
 };
 
-export default LoginPage;
+export default SignupPage;

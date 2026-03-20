@@ -1,261 +1,317 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSystemBoot } from '../hooks/useSystemBoot';
 import { useAuth } from '../components/auth/AuthProvider';
-import {
-    MessageSquare,
-    Zap,
-    Users,
-    Bell,
-    TrendingUp,
-    Target,
-    Activity,
-    BookOpen
+import { DashboardSkeleton } from '../components/ui/DashboardSkeleton';
+import { 
+    LayoutDashboard, 
+    User, 
+    Settings, 
+    Bell, 
+    ShieldCheck, 
+    ArrowUpRight,
+    Search,
+    UserCircle2
 } from 'lucide-react';
-import profileService from '../services/profileService';
-import type { StudentProfile } from '../types/profile';
-
-// Premium White Glass-morphism Bento card - High Density
-const BentoCard: React.FC<{
-    children: React.ReactNode,
-    className?: string,
-    title?: React.ReactNode,
-    subtitle?: string,
-    headerRight?: React.ReactNode,
-    noPadding?: boolean
-}> = ({ children, className = "", title, subtitle, headerRight, noPadding = false }) => (
-    <div className={`bg-white/90 backdrop-blur-xl border border-slate-200/60 shadow-sm rounded-2xl flex flex-col overflow-hidden transition-all hover:bg-white hover:border-slate-300 group ${className}`}>
-        {(title || subtitle || headerRight) && (
-            <div className="flex justify-between items-start p-3 shrink-0 bg-slate-50/50 border-b border-slate-100">
-                <div className="min-w-0">
-                    {title && <h3 className="text-slate-900 font-black text-sm md:text-base leading-tight tracking-tight truncate">{title}</h3>}
-                    {subtitle && <p className="text-purple-600 text-[8px] font-black uppercase tracking-[0.2em] mt-0.5">{subtitle}</p>}
-                </div>
-                {headerRight && <div className="ml-2">{headerRight}</div>}
-            </div>
-        )}
-        <div className={`flex-1 w-full overflow-y-auto scrollbar-hide flex flex-col ${noPadding ? '' : 'p-3 md:p-3.5'}`}>
-            {children}
-        </div>
-    </div>
-);
-
-// Top metric pill widget - High Contrast
-const MetricWidget: React.FC<{ title: string, value: string, icon: React.ElementType, change?: string, positive?: boolean }> = ({ title, value, icon: Icon, change, positive = true }) => (
-    <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-sm rounded-xl p-3 flex items-center justify-between group hover:bg-white hover:border-slate-300 transition-all cursor-default">
-        <div className="flex items-center gap-2.5">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${positive ? 'bg-gradient-to-br from-cyan-500 to-blue-600' : 'bg-gradient-to-br from-purple-500 to-indigo-700'}`}>
-                <Icon className="text-white" size={12} />
-            </div>
-            <div>
-                <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest">{title}</p>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="text-slate-900 font-black text-base leading-none">{value}</span>
-                    {change && (
-                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${positive ? 'text-cyan-700 bg-cyan-100/50' : 'text-purple-700 bg-purple-100/50'}`}>
-                            {change}
-                        </span>
-                    )}
-                </div>
-            </div>
-        </div>
-    </div>
-);
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
-    const [profile, setProfile] = React.useState<StudentProfile | null>(null);
+    const { boot, bootData, isLoading, error } = useSystemBoot();
+    const navigate = useNavigate();
 
-    React.useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const data = await profileService.getMe();
-                setProfile(data);
-            } catch (err) {
-                console.error('Failed to fetch profile for dashboard', err);
-            }
-        };
-        fetchProfile();
-    }, []);
+    useEffect(() => {
+        boot();
+    }, [boot]);
 
-    const completeness = profile?.profileCompleteness || 0;
-    const technicalSkillsCount = profile?.technicalSkills?.length || 0;
+    if (isLoading || !bootData) {
+        return <DashboardSkeleton />;
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-silver-ultra font-main">
+                <div className="soft-glass p-8 text-center max-w-md">
+                    <h2 className="text-xl font-black text-rose-500 uppercase tracking-widest mb-4">Boot Error</h2>
+                    <p className="text-slate-soft text-sm mb-6">{error}</p>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-2 bg-cobalt-sliit text-white rounded-lg font-bold text-xs uppercase"
+                    >
+                        Re-initialize System
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const { UserPermissions, DashboardState, ProfileData } = bootData;
 
     return (
-        <div className="h-full flex flex-col pb-2 gap-4 lg:gap-5 overflow-hidden">
-
-            {/* Header - White Theme */}
-            <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 gap-3">
-                <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]"></div>
-                        <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Nexar Intelligence</span>
+        <div className="min-h-screen bg-silver-ultra font-main text-slate-800 p-8">
+            {/* Top Navigation Bar */}
+            <header className="flex justify-between items-center mb-12">
+                <div className="flex items-center gap-4">
+                    <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain" />
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-black text-cobalt-sliit uppercase tracking-[0.3em]">Institutional Node</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-success animate-pulse" />
+                        </div>
+                        <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">
+                            Nexar <span className="text-cobalt-sliit">Command</span>
+                        </h1>
                     </div>
-                    <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tighter leading-none">
-                        Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-cyan-500">{user?.name?.split(' ')[0] ?? 'Student'}!</span>
-                    </h2>
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto self-end sm:self-center">
-                    <button className="relative p-2 text-slate-400 hover:text-slate-900 transition-all bg-white border border-slate-200 shadow-sm rounded-xl hover:bg-slate-50">
-                        <Bell size={18} />
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
-                    </button>
-                    <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl p-1 pr-4 shadow-sm hover:bg-slate-50 transition-colors cursor-pointer group">
-                        <div className="w-8 h-8 rounded-xl overflow-hidden border border-slate-100 shadow-sm shrink-0 transition-transform group-hover:scale-95">
-                            <img src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.name}&background=8b5cf6&color=fff`} alt={user?.name} className="w-full h-full object-cover" />
+                <div className="flex items-center gap-6">
+                    <div className="relative group hidden md:block">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                            placeholder="SEARCH CORE..." 
+                            className="bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2 text-[10px] font-bold uppercase tracking-widest focus:outline-none focus:border-cobalt-sliit transition-all w-64"
+                        />
+                    </div>
+                    <div className="flex items-center gap-3 soft-glass p-1 pr-4 rounded-full border border-slate-200 bg-white">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
+                            {user?.avatarUrl ? <img src={user.avatarUrl} alt="Avatar" /> : <User size={20} className="text-slate-400" />}
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-[11px] font-black text-slate-900 leading-none mb-0.5">{user?.name}</span>
-                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Pro Developer</span>
+                        <div className="text-left">
+                            <p className="text-[10px] font-black uppercase text-slate-900 leading-none">
+                                {user?.firstName} {user?.lastName}
+                            </p>
+                            <span className="text-[8px] font-bold text-cobalt-sliit uppercase tracking-tighter">
+                                {UserPermissions.role}
+                            </span>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-                <MetricWidget title="Profile Strength" value={`${completeness}%`} icon={Target} change="Live" />
-                <MetricWidget title="Skills Listed" value={technicalSkillsCount.toString()} icon={Activity} change="Updated" positive={true} />
-                <MetricWidget title="Career Path" value={profile?.careerGoals?.targetRoles?.[0] ? 'Set' : 'Generic'} icon={TrendingUp} change={profile?.careerGoals?.targetRoles?.[0] || 'Not Set'} />
-                <MetricWidget title="Profile Mode" value={profile?.isPublic ? 'Public' : 'Private'} icon={Users} change={profile?.isPublic ? 'Visible' : 'Hidden'} />
+            {/* Bento Grid Command Center */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                
+                {/* Profile Snapshot */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="md:col-span-2 bg-white border border-slate-100 rounded-[2.5rem] p-8 relative overflow-hidden group shadow-sm hover:shadow-xl transition-all duration-500"
+                >
+                    <div className="relative z-10">
+                        <div className="flex justify-between items-start mb-12">
+                            <div className="p-3 bg-cobalt-sliit/5 rounded-2xl text-cobalt-sliit">
+                                <LayoutDashboard size={24} />
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="px-3 py-1 bg-emerald-success/10 text-emerald-success text-[10px] font-black uppercase rounded-full">Active Path</span>
+                                <span className="px-3 py-1 bg-slate-50 text-slate-400 text-[10px] font-black uppercase rounded-full border border-slate-100">V2.5</span>
+                            </div>
+                        </div>
+                        <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Career Architecture</h2>
+                        <p className="text-slate-soft text-sm mb-8 font-medium max-w-xs italic">
+                            Currently optimized for <span className="text-cobalt-sliit font-bold">{ProfileData?.targetRole || 'Not Set'}</span> path discovery.
+                        </p>
+                        <button className="flex items-center gap-2 text-cobalt-sliit text-xs font-black uppercase tracking-widest group-hover:gap-4 transition-all">
+                            Configure Stream <ArrowUpRight size={14} />
+                        </button>
+                    </div>
+                    {/* Background Graphic */}
+                    <div className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] bg-cobalt-sliit/5 rounded-full blur-[80px] pointer-events-none group-hover:bg-cobalt-sliit/10 transition-colors" />
+                </motion.div>
+
+                {/* Notifications Module */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500"
+                >
+                    <div className="flex justify-between items-center mb-8">
+                        <div className="p-3 bg-rose-500/5 rounded-2xl text-rose-500">
+                            <Bell size={24} />
+                        </div>
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-rose-500 animate-ping rounded-full opacity-20" />
+                            <span className="relative w-6 h-6 flex items-center justify-center bg-rose-500 text-white text-[10px] font-black rounded-full">
+                                {DashboardState.unreadNotifications}
+                            </span>
+                        </div>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Protocol Alerts</h3>
+                    <p className="text-slate-soft text-[11px] font-medium leading-relaxed mb-6">
+                        Latest system updates and institutional requests pending your review.
+                    </p>
+                    <div className="space-y-2">
+                        {[1, 2].map(i => (
+                            <div key={i} className="h-2 bg-slate-50 rounded-full w-full" />
+                        ))}
+                        <div className="h-2 bg-slate-50 rounded-full w-3/4" />
+                    </div>
+                </motion.div>
+
+                {/* System Permissions */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500"
+                >
+                    <div className="p-3 bg-emerald-success/5 rounded-2xl text-emerald-success inline-block mb-8">
+                        <ShieldCheck size={24} />
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Security Level</h3>
+                    <div className="flex items-end gap-2 mb-6">
+                        <span className="text-4xl font-black text-slate-900 leading-none">{UserPermissions.accessLevel}</span>
+                        <span className="text-[10px] font-black text-slate-300 uppercase mb-1">Clearance</span>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-success" />
+                            <span className="text-[9px] font-black uppercase text-slate-500">Neural Sync</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-success" />
+                            <span className="text-[9px] font-black uppercase text-slate-500">Data Crypt</span>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* System Settings & Configuration (Wide) */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="md:col-span-3 bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm hover:shadow-xl transition-all duration-500"
+                >
+                    <div className="flex justify-between items-center mb-10">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-slate-100 rounded-2xl text-slate-500">
+                                <Settings size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">System Configuration</h3>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Global Session Parameters</p>
+                            </div>
+                        </div>
+                        <div className="h-px bg-slate-100 flex-grow mx-8" />
+                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">v2.5.0-STABLE</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sync Node</p>
+                            <p className="text-sm font-bold text-slate-800">SLIIT-EAST-01</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Last Boot</p>
+                            <p className="text-sm font-bold text-slate-800">{new Date(DashboardState.lastSync).toLocaleTimeString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Auth Mode</p>
+                            <p className="text-sm font-bold text-slate-800">MULTI-LINK</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Environment</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-emerald-success text-sm font-black italic">PROD</span>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* ─── Profile Completeness Card ─────────────────────── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 }}
+                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500 group"
+                >
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="p-3 bg-cobalt-sliit/5 rounded-2xl text-cobalt-sliit">
+                            <UserCircle2 size={24} />
+                        </div>
+                        <span
+                            className={`px-3 py-1 text-[10px] font-black uppercase rounded-full ${
+                                (ProfileData?.profileCompleteness ?? 0) >= 80
+                                    ? 'bg-emerald-500/10 text-emerald-600'
+                                    : (ProfileData?.profileCompleteness ?? 0) >= 50
+                                    ? 'bg-amber-500/10 text-amber-600'
+                                    : 'bg-rose-500/10 text-rose-500'
+                            }`}
+                        >
+                            {
+                                (ProfileData?.profileCompleteness ?? 0) >= 80
+                                    ? 'Strong'
+                                    : (ProfileData?.profileCompleteness ?? 0) >= 50
+                                    ? 'Building'
+                                    : 'Needs Work'
+                            }
+                        </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-1">Profile Strength</h3>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-5">Identity Completeness Score</p>
+
+                    {/* Percentage Number */}
+                    <div className="flex items-end gap-1 mb-4">
+                        <span className="text-5xl font-black text-slate-900 leading-none">
+                            {ProfileData?.profileCompleteness ?? 0}
+                        </span>
+                        <span className="text-xl font-black text-slate-300 mb-1">%</span>
+                    </div>
+
+                    {/* Animated Progress Bar */}
+                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden mb-6">
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${ProfileData?.profileCompleteness ?? 0}%` }}
+                            transition={{ duration: 1.2, ease: 'easeOut', delay: 0.5 }}
+                            className={`h-full rounded-full ${
+                                (ProfileData?.profileCompleteness ?? 0) >= 80
+                                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
+                                    : (ProfileData?.profileCompleteness ?? 0) >= 50
+                                    ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                                    : 'bg-gradient-to-r from-rose-400 to-rose-600'
+                            }`}
+                        />
+                    </div>
+
+                    {/* CTA */}
+                    <button
+                        onClick={() => navigate('/profile?tab=edit')}
+                        className="flex items-center gap-2 text-cobalt-sliit text-xs font-black uppercase tracking-widest group-hover:gap-4 transition-all"
+                    >
+                        Complete Profile <ArrowUpRight size={14} />
+                    </button>
+                </motion.div>
+
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="bg-cobalt-sliit rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center shadow-2xl shadow-cobalt-sliit/40 group relative overflow-hidden"
+                >
+                    <div className="relative z-10">
+                        <div className="w-20 h-20 rounded-full border-4 border-white/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <ArrowUpRight className="text-white" size={32} />
+                        </div>
+                        <button className="text-[11px] font-black text-white uppercase tracking-[0.3em] hover:tracking-[0.4em] transition-all">
+                            Initialize<br/>Link Discovery
+                        </button>
+                    </div>
+                    {/* Ring animation */}
+                    <div className="absolute inset-0 border-[20px] border-white/5 rounded-full scale-150 animate-float" />
+                </motion.div>
             </div>
 
-            {/* Main Analytical Grid */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 overflow-hidden">
-
-                {/* Left Section */}
-                <div className="lg:col-span-3 flex flex-col gap-4 h-full">
-                    <BentoCard title="Profile Integrity" className="shrink-0">
-                        <div className="flex items-center lg:flex-col xl:flex-row justify-between gap-3 py-1">
-                            <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
-                                <svg className="w-full h-full transform -rotate-90">
-                                    <circle cx="50%" cy="50%" r="42%" className="stroke-slate-100 fill-none" strokeWidth="5" />
-                                    <circle cx="50%" cy="50%" r="42%" className="stroke-purple-500 fill-none" strokeWidth="7" strokeDasharray="264" strokeDashoffset={264 - (264 * completeness) / 100} strokeLinecap="round" />
-                                </svg>
-                                <div className="absolute flex flex-col items-center">
-                                    <span className="text-base font-black text-slate-900 leading-none">{completeness}%</span>
-                                </div>
-                            </div>
-                            <div className="flex-1 w-full space-y-2">
-                                {[
-                                    { l: 'Skills', v: '90%', c: 'bg-cyan-400' },
-                                    { l: 'Exp', v: '65%', c: 'bg-purple-500' },
-                                    { l: 'Portf', v: '75%', c: 'bg-indigo-500' }
-                                ].map((s, i) => (
-                                    <div key={i} className="flex flex-col gap-1">
-                                        <div className="flex justify-between items-center px-0.5">
-                                            <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider">{s.l}</span>
-                                            <span className="text-[8px] font-black text-slate-900">{s.v}</span>
-                                        </div>
-                                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div className={`h-full ${s.c} rounded-full`} style={{ width: s.v }}></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </BentoCard>
-
-                    <BentoCard title="Focus Areas" className="flex-1 min-h-0">
-                        <div className="space-y-2.5 overflow-y-auto scrollbar-hide pr-1">
-                            {[
-                                { title: 'Database Normalization', type: 'Study', time: '45m', color: 'cyan' },
-                                { title: 'Portfolio Update', type: 'Profile', time: 'Required', color: 'purple' },
-                                { title: 'Mock Tech Interview', type: 'Prep', time: 'Tomorrow', color: 'indigo' },
-                                { title: 'API Documentation', type: 'Doc', time: 'Today', color: 'emerald' }
-                            ].map((task, i) => (
-                                <div key={i} className="p-3 bg-white/40 border border-slate-100 rounded-xl hover:bg-white transition-all cursor-pointer group/task flex items-center gap-3 shadow-xs">
-                                    <div className={`w-8 h-8 rounded-lg bg-${task.color}-50 border border-${task.color}-100 flex items-center justify-center shrink-0`}>
-                                        <BookOpen className={`text-${task.color}-500`} size={14} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="text-slate-900 font-bold text-xs truncate leading-tight">{task.title}</h4>
-                                        <div className="flex items-center justify-between mt-1">
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">{task.type}</span>
-                                            <span className="text-[9px] font-black text-purple-600">{task.time}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </BentoCard>
+            {/* Support links */}
+            <footer className="mt-16 flex justify-between items-center text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">
+                <div className="flex gap-8">
+                    <a href="#" className="hover:text-cobalt-sliit transition-colors">Documentation</a>
+                    <a href="#" className="hover:text-cobalt-sliit transition-colors">Privacy Protocol</a>
                 </div>
-
-                {/* Middle Column */}
-                <BentoCard
-                    className="lg:col-span-5 h-full"
-                    title="Skill Acquisition"
-                    headerRight={
-                        <select className="bg-slate-50 border border-slate-200 text-slate-500 text-[8px] font-black uppercase tracking-widest rounded-lg px-2 py-1 outline-none focus:border-purple-300">
-                            <option>30D</option>
-                            <option>YTD</option>
-                        </select>
-                    }
-                >
-                    <div className="flex-1 flex flex-col pt-1">
-                        <div className="flex-1 bg-slate-50/50 rounded-2xl border border-slate-100 relative overflow-hidden flex items-center justify-center">
-                            <svg className="w-full h-full p-2" viewBox="0 0 400 200" preserveAspectRatio="none">
-                                <path
-                                    d="M0,180 Q50,165 100,110 T200,90 T300,130 T400,40"
-                                    className="fill-none stroke-purple-400/40"
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                />
-                                <circle cx="100" cy="110" r="4" className="fill-white stroke-cyan-500" strokeWidth="2" />
-                                <circle cx="200" cy="90" r="4" className="fill-white stroke-purple-500" strokeWidth="2" />
-                            </svg>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3 mt-4 shrink-0">
-                            {[
-                                { l: 'Backend', v: '+12%', c: 'text-cyan-600' },
-                                { l: 'Frontend', v: '+8%', c: 'text-purple-600' },
-                                { l: 'DevOps', v: '+3%', c: 'text-blue-600' }
-                            ].map((stat, i) => (
-                                <div key={i} className="bg-white/40 border border-slate-100 p-2.5 rounded-xl text-center shadow-xs">
-                                    <span className="text-[8px] uppercase font-black tracking-widest text-slate-500 block mb-0.5">{stat.l}</span>
-                                    <span className={`text-sm font-black ${stat.c}`}>{stat.v}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </BentoCard>
-
-                {/* Right Column */}
-                <BentoCard
-                    className="lg:col-span-4 h-full"
-                    title="AI Career Copilot"
-                    noPadding
-                >
-                    <div className="flex flex-col h-full bg-slate-50/30">
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-                            <div className="flex gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
-                                    <MessageSquare size={14} className="text-white" />
-                                </div>
-                                <div className="bg-white border border-slate-100 p-3 rounded-2xl rounded-tl-none text-[11px] text-slate-600 leading-relaxed shadow-sm max-w-[85%]">
-                                    Readiness Score is up! Mock interview?
-                                </div>
-                            </div>
-                            <div className="flex gap-3 flex-row-reverse">
-                                <div className="bg-purple-600 text-white p-3 rounded-2xl rounded-tr-none text-[11px] shadow-sm max-w-[85%]">
-                                    Let's do Architecture tradeoffs.
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-3 border-t border-slate-100 bg-white/60">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Type answer..."
-                                    className="w-full bg-slate-50 border border-slate-200 text-[11px] text-slate-900 rounded-xl py-2.5 pl-4 pr-12 focus:outline-none focus:border-purple-300"
-                                />
-                                <button className="absolute right-1 top-1 bottom-1 w-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-sm">
-                                    <Zap size={14} className="text-white" fill="currentColor" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </BentoCard>
-            </div>
+                <div>© 2026 SLIIT NEXAR DIGITAL SYSTEMS</div>
+            </footer>
         </div>
     );
 };

@@ -3,9 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './components/auth/AuthProvider';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Layout } from './components/layout/Layout';
+import { Toaster } from 'react-hot-toast';
 
 // Lazy load pages
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const SignupPage = React.lazy(() => import('./pages/SignupPage'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const ComingSoon = React.lazy(() => import('./pages/ComingSoon'));
@@ -22,9 +24,25 @@ const App: React.FC = () => {
             </div>
           }
         >
+          <Toaster 
+            position="top-right" 
+            toastOptions={{
+              className: 'font-main text-sm shadow-xl',
+              style: {
+                borderRadius: '16px',
+                background: '#ffffff',
+                color: '#0A0A0A',
+                border: '1px solid rgba(0,0,0,0.05)',
+              },
+              success: { iconTheme: { primary: '#10B981', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#EF4444', secondary: '#fff' } }
+            }} 
+          />
+          <div className="mesh-bg" />
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
