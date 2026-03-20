@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const StudentProfile = require('../models/StudentProfile');
 const AppError = require('../utils/AppError');
 const { sendTokenResponse, verifyRefreshToken, signAccessToken } = require('../services/jwtService');
 const logger = require('../utils/logger');
@@ -9,21 +10,21 @@ const logger = require('../utils/logger');
  */
 exports.register = async (req, res, next) => {
     try {
-        const { fullName, eduEmail, password, currentMajor, skillSet, targetRole, role } = req.body;
+        const { fullName, email, password, currentMajor, skillSet, targetRole, role } = req.body;
 
         // Prevent self-registration as admin
         if (role === 'admin' && (!req.user || req.user.role !== 'admin')) {
             return next(new AppError('You are not authorized to create admin accounts.', 403));
         }
 
-        const existingUser = await User.findOne({ eduEmail });
+        const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return next(new AppError('An account with this institutional email already exists.', 409));
+            return next(new AppError('An account with this email already exists.', 409));
         }
 
         const user = await User.create({
             fullName,
-            eduEmail,
+            email,
             password,
             currentMajor,
             skillSet: skillSet || [],
@@ -31,7 +32,17 @@ exports.register = async (req, res, next) => {
             role: role || 'student'
         });
 
-        logger.info(`New user registered: ${user.eduEmail} (${user.role})`);
+        // ── Proactive Profile Creation ───────────────────────────────────
+        // Ensures the dashboard can fetch a profile immediately
+        const parts = (fullName || '').split(' ');
+        await StudentProfile.create({
+            user: user._id,
+            firstName: parts[0] || '',
+            lastName: parts.slice(1).join(' ') || '',
+            major: currentMajor || '',
+        });
+
+        logger.info(`New user registered: ${user.email} (${user.role})`);
         const refreshToken = sendTokenResponse(user, 201, res);
 
         user.refreshToken = refreshToken;
@@ -47,10 +58,10 @@ exports.register = async (req, res, next) => {
  */
 exports.login = async (req, res, next) => {
     try {
-        const { eduEmail, password } = req.body;
+        const { email, password } = req.body;
 
         // Select password explicitly
-        const user = await User.findOne({ eduEmail }).select('+password');
+        const user = await User.findOne({ email }).select('+password');
 
         if (!user || !(await user.comparePassword(password))) {
             return next(new AppError('Incorrect email or password.', 401));
@@ -63,7 +74,7 @@ exports.login = async (req, res, next) => {
         user.lastLogin = Date.now();
         await user.save({ validateBeforeSave: false });
 
-        logger.info(`User logged in: ${user.eduEmail}`);
+        logger.info(`User logged in: ${user.email}`);
         const refreshToken = sendTokenResponse(user, 200, res);
 
         user.refreshToken = refreshToken;

@@ -6,9 +6,9 @@ const registerValidator = [
         .trim()
         .notEmpty().withMessage('Full name is required')
         .isLength({ min: 2, max: 100 }).withMessage('Name must be 2–100 characters'),
-    body('eduEmail')
+    body('email')
         .trim()
-        .notEmpty().withMessage('Institutional email is required')
+        .notEmpty().withMessage('Email is required')
         .isEmail().withMessage('Please provide a valid email')
         .normalizeEmail(),
     body('currentMajor')
@@ -31,7 +31,7 @@ const registerValidator = [
 ];
 
 const loginValidator = [
-    body('eduEmail')
+    body('email')
         .trim()
         .notEmpty().withMessage('Email is required')
         .isEmail().withMessage('Please provide a valid email')

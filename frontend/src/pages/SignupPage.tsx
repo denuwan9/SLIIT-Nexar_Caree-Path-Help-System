@@ -71,7 +71,7 @@ const SignupPage: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Institutional Mail</label>
                 <div className="relative">
-                  <input {...register('eduEmail')} className={clsx("glass-input w-full pl-4 pr-10 py-3 text-sm text-white transition-all duration-500", touchedFields.eduEmail && !errors.eduEmail && "input-valid", errors.eduEmail && "input-invalid")} placeholder="name@uni.edu" />
+                  <input {...register('email')} className={clsx("glass-input w-full pl-4 pr-10 py-3 text-sm text-white transition-all duration-500", touchedFields.email && !errors.email && "input-valid", errors.email && "input-invalid")} placeholder="name@uni.edu" />
                   <Mail size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" />
                 </div>
               </div>

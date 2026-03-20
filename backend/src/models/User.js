@@ -10,9 +10,9 @@ const userSchema = new mongoose.Schema(
             minlength: [2, 'Name must be at least 2 characters'],
             maxlength: [100, 'Name must not exceed 100 characters'],
         },
-        eduEmail: {
+        email: {
             type: String,
-            required: [true, 'Institutional email is required'],
+            required: [true, 'Email is required'],
             unique: true,
             lowercase: true,
             trim: true,

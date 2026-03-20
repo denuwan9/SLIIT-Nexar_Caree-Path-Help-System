@@ -23,10 +23,10 @@ const sanitize = (body) => {
 exports.getMyProfile = async (req, res, next) => {
     try {
         let profile = await StudentProfile.findOne({ user: req.user._id })
-            .populate('user', 'name email avatarUrl');
+            .populate('user', 'fullName email avatarUrl');
 
         if (!profile) {
-            const parts = (req.user.name || '').split(' ');
+            const parts = (req.user.fullName || '').split(' ');
             profile = await StudentProfile.create({
                 user: req.user._id,
                 firstName: parts[0] || '',
@@ -52,14 +52,14 @@ exports.updateMyProfile = async (req, res, next) => {
                 .select('firstName lastName');
             const first = data.firstName ?? current?.firstName ?? '';
             const last = data.lastName ?? current?.lastName ?? '';
-            await User.findByIdAndUpdate(req.user._id, { name: `${first} ${last}`.trim() });
+            await User.findByIdAndUpdate(req.user._id, { fullName: `${first} ${last}`.trim() });
         }
 
         const profile = await StudentProfile.findOneAndUpdate(
             { user: req.user._id },
             { $set: data },
             { new: true, runValidators: true, upsert: true }
-        ).populate('user', 'name email avatarUrl');
+        ).populate('user', 'fullName email avatarUrl');
 
         // Recalculate completeness via pre-save
         await profile.save();

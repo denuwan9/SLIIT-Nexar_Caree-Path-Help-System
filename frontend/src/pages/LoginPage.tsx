@@ -66,17 +66,17 @@ const LoginPage: React.FC = () => {
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Academic Identifier</label>
               <div className="relative group">
                 <input
-                  {...register('eduEmail')}
+                  {...register('email')}
                   className={clsx(
                     "glass-input w-full pl-5 pr-12 py-4 text-white placeholder:text-slate-600 transition-all duration-500",
-                    touchedFields.eduEmail && !errors.eduEmail && "input-valid",
-                    errors.eduEmail && "input-invalid"
+                    touchedFields.email && !errors.email && "input-valid",
+                    errors.email && "input-invalid"
                   )}
                   placeholder="name@university.edu"
                 />
                 <Mail className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-indigo-400 transition-colors" size={20} />
               </div>
-              {errors.eduEmail && <p className="text-rose-500 text-[11px] mt-1 ml-1 font-medium">{errors.eduEmail.message}</p>}
+              {errors.email && <p className="text-rose-500 text-[11px] mt-1 ml-1 font-medium">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-2">
