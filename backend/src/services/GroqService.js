@@ -181,24 +181,31 @@ ${profileJson}
      * TASK 03a — Career Path Simulator
      * Returns a structured JSON roadmap across 3 phases.
      */
-    async simulateCareerPath(studentProfile, targetRole) {
+    async simulateCareerPath(studentProfile, targetRole, currentLevel = 'Student') {
         const profileJson = this._buildProfileContext(studentProfile);
 
         const systemPrompt = `You are NEXAR, an elite AI Career Mentor for SLIIT students.
-Analyse the student profile and target role, then respond with a structured career roadmap.
+Analyse the student's current profile and their self-declared experience level to produce a structured 3-phase career roadmap.
 
-STUDENT PROFILE:
+CURRENT STUDENT PROFILE:
 ${profileJson}
+
+DECLARED EXPERIENCE LEVEL: ${currentLevel}
+TARGET CAREER ROLE: ${targetRole}
 
 OUTPUT FORMAT: Respond with ONLY a valid JSON object — no explanation, no markdown, no code fences.
 Use exactly this structure:
 {
-  "targetRole": "<the role>",
-  "overallStrategy": "<2 sentences referencing the student's current skills/state>",
-  "readinessScore": <integer 1-100>,
+  "targetRole": "${targetRole}",
+  "overallStrategy": "<2 sentences referencing the student's current skills vs. their ${currentLevel} status>",
+  "readinessScore": <integer 1-100 indicating how "ready" they are for the target role TODAY. Be BRUTALLY HONEST: 
+    - 10-30: No relevant skills/projects
+    - 40-60: Has basics but lacks core frameworks or projects
+    - 70-85: Solid skills, missing specialized industry experience
+    - 90-100: Ready for an immediate interview/hire>,
   "shortTerm": {
     "phase": "Short-Term (0-6 months)",
-    "goal": "<specific milestone>",
+    "goal": "<specific milestone suitable for a ${currentLevel}>",
     "actions": ["<action>", "<action>", "<action>", "<action>"],
     "keySkills": ["<skill>", "<skill>"],
     "resources": ["<resource>"]

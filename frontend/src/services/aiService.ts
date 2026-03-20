@@ -20,8 +20,8 @@ export const sendChatMessage = async (
 };
 
 // ── 2. Career Simulator ────────────────────────────────────────────────────
-export const simulateCareer = async (targetRole: string): Promise<CareerRoadmap> => {
-    const res = await api.post('/ai/simulate', { targetRole });
+export const simulateCareer = async (targetRole: string, currentLevel: string): Promise<CareerRoadmap> => {
+    const res = await api.post('/ai/simulate', { targetRole, currentLevel });
     return res.data.data.roadmap as CareerRoadmap;
 };
 

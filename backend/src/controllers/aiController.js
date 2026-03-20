@@ -73,7 +73,7 @@ exports.chat = async (req, res, next) => {
  */
 exports.simulateCareer = async (req, res, next) => {
     try {
-        const { targetRole } = req.body;
+        const { targetRole, currentLevel } = req.body;
 
         if (!targetRole || typeof targetRole !== 'string' || targetRole.trim().length === 0) {
             return next(new AppError('targetRole is required.', 400));
@@ -86,7 +86,7 @@ exports.simulateCareer = async (req, res, next) => {
 
         let roadmap;
         try {
-            roadmap = await groqService.simulateCareerPath(profile, targetRole.trim());
+            roadmap = await groqService.simulateCareerPath(profile, targetRole.trim(), currentLevel);
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
