@@ -23,10 +23,15 @@ const navItems = [
     { to: '/careers', icon: Briefcase, label: 'Careers' },
 ];
 
-// Desktop sidebar icon item with tooltip
+const adminNavItems = [
+    { to: '/admin', icon: LayoutDashboard, label: 'Command Center' },
+    { to: '/admin/profiles', icon: Briefcase, label: 'Career Profiles' },
+];
+
 const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
     <NavLink
         to={to}
+        end
         title={label}
         className={({ isActive }) => `
             group relative flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-500
@@ -43,10 +48,10 @@ const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string
     </NavLink>
 );
 
-// Mobile bottom nav item optimized for light theme
 const MobileNavItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
     <NavLink
         to={to}
+        end
         className={({ isActive }) => `
             flex flex-col items-center gap-1.5 px-3 py-2 transition-all duration-300
             ${isActive ? 'text-purple-600 scale-110' : 'text-slate-400'}
@@ -64,8 +69,10 @@ const MobileNavItem: React.FC<{ to: string; icon: React.ElementType; label: stri
 );
 
 export const Sidebar: React.FC = () => {
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    const currentNavItems = user?.role === 'admin' ? adminNavItems : navItems;
 
     return (
         <>
@@ -82,7 +89,7 @@ export const Sidebar: React.FC = () => {
 
                     {/* Nav Items */}
                     <nav className="flex-1 flex flex-col gap-4 w-full items-center overflow-y-auto scrollbar-hide">
-                        {navItems.map(item => (
+                        {currentNavItems.map(item => (
                             <SidebarItem key={item.to} {...item} />
                         ))}
                     </nav>
@@ -121,10 +128,11 @@ export const Sidebar: React.FC = () => {
                 {/* Mobile dropdown nav */}
                 {mobileOpen && (
                     <nav className="px-5 pb-6 pt-4 grid grid-cols-3 gap-3 border-t border-slate-100 bg-white/95 backdrop-blur-3xl animate-in slide-in-from-top duration-300">
-                        {[...navItems, { to: '/settings', icon: Settings, label: 'Settings' }].map(item => (
+                        {[...currentNavItems, { to: '/settings', icon: Settings, label: 'Settings' }].map(item => (
                             <NavLink
                                 key={item.to}
                                 to={item.to}
+                                end
                                 onClick={() => setMobileOpen(false)}
                                 className={({ isActive }) =>
                                     `flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] text-center transition-all duration-300 ${isActive ? 'bg-gradient-to-br from-purple-600 to-cyan-600 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50'}`
@@ -148,7 +156,7 @@ export const Sidebar: React.FC = () => {
             {/* ─── Mobile Bottom Nav Bar ─── */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl border-t border-white/50 pb-safe">
                 <nav className="flex items-center justify-around px-2 py-2.5">
-                    {navItems.map(item => (
+                    {currentNavItems.map(item => (
                         <MobileNavItem key={item.to} {...item} />
                     ))}
                 </nav>

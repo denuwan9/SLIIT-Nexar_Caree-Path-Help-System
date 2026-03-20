@@ -4,8 +4,8 @@ import type { AuthState } from '../../types/auth';
 import type { SignupInput } from '../../features/auth/authSchemas';
 
 interface AuthContextType extends AuthState {
-    login: (email: string, password: string) => Promise<void>;
-    signup: (data: SignupInput) => Promise<void>;
+    login: (email: string, password: string) => Promise<any>;
+    signup: (data: SignupInput) => Promise<any>;
     logout: () => void;
     checkAuth: () => Promise<void>;
 }
@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isAuthenticated: true,
             isLoading: false,
         });
+        return user;
     };
 
     const signup = async (data: SignupInput) => {
@@ -47,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isAuthenticated: true,
             isLoading: false,
         });
+        return user;
     };
 
     const logout = async () => {

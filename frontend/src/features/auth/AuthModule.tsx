@@ -31,9 +31,13 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
             setShowPassword={setShowPassword}
             onSubmit={async (data) => {
               try {
-                await login(data.email, data.password);
+                const user = await login(data.email, data.password);
                 toast.success('Authentication successful');
-                navigate('/dashboard');
+                if (user?.role === 'admin') {
+                  navigate('/admin');
+                } else {
+                  navigate('/dashboard');
+                }
               } catch (err: any) {
                 toast.error(err.response?.data?.message || 'Authentication failed');
               }
@@ -47,9 +51,13 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
             setShowPassword={setShowPassword}
             onSubmit={async (data) => {
               try {
-                await signup(data);
+                const user = await signup(data);
                 toast.success('Identity established successfully');
-                navigate('/dashboard');
+                if (user?.role === 'admin') {
+                  navigate('/admin');
+                } else {
+                  navigate('/dashboard');
+                }
               } catch (err: any) {
                 toast.error(err.response?.data?.message || 'Registration failed');
               }

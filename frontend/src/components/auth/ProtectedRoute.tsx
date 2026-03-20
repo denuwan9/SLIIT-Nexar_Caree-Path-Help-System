@@ -1,10 +1,10 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import type { UserRole } from '../../types/auth';
 
 interface ProtectedRouteProps {
-    children: React.ReactNode;
+    children?: React.ReactNode;
     allowedRoles?: UserRole[];
 }
 
@@ -28,5 +28,5 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
         return <Navigate to="/unauthorized" replace />;
     }
 
-    return <>{children}</>;
+    return children ? <>{children}</> : <Outlet />;
 };
