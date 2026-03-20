@@ -1,8 +1,14 @@
 import { z } from 'zod';
 
 export const profileInfoSchema = z.object({
-  firstName: z.string().min(2, 'First name must be at least 2 characters').max(50, 'First name too long'),
-  lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50, 'Last name too long'),
+  firstName: z.string()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name too long')
+    .regex(/^[A-Za-z\s\-']+$/, 'First name should only contain letters, spaces, hyphens, or apostrophes'),
+  lastName: z.string()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name too long')
+    .regex(/^[A-Za-z\s\-']+$/, 'Last name should only contain letters, spaces, hyphens, or apostrophes'),
   headline: z.string().max(120, 'Headline must be under 120 characters').optional().or(z.literal('')),
   bio: z.string().max(800, 'Bio must be under 800 characters').optional().or(z.literal('')),
   phone: z.string()
@@ -19,7 +25,10 @@ export const profileInfoSchema = z.object({
   major: z.string().max(100, 'Major name too long').optional().or(z.literal('')),
   yearOfStudy: z.number().min(1).max(6).optional(),
   gpa: z.number().min(0).max(4.0, 'GPA should be between 0 and 4.0').optional(),
-  studentId: z.string().max(20, 'Student ID too long').optional().or(z.literal('')),
+  studentId: z.string()
+    .regex(/^([iI][tT]\d{8})?$/, 'Student ID must start with IT followed by 8 digits (e.g. IT21115536)')
+    .transform(val => val ? val.toUpperCase() : undefined)
+    .optional(),
   isActivelyLooking: z.boolean(),
   isPublic: z.boolean(),
 });

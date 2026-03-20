@@ -40,7 +40,7 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
             major: profile.major || '',
             yearOfStudy: profile.yearOfStudy || undefined,
             gpa: profile.gpa || undefined,
-            studentId: profile.studentId || '',
+            studentId: profile.studentId || undefined,
             isActivelyLooking: !!profile.isActivelyLooking,
             isPublic: profile.isPublic ?? true,
         },
@@ -64,7 +64,7 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
             major: profile.major || '',
             yearOfStudy: profile.yearOfStudy || undefined,
             gpa: profile.gpa || undefined,
-            studentId: profile.studentId || '',
+            studentId: profile.studentId || undefined,
             isActivelyLooking: !!profile.isActivelyLooking,
             isPublic: profile.isPublic ?? true,
         });
