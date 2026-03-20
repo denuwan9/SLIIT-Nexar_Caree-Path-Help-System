@@ -203,7 +203,7 @@ studentProfileSchema.pre('save', function (next) {
 
 // ── Indexes ──────────────────────────────────────────────────────────────
 
-studentProfileSchema.index({ user: 1 }, { unique: true });
+// studentProfileSchema.index({ user: 1 }, { unique: true }); // Redundant: unique:true is set in field definition
 studentProfileSchema.index({ isPublic: 1, isActivelyLooking: 1 });
 studentProfileSchema.index({ 'technicalSkills.name': 1 });
 studentProfileSchema.index({ profileCompleteness: -1 });
