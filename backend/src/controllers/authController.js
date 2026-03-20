@@ -10,7 +10,7 @@ const logger = require('../utils/logger');
  */
 exports.register = async (req, res, next) => {
     try {
-        const { fullName, email, password, currentMajor, skillSet, targetRole, role } = req.body;
+        const { firstName, lastName, email, password, currentMajor, skillSet, targetRole, role } = req.body;
 
         // Prevent self-registration as admin
         if (role === 'admin' && (!req.user || req.user.role !== 'admin')) {
@@ -23,7 +23,8 @@ exports.register = async (req, res, next) => {
         }
 
         const user = await User.create({
-            fullName,
+            firstName,
+            lastName,
             email,
             password,
             currentMajor,
@@ -34,11 +35,10 @@ exports.register = async (req, res, next) => {
 
         // ── Proactive Profile Creation ───────────────────────────────────
         // Ensures the dashboard can fetch a profile immediately
-        const parts = (fullName || '').split(' ');
         await StudentProfile.create({
             user: user._id,
-            firstName: parts[0] || '',
-            lastName: parts.slice(1).join(' ') || '',
+            firstName,
+            lastName,
             major: currentMajor || '',
         });
 

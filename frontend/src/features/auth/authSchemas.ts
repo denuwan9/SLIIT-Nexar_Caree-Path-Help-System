@@ -2,25 +2,31 @@ import { z } from 'zod';
 
 export const loginSchema = z.object({
   email: z.string()
-    .min(1, 'Email is required')
-    .email('Invalid email address'),
+    .min(1, 'Institutional email is required')
+    .email('Invalid email address')
+    .refine((val) => val.endsWith('@sliit.lk'), {
+      message: 'Access restricted to @sliit.lk domains',
+    }),
   password: z.string().min(1, 'Password is required'),
 });
 
 export const signupSchema = z.object({
-  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+  firstName: z.string().min(2, 'First name is required'),
+  lastName: z.string().min(2, 'Last name is required'),
   email: z.string()
     .min(1, 'Email is required')
-    .email('Invalid email address'),
-  currentMajor: z.string().min(1, 'Current major is required'),
-  targetRole: z.string().min(1, 'Target role is required'),
+    .email('Invalid email format')
+    .refine((val) => val.endsWith('@sliit.lk'), {
+      message: 'Only @sliit.lk institutional emails are permitted',
+    }),
   password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Must contain at least one number'),
+    .min(8, 'Minimum 8 characters')
+    .regex(/[A-Z]/, 'Include one uppercase letter')
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Include one special character')
+    .regex(/[0-9]/, 'Include one number'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Passwords do not match",
   path: ["confirmPassword"],
 });
 

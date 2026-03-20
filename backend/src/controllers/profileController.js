@@ -32,6 +32,7 @@ exports.getMyProfile = async (req, res, next) => {
                 firstName: parts[0] || '',
                 lastName: parts.slice(1).join(' ') || '',
             });
+            profile = await profile.populate('user', 'fullName email avatarUrl');
             logger.info(`[Profile] Auto-created profile for user ${req.user._id}`);
         }
 

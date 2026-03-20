@@ -5,8 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { signupSchema, type SignupFields } from '../features/auth/authSchemas';
 import api from '../api/axios';
 import { useAuth } from '../components/auth/AuthProvider';
-import { User, Mail, GraduationCap, Briefcase, Lock, ArrowRight, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
-import { clsx } from 'clsx';
+import { User, Mail, Lock, ArrowRight, Loader2, Database, Sparkles } from 'lucide-react';
+import { AuthLayout } from '../features/auth/AuthLayout';
+import { PasswordStrengthMeter } from '../features/auth/PasswordStrengthMeter';
+import { motion } from 'framer-motion';
 
 const SignupPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -17,120 +19,174 @@ const SignupPage: React.FC = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid, touchedFields },
+    watch,
+    formState: { errors },
   } = useForm<SignupFields>({
     resolver: zodResolver(signupSchema),
-    mode: 'onChange',
+    mode: 'onBlur',
   });
+
+  const password = watch('password', '');
 
   const onSubmit = async (data: SignupFields) => {
     setLoading(true);
     setError('');
     try {
       const response = await api.post('/auth/register', data);
-      const { accessToken, data: userData } = response.data;
-      login(accessToken, userData.user);
+      const { token, user } = response.data.data;
+      login(token, user);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(err.response?.data?.message || 'Enrollment failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden auth-bg"
-         style={{ backgroundImage: 'url("/images/auth-bg.png")' }}>
-      {/* Decorative background elements */}
-      <div className="absolute top-1/4 right-1/4 w-80 h-80 bg-indigo-600/10 blur-[130px] rounded-full animate-pulse" />
-      <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-emerald-600/5 blur-[150px] rounded-full animate-pulse" 
-           style={{ animationDelay: '2s' }} />
-
-      <div className="w-full max-w-[560px] z-10 animate-fade-in translate-y-4">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mb-5 backdrop-blur-xl">
-            <Sparkles className="text-emerald-400" size={28} />
+    <AuthLayout 
+        mode="signup" 
+        title="Construct Identity" 
+        subtitle="Provision Institutional Access"
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="relative group">
+            <input
+              {...register('firstName')}
+              type="text"
+              id="firstName"
+              placeholder=" "
+              className="peer w-full bg-white/5 border-b-2 border-white/10 pt-6 pb-2 px-0 text-white outline-none transition-all duration-300 focus:border-cobalt-electric group-hover:border-white/20 text-sm"
+            />
+            <label 
+              htmlFor="firstName"
+              className="absolute left-0 top-6 text-slate-500 transition-all duration-300 pointer-events-none uppercase text-[9px] font-black tracking-widest peer-focus:top-0 peer-focus:text-cobalt-electric peer-[:not(:placeholder-shown)]:top-0"
+            >
+              First Name
+            </label>
+            <User className="absolute right-0 top-6 text-slate-600 group-focus-within:text-cobalt-electric transition-colors" size={14} />
+            {errors.firstName && <p className="text-[9px] text-rose-500 font-mono mt-1 tracking-tighter">{errors.firstName.message}</p>}
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Create Your <span className="text-emerald-400">Path</span></h1>
-          <p className="text-slate-500 font-medium">Join the next generation of academic simulators</p>
-        </div>
 
-        <div className="glass-card rounded-[40px] p-8 md:p-12 relative overflow-hidden border-white/10">
-          {/* Subtle line decoration */}
-          <div className="absolute top-0 right-1/2 translate-x-1/2 w-1/4 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
-          
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Identity</label>
-                <div className="relative">
-                  <input {...register('fullName')} className={clsx("glass-input w-full pl-4 pr-10 py-3 text-sm text-white transition-all duration-500", touchedFields.fullName && !errors.fullName && "input-valid", errors.fullName && "input-invalid")} placeholder="Full Name" />
-                  <User size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Institutional Mail</label>
-                <div className="relative">
-                  <input {...register('email')} className={clsx("glass-input w-full pl-4 pr-10 py-3 text-sm text-white transition-all duration-500", touchedFields.email && !errors.email && "input-valid", errors.email && "input-invalid")} placeholder="name@uni.edu" />
-                  <Mail size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Current Focus</label>
-                <div className="relative">
-                  <input {...register('currentMajor')} className={clsx("glass-input w-full pl-4 pr-10 py-3 text-sm text-white transition-all duration-500", touchedFields.currentMajor && !errors.currentMajor && "input-valid", errors.currentMajor && "input-invalid")} placeholder="Major" />
-                  <GraduationCap size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Target Horizon</label>
-                <div className="relative">
-                  <input {...register('targetRole')} className={clsx("glass-input w-full pl-4 pr-10 py-3 text-sm text-white transition-all duration-500", touchedFields.targetRole && !errors.targetRole && "input-valid", errors.targetRole && "input-invalid")} placeholder="Role" />
-                  <Briefcase size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Access Credentials</label>
-              <div className="relative">
-                <input {...register('password')} type="password" className={clsx("glass-input w-full pl-4 pr-10 py-3 text-sm text-white transition-all duration-500", touchedFields.password && !errors.password && "input-valid", errors.password && "input-invalid")} placeholder="Password (Min. 8 chars)" />
-                <Lock size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" />
-              </div>
-              {errors.password && <p className="text-rose-500 text-[10px] mt-1 ml-1 font-medium">{errors.password.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Security Confirmation</label>
-              <div className="relative">
-                <input {...register('confirmPassword')} type="password" className={clsx("glass-input w-full pl-4 pr-10 py-3 text-sm text-white transition-all duration-500", touchedFields.confirmPassword && !errors.confirmPassword && "input-valid", errors.confirmPassword && "input-invalid")} placeholder="Confirm Password" />
-                <Lock size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" />
-              </div>
-              {errors.confirmPassword && <p className="text-rose-500 text-[10px] mt-1 ml-1 font-medium">{errors.confirmPassword.message}</p>}
-            </div>
-
-            {error && <div className="bg-rose-500/5 border border-rose-500/10 text-rose-500 text-xs py-3 rounded-2xl text-center font-medium">{error}</div>}
-
-            <button type="submit" disabled={loading || !isValid} className="glass-button w-full py-4 flex items-center justify-center gap-3 group/btn hover:border-emerald-500/30">
-              <span className="font-bold tracking-widest text-sm">LAUNCH PROFILE</span>
-              {loading ? <Loader2 className="animate-spin" size={18} /> : <ArrowRight className="group-hover/btn:translate-x-1 transition-transform" size={18} />}
-            </button>
-          </form>
-
-          <div className="mt-8 flex items-center justify-center gap-2">
-            <ShieldCheck className="text-slate-700" size={14} />
-            <p className="text-slate-600 text-[10px] font-bold uppercase tracking-wider">Secure Enrollment Protocol</p>
+          <div className="relative group">
+            <input
+              {...register('lastName')}
+              type="text"
+              id="lastName"
+              placeholder=" "
+              className="peer w-full bg-white/5 border-b-2 border-white/10 pt-6 pb-2 px-0 text-white outline-none transition-all duration-300 focus:border-cobalt-electric group-hover:border-white/20 text-sm"
+            />
+            <label 
+              htmlFor="lastName"
+              className="absolute left-0 top-6 text-slate-500 transition-all duration-300 pointer-events-none uppercase text-[9px] font-black tracking-widest peer-focus:top-0 peer-focus:text-cobalt-electric peer-[:not(:placeholder-shown)]:top-0"
+            >
+              Last Name
+            </label>
+            <User className="absolute right-0 top-6 text-slate-600 group-focus-within:text-cobalt-electric transition-colors" size={14} />
+            {errors.lastName && <p className="text-[9px] text-rose-500 font-mono mt-1 tracking-tighter">{errors.lastName.message}</p>}
           </div>
         </div>
 
-        <div className="mt-8 text-center text-slate-400 text-sm">
-          Already a member? <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors ml-1 underline decoration-indigo-400/20 underline-offset-4">Authenticate</Link>
+        <div className="relative group">
+          <input
+            {...register('email')}
+            type="email"
+            id="email"
+            placeholder=" "
+            className="peer w-full bg-white/5 border-b-2 border-white/10 pt-6 pb-2 px-0 text-white outline-none transition-all duration-300 focus:border-cobalt-electric group-hover:border-white/20 text-sm"
+          />
+          <label 
+            htmlFor="email"
+            className="absolute left-0 top-6 text-slate-500 transition-all duration-300 pointer-events-none uppercase text-[9px] font-black tracking-widest peer-focus:top-0 peer-focus:text-cobalt-electric peer-[:not(:placeholder-shown)]:top-0"
+          >
+            SLIIT Institutional Identifier
+          </label>
+          <Mail className="absolute right-0 top-6 text-slate-600 group-focus-within:text-cobalt-electric transition-colors" size={14} />
+          {errors.email && <p className="text-[9px] text-rose-500 font-mono mt-1 tracking-tighter">{errors.email.message}</p>}
         </div>
-      </div>
-    </div>
+
+        <div className="grid grid-cols-2 gap-4 items-start">
+          <div className="relative group">
+            <input
+              {...register('password')}
+              type="password"
+              id="password"
+              placeholder=" "
+              className="peer w-full bg-white/5 border-b-2 border-white/10 pt-6 pb-2 px-0 text-white outline-none transition-all duration-300 focus:border-cobalt-electric group-hover:border-white/20 text-sm"
+            />
+            <label 
+              htmlFor="password"
+              className="absolute left-0 top-6 text-slate-500 transition-all duration-300 pointer-events-none uppercase text-[9px] font-black tracking-widest peer-focus:top-0 peer-focus:text-cobalt-electric peer-[:not(:placeholder-shown)]:top-0"
+            >
+              Master Key
+            </label>
+            <Lock className="absolute right-0 top-6 text-slate-600 group-focus-within:text-cobalt-electric transition-colors" size={14} />
+          </div>
+
+          <div className="relative group">
+            <input
+              {...register('confirmPassword')}
+              type="password"
+              id="confirmPassword"
+              placeholder=" "
+              className="peer w-full bg-white/5 border-b-2 border-white/10 pt-6 pb-2 px-0 text-white outline-none transition-all duration-300 focus:border-cobalt-electric group-hover:border-white/20 text-sm"
+            />
+            <label 
+              htmlFor="confirmPassword"
+              className="absolute left-0 top-6 text-slate-500 transition-all duration-300 pointer-events-none uppercase text-[9px] font-black tracking-widest peer-focus:top-0 peer-focus:text-cobalt-electric peer-[:not(:placeholder-shown)]:top-0"
+            >
+              Verify Key
+            </label>
+            <Lock className="absolute right-0 top-6 text-slate-600 group-focus-within:text-cobalt-electric transition-colors" size={14} />
+          </div>
+        </div>
+
+        {/* Dynamic Entropy Analyzer */}
+        <PasswordStrengthMeter password={password} />
+        {errors.password && <p className="text-[9px] text-rose-500 font-mono mt-1 tracking-tighter">{errors.password.message}</p>}
+        {errors.confirmPassword && <p className="text-[9px] text-rose-500 font-mono mt-1 tracking-tighter">{errors.confirmPassword.message}</p>}
+
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl flex items-center gap-3"
+          >
+            <Sparkles size={16} />
+            <p className="text-[10px] font-mono tracking-tighter uppercase">{error}</p>
+          </motion.div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full group/btn relative h-14 bg-white text-black font-black uppercase text-xs tracking-[0.2em] rounded-2xl overflow-hidden active:scale-[0.98] transition-all disabled:opacity-50"
+        >
+          <div className="absolute inset-0 bg-cobalt-electric translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500" />
+          <div className="relative flex items-center justify-center gap-3 group-hover/btn:text-white transition-colors">
+            {loading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <>
+                <Database size={18} className="rotate-0 group-hover/btn:rotate-180 transition-transform duration-500" />
+                <span>Initialize Core Profile</span>
+                <ArrowRight size={18} className="translate-x-0 group-hover/btn:translate-x-2 transition-transform duration-500" />
+              </>
+            )}
+          </div>
+        </button>
+
+        <div className="text-center">
+          <Link 
+            to="/login" 
+            className="text-[10px] font-black text-slate-500 hover:text-white transition-colors uppercase tracking-[0.2em]"
+          >
+            Existing Credentials Detected? Login
+          </Link>
+        </div>
+      </form>
+    </AuthLayout>
   );
 };
 

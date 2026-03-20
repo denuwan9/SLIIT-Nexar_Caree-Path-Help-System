@@ -3,12 +3,17 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
     {
-        fullName: {
+        firstName: {
             type: String,
-            required: [true, 'Full name is required'],
+            required: [true, 'First name is required'],
             trim: true,
-            minlength: [2, 'Name must be at least 2 characters'],
-            maxlength: [100, 'Name must not exceed 100 characters'],
+            maxlength: [50, 'First name must not exceed 50 characters'],
+        },
+        lastName: {
+            type: String,
+            required: [true, 'Last name is required'],
+            trim: true,
+            maxlength: [50, 'Last name must not exceed 50 characters'],
         },
         email: {
             type: String,
@@ -16,7 +21,7 @@ const userSchema = new mongoose.Schema(
             unique: true,
             lowercase: true,
             trim: true,
-            match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
+            match: [/^[a-zA-Z0-9._%+-]+@sliit\.lk$/, 'Only @sliit.lk domains are permitted'],
         },
         currentMajor: {
             type: String,
@@ -74,6 +79,11 @@ const userSchema = new mongoose.Schema(
         toObject: { virtuals: true },
     }
 );
+
+// ── Virtuals ──────────────────────────────────────────────────────
+userSchema.virtual('fullName').get(function () {
+    return `${this.firstName} ${this.lastName}`.trim();
+});
 
 // ── Indexes ────────────────────────────────────────────────────────
 // NOTE: email index is already created by `unique: true` in the field definition above.

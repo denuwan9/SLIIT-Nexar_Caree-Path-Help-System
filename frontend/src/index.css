@@ -1,47 +1,53 @@
 @import "tailwindcss";
 
-@theme {
-  --color-azure-deep: #0b3d66;
-  --color-azure-light: #e0e9f0;
-  --color-purple-electric: #9d50ff;
-  --color-white-soft: #f8fafc;
+@theme:root {
+  /* High-Key Light Mode Palette */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8FAFC;
+  --sliit-cobalt: #0056B3;
+  --soft-slate: #64748B;
+  --emerald-success: #10B981;
+  --border-light: #E2E8F0;
+  
+  /* Shared Tokens */
+  --font-main: 'Inter', sans-serif;
+}
 
-  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+@theme {
+  --color-cobalt-sliit: var(--sliit-cobalt);
+  --color-slate-soft: var(--soft-slate);
+  --color-emerald-success: var(--emerald-success);
+  --color-silver-ultra: #F8FAFC;
+  
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-slide-in: slideIn 0.5s ease-out forwards;
 
   @keyframes drift {
-    0% {
-      transform: translate(0, 0) rotate(0deg);
-    }
-
-    33% {
-      transform: translate(30px, -50px) rotate(4deg);
-    }
-
-    66% {
-      transform: translate(-20px, 20px) rotate(-2deg);
-    }
-
-    100% {
-      transform: translate(0, 0) rotate(0deg);
-    }
+    0% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(30px, -50px) rotate(4deg); }
+    66% { transform: translate(-20px, 20px) rotate(-2deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
   }
 
   @keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+  }
 
-    0%,
-    100% {
-      transform: scale(1);
-      opacity: 0.5;
-    }
+  @keyframes liquid-fill {
+    0% { transform: scaleY(0); }
+    100% { transform: scaleY(1); }
+  }
 
-    50% {
-      transform: scale(1.15);
-      opacity: 0.8;
-    }
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
   }
 
   --animate-drift: drift 25s ease-in-out infinite;
   --animate-breathe: breathe 20s ease-in-out infinite;
+  --animate-liquid: liquid-fill 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-scanline: scanline 4s linear infinite;
 }
 
 :root {
@@ -179,5 +185,9 @@ body {
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .soft-glass {
+    @apply bg-white/80 backdrop-blur-xl border border-border-light shadow-2xl;
   }
 }
