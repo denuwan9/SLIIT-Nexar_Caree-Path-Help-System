@@ -9,7 +9,10 @@ export const profileInfoSchema = z.object({
     .min(2, 'Last name must be at least 2 characters')
     .max(50, 'Last name too long')
     .regex(/^[A-Za-z\s\-']+$/, 'Last name should only contain letters, spaces, hyphens, or apostrophes'),
-  headline: z.string().max(120, 'Headline must be under 120 characters').optional().or(z.literal('')),
+  headline: z.string()
+    .max(120, 'Headline must be under 120 characters')
+    .regex(/^[A-Za-z\s\-'.|]+$/, 'Headline should only contain letters, spaces, or | - . \'')
+    .optional().or(z.literal('')),
   bio: z.string().max(800, 'Bio must be under 800 characters').optional().or(z.literal('')),
   phone: z.string()
     .regex(/^\+?[\d\s-]{8,20}$/, 'Invalid phone format (e.g. +94 77 123 4567)')
@@ -20,9 +23,18 @@ export const profileInfoSchema = z.object({
     country: z.string().max(100, 'Country name too long'),
     isOpenToRelocation: z.boolean(),
   }),
-  university: z.string().max(150, 'University name too long').optional().or(z.literal('')),
-  faculty: z.string().max(100, 'Faculty name too long').optional().or(z.literal('')),
-  major: z.string().max(100, 'Major name too long').optional().or(z.literal('')),
+  university: z.string()
+    .max(150, 'University name too long')
+    .regex(/^[A-Za-z\s\-'.]+$/, 'University should only contain letters, spaces, hyphens, or dots')
+    .optional().or(z.literal('')),
+  faculty: z.string()
+    .max(100, 'Faculty name too long')
+    .regex(/^[A-Za-z\s\-'.]+$/, 'Faculty should only contain letters, spaces, hyphens, or dots')
+    .optional().or(z.literal('')),
+  major: z.string()
+    .max(100, 'Major name too long')
+    .regex(/^[A-Za-z\s\-'.]+$/, 'Major should only contain letters, spaces, hyphens, or dots')
+    .optional().or(z.literal('')),
   yearOfStudy: z.number().min(1).max(6).optional(),
   gpa: z.number().min(0).max(4.0, 'GPA should be between 0 and 4.0').optional(),
   studentId: z.string()
@@ -34,9 +46,13 @@ export const profileInfoSchema = z.object({
 });
 
 export const educationSchema = z.object({
-  institution: z.string().min(2, 'Institution name is required'),
+  institution: z.string()
+    .min(2, 'Institution name is required')
+    .regex(/^[A-Za-z\s\-'.]+$/, 'Institution name should only contain letters, spaces, hyphens, or dots'),
   degree: z.enum(["Bachelor's", "Master's", "PhD", "Diploma", "HND", "Certificate", "Other"]),
-  field: z.string().min(2, 'Field of study is required'),
+  field: z.string()
+    .min(2, 'Field of study is required')
+    .regex(/^[A-Za-z\s\-'.]+$/, 'Field of study should only contain letters, spaces, hyphens, or dots'),
   startYear: z.number().min(1950).max(new Date().getFullYear() + 10),
   endYear: z.number().min(1950).max(2100).optional(),
   isCurrent: z.boolean(),
@@ -48,8 +64,12 @@ export const educationSchema = z.object({
 });
 
 export const experienceSchema = z.object({
-  title: z.string().min(2, 'Job title is required'),
-  company: z.string().min(2, 'Company name is required'),
+  title: z.string()
+    .min(2, 'Job title is required')
+    .regex(/^[A-Za-z\s\-'.]+$/, 'Job title should only contain letters, spaces, hyphens, or dots'),
+  company: z.string()
+    .min(2, 'Company name is required')
+    .regex(/^[A-Za-z\s\-'.]+$/, 'Company name should only contain letters, spaces, hyphens, or dots'),
   type: z.enum(["full-time", "part-time", "internship", "contract", "freelance", "volunteer"]),
   location: z.string().max(100).optional().or(z.literal('')),
   isRemote: z.boolean(),
