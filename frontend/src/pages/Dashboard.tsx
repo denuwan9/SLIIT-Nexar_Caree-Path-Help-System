@@ -9,13 +9,16 @@ import {
     Bell, 
     ShieldCheck, 
     ArrowUpRight,
-    Search
+    Search,
+    UserCircle2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
     const { boot, bootData, isLoading, error } = useSystemBoot();
+    const navigate = useNavigate();
 
     useEffect(() => {
         boot();
@@ -216,7 +219,72 @@ const Dashboard: React.FC = () => {
                     </div>
                 </motion.div>
 
-                {/* Quick Action Circle */}
+                {/* ─── Profile Completeness Card ─────────────────────── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 }}
+                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500 group"
+                >
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="p-3 bg-cobalt-sliit/5 rounded-2xl text-cobalt-sliit">
+                            <UserCircle2 size={24} />
+                        </div>
+                        <span
+                            className={`px-3 py-1 text-[10px] font-black uppercase rounded-full ${
+                                (ProfileData?.profileCompleteness ?? 0) >= 80
+                                    ? 'bg-emerald-500/10 text-emerald-600'
+                                    : (ProfileData?.profileCompleteness ?? 0) >= 50
+                                    ? 'bg-amber-500/10 text-amber-600'
+                                    : 'bg-rose-500/10 text-rose-500'
+                            }`}
+                        >
+                            {
+                                (ProfileData?.profileCompleteness ?? 0) >= 80
+                                    ? 'Strong'
+                                    : (ProfileData?.profileCompleteness ?? 0) >= 50
+                                    ? 'Building'
+                                    : 'Needs Work'
+                            }
+                        </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-1">Profile Strength</h3>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-5">Identity Completeness Score</p>
+
+                    {/* Percentage Number */}
+                    <div className="flex items-end gap-1 mb-4">
+                        <span className="text-5xl font-black text-slate-900 leading-none">
+                            {ProfileData?.profileCompleteness ?? 0}
+                        </span>
+                        <span className="text-xl font-black text-slate-300 mb-1">%</span>
+                    </div>
+
+                    {/* Animated Progress Bar */}
+                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden mb-6">
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${ProfileData?.profileCompleteness ?? 0}%` }}
+                            transition={{ duration: 1.2, ease: 'easeOut', delay: 0.5 }}
+                            className={`h-full rounded-full ${
+                                (ProfileData?.profileCompleteness ?? 0) >= 80
+                                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
+                                    : (ProfileData?.profileCompleteness ?? 0) >= 50
+                                    ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                                    : 'bg-gradient-to-r from-rose-400 to-rose-600'
+                            }`}
+                        />
+                    </div>
+
+                    {/* CTA */}
+                    <button
+                        onClick={() => navigate('/profile?tab=edit')}
+                        className="flex items-center gap-2 text-cobalt-sliit text-xs font-black uppercase tracking-widest group-hover:gap-4 transition-all"
+                    >
+                        Complete Profile <ArrowUpRight size={14} />
+                    </button>
+                </motion.div>
+
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}

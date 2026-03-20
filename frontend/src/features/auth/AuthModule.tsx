@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Apple, Twitter, Github, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { loginSchema, signupSchema, type LoginInput, type SignupInput } from './authSchemas';
 import { useAuth } from '../../components/auth/AuthProvider';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 interface AuthModuleProps {
   initialView?: 'login' | 'signup';
@@ -29,8 +30,13 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
             showPassword={showPassword} 
             setShowPassword={setShowPassword}
             onSubmit={async (data) => {
-              await login(data.email, data.password);
-              navigate('/dashboard');
+              try {
+                await login(data.email, data.password);
+                toast.success('Authentication successful');
+                navigate('/dashboard');
+              } catch (err: any) {
+                toast.error(err.response?.data?.message || 'Authentication failed');
+              }
             }}
           />
         ) : (
@@ -40,8 +46,13 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
             showPassword={showPassword} 
             setShowPassword={setShowPassword}
             onSubmit={async (data) => {
-              await signup(data);
-              navigate('/dashboard');
+              try {
+                await signup(data);
+                toast.success('Identity established successfully');
+                navigate('/dashboard');
+              } catch (err: any) {
+                toast.error(err.response?.data?.message || 'Registration failed');
+              }
             }}
           />
         )}
@@ -76,8 +87,8 @@ const LoginView = ({ onSwitch, showPassword, setShowPassword, onSubmit }: ViewPr
         <img src="/logo.png" alt="SLIIT Nexar Logo" className="w-full h-full object-contain" />
       </div>
 
-      <h2 className="text-2xl font-black uppercase tracking-[0.2em] mb-2">Authenticate</h2>
-      <p className="text-white/50 text-[10px] font-black uppercase tracking-widest mb-10">Access Institutional Ecosystem</p>
+      <h2 className="text-2xl font-black uppercase tracking-[0.2em] mb-2">SLIIT <span className="font-black">Nexar</span></h2>
+      <p className="text-white/50 text-[10px] font-black uppercase tracking-widest mb-10">Access SLIIT Nexar System</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-7">
         <div className="relative">
@@ -133,25 +144,12 @@ const LoginView = ({ onSwitch, showPassword, setShowPassword, onSubmit }: ViewPr
         >
           {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (
             <>
-              Initialize Session
+              Login to Nexar
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </>
           )}
         </button>
       </form>
-
-      <div className="w-full mt-10">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="h-px bg-white/10 flex-grow" />
-          <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">External Handshake</span>
-          <div className="h-px bg-white/10 flex-grow" />
-        </div>
-        <div className="flex justify-center gap-4">
-          <SocialBtn Icon={Github} />
-          <SocialBtn Icon={Apple} />
-          <SocialBtn Icon={Twitter} />
-        </div>
-      </div>
 
       <button 
         onClick={onSwitch}
@@ -279,11 +277,5 @@ const SignupView = ({ onSwitch, showPassword, setShowPassword, onSubmit }: ViewP
     </motion.div>
   );
 };
-
-const SocialBtn = ({ Icon }: any) => (
-  <button className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-white/40 hover:bg-white/10 hover:text-white hover:border-white/10 transition-all">
-    <Icon size={20} />
-  </button>
-);
 
 export default AuthModule;

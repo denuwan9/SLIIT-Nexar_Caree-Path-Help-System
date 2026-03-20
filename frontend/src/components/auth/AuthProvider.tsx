@@ -33,7 +33,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signup = async (data: SignupInput) => {
-        const response = await api.post('/auth/register', data);
+        const payload = {
+            ...data,
+            currentMajor: "Undeclared",
+            targetRole: "Student"
+        };
+        const response = await api.post('/auth/register', payload);
         const { accessToken, user } = response.data.data;
         localStorage.setItem('accessToken', accessToken);
         setState({

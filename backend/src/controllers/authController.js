@@ -42,11 +42,13 @@ exports.register = async (req, res, next) => {
             major: currentMajor || '',
         });
 
-        logger.info(`New user registered: ${user.email} (${user.role})`);
-        const refreshToken = sendTokenResponse(user, 201, res);
-
+        const { signRefreshToken } = require('../services/jwtService');
+        const refreshToken = signRefreshToken(user._id);
         user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });
+
+        logger.info(`New user registered: ${user.email} (${user.role})`);
+        sendTokenResponse(user, 201, res, refreshToken);
     } catch (error) {
         next(error);
     }
@@ -71,14 +73,15 @@ exports.login = async (req, res, next) => {
             return next(new AppError('Your account has been deactivated. Contact support.', 403));
         }
 
+        const { signRefreshToken } = require('../services/jwtService');
+        const refreshToken = signRefreshToken(user._id);
+
         user.lastLogin = Date.now();
+        user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });
 
         logger.info(`User logged in: ${user.email}`);
-        const refreshToken = sendTokenResponse(user, 200, res);
-
-        user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave: false });
+        sendTokenResponse(user, 200, res, refreshToken);
     } catch (error) {
         next(error);
     }
