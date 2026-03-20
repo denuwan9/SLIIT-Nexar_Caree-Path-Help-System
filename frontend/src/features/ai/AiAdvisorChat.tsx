@@ -49,7 +49,7 @@ const TypingIndicator: React.FC<{ statusText: string }> = ({ statusText }) => (
 );
 
 // ── Message Content Parser for [ACTION_CARD] ──────────────────────────────
-const renderMessageContent = (content: string, isUser: boolean) => {
+const renderMessageContent = (content: string, isUser: boolean, onActionClick?: (title: string) => void) => {
     if (isUser) return <p>{content}</p>;
 
     const cardRegex = /\[ACTION_CARD:\s*([^|]+)\s*\|\s*([^\]]+)\]/g;
@@ -88,7 +88,9 @@ const renderMessageContent = (content: string, isUser: boolean) => {
                     <p className="text-xs text-slate-600 leading-relaxed font-medium mb-3">
                         {part.content}
                     </p>
-                    <button className="text-[10px] uppercase font-black tracking-widest text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors w-full sm:w-auto">
+                    <button 
+                        onClick={() => onActionClick?.(part.title)}
+                        className="text-[10px] cursor-pointer uppercase font-black tracking-widest text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg hover:bg-purple-100 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 w-full sm:w-auto">
                         Execute Action
                     </button>
                 </div>
@@ -98,7 +100,7 @@ const renderMessageContent = (content: string, isUser: boolean) => {
 };
 
 // ── Message Bubble Sub-Component ──────────────────────────────────────────
-const MessageBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
+const MessageBubble: React.FC<{ msg: ChatMessage, onActionClick?: (title: string) => void }> = ({ msg, onActionClick }) => {
     const isUser = msg.role === 'user';
     return (
         <div className={`flex items-end gap-3 mb-4 ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -122,7 +124,7 @@ const MessageBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
                     : 'glass text-slate-800 rounded-bl-md'
                     }`}
             >
-                {renderMessageContent(msg.content, isUser)}
+                {renderMessageContent(msg.content, isUser, onActionClick)}
             </div>
         </div>
     );
@@ -278,7 +280,11 @@ const AiAdvisorChat: React.FC = () => {
                 )}
 
                 {messages.map((msg, i) => (
-                    <MessageBubble key={i} msg={msg} />
+                    <MessageBubble 
+                        key={i} 
+                        msg={msg} 
+                        onActionClick={(title) => handleSend(`Tell me more about: ${title}. How can I get started?`)} 
+                    />
                 ))}
 
                 {isLoading && <TypingIndicator statusText={thinkingState} />}

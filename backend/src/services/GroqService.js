@@ -1,12 +1,12 @@
 /**
- * GrokService.js
+ * GroqService.js
  * ──────────────────────────────────────────────────────────────────────────
- * Singleton service that wraps xAI's Grok API (OpenAI-compatible REST).
+ * Singleton service that wraps Groq API (OpenAI-compatible REST).
  * Every method receives a `studentProfile` document and builds a rich system
  * prompt from it so all responses are hyper-personalised.
  *
  * Environment variable required:
- *   GROK_API_KEY=xai-...   (from https://console.x.ai)
+ *   GROQ_API_KEY=gsk-...   (from https://console.groq.com)
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -14,28 +14,28 @@ const OpenAI = require('openai');
 const logger = require('../utils/logger');
 
 // ── Models ───────────────────────────────────────────────────────────────
-// grok-3-mini  → reasoning model, great for open-ended chat
-// grok-2-1212  → stable instruction-following model, use for JSON outputs
-const CHAT_MODEL = 'grok-3-mini';
-const JSON_MODEL = 'grok-2-1212'; // supports response_format: json_object
+// llama3-70b-8192  → reasoning model, great for open-ended chat
+// llama3-8b-8192  → stable instruction-following model, use for JSON outputs
+const CHAT_MODEL = 'llama-3.3-70b-versatile';
+const JSON_MODEL = 'llama-3.3-70b-versatile'; // supports response_format: json_object
 
 // ── Singleton state ──────────────────────────────────────────────────────
 let instance = null;
 
-class GrokService {
+class GroqService {
     constructor() {
-        if (!process.env.GROK_API_KEY) {
-            console.warn('[GrokService] WARNING: GROK_API_KEY is not set. AI features will not work.');
+        if (!process.env.GROQ_API_KEY) {
+            console.warn('[GroqService] WARNING: GROQ_API_KEY is not set. AI features will not work.');
         }
         this.client = new OpenAI({
-            apiKey: process.env.GROK_API_KEY || 'missing-key',
-            baseURL: 'https://api.x.ai/v1',
+            apiKey: process.env.GROQ_API_KEY || 'missing-key',
+            baseURL: 'https://api.groq.com/openai/v1',
         });
     }
 
     // ── Static factory ────────────────────────────────────────────────────
     static getInstance() {
-        if (!instance) instance = new GrokService();
+        if (!instance) instance = new GroqService();
         return instance;
     }
 
@@ -135,7 +135,7 @@ ${profileJson}
         }
 
         // If we reach here, nothing parseable was found — log for debugging
-        logger.error(`[GrokService] JSON extraction failed. Raw response (first 500 chars):\n${raw.slice(0, 500)}`);
+        logger.error(`[GroqService] JSON extraction failed. Raw response (first 500 chars):\n${raw.slice(0, 500)}`);
         throw new Error('Could not extract valid JSON from AI response');
     }
 
@@ -217,7 +217,7 @@ Use exactly this structure:
         });
 
         const raw = completion.choices[0].message.content;
-        logger.info(`[GrokService] simulate raw length: ${raw.length}`);
+        logger.info(`[GroqService] simulate raw length: ${raw.length}`);
         return this._extractJSON(raw);
     }
 
@@ -261,7 +261,7 @@ Use exactly this structure:
         });
 
         const raw = completion.choices[0].message.content;
-        logger.info(`[GrokService] skill-gap raw length: ${raw.length}`);
+        logger.info(`[GroqService] skill-gap raw length: ${raw.length}`);
         return this._extractJSON(raw);
     }
 
@@ -307,9 +307,9 @@ Use exactly this structure:
         });
 
         const raw = completion.choices[0].message.content;
-        logger.info(`[GrokService] resume raw length: ${raw.length}`);
+        logger.info(`[GroqService] resume raw length: ${raw.length}`);
         return this._extractJSON(raw);
     }
 }
 
-module.exports = GrokService.getInstance();
+module.exports = GroqService.getInstance();

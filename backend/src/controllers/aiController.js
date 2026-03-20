@@ -14,7 +14,7 @@
 
 const AppError = require('../utils/AppError');
 const StudentProfile = require('../models/StudentProfile');
-const grokService = require('../services/GrokService');
+const groqService = require('../services/GroqService');
 
 // ── Helper: Load the requesting student's profile ─────────────────────────
 const getStudentProfile = async (userId) => {
@@ -49,7 +49,7 @@ exports.chat = async (req, res, next) => {
 
         const profile = await getStudentProfile(req.user._id);
 
-        const reply = await grokService.generateCareerAdvice(
+        const reply = await groqService.generateCareerAdvice(
             profile,
             message.trim(),
             history
@@ -86,7 +86,7 @@ exports.simulateCareer = async (req, res, next) => {
 
         let roadmap;
         try {
-            roadmap = await grokService.simulateCareerPath(profile, targetRole.trim());
+            roadmap = await groqService.simulateCareerPath(profile, targetRole.trim());
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
@@ -122,7 +122,7 @@ exports.analyzeSkillGap = async (req, res, next) => {
 
         let analysis;
         try {
-            analysis = await grokService.analyzeSkillGap(profile, jobDescription.trim());
+            analysis = await groqService.analyzeSkillGap(profile, jobDescription.trim());
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
@@ -158,7 +158,7 @@ exports.analyzeResume = async (req, res, next) => {
 
         let report;
         try {
-            report = await grokService.analyzeResume(profile, resumeText.trim());
+            report = await groqService.analyzeResume(profile, resumeText.trim());
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
