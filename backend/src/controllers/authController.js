@@ -144,3 +144,85 @@ exports.getMe = async (req, res, next) => {
         next(error);
     }
 };
+
+/**
+ * PUT /api/auth/change-password
+ * Protected — update current user's password
+ */
+exports.changePassword = async (req, res, next) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const user = await User.findById(req.user._id).select('+password');
+
+        if (!user || !(await user.comparePassword(currentPassword))) {
+            return next(new AppError('Current password is incorrect.', 401));
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        logger.info(`Password changed for: ${user.email}`);
+        res.status(200).json({ status: 'success', message: 'Password updated successfully.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * PUT /api/auth/change-email
+ * Protected — update current user's email
+ */
+exports.changeEmail = async (req, res, next) => {
+    try {
+        const { newEmail, password } = req.body;
+        const user = await User.findById(req.user._id).select('+password');
+
+        if (!user || !(await user.comparePassword(password))) {
+            return next(new AppError('Password is incorrect.', 401));
+        }
+
+        const existing = await User.findOne({ email: newEmail });
+        if (existing) {
+            return next(new AppError('An account with this email already exists.', 409));
+        }
+
+        user.email = newEmail;
+        await user.save({ validateBeforeSave: true });
+
+        logger.info(`Email changed. New email: ${newEmail}`);
+        res.status(200).json({ status: 'success', message: 'Email updated successfully.' });
+    } catch (error) {
+        if (error.name === 'ValidationError') {
+            return next(new AppError('Only @sliit.lk emails are permitted.', 422));
+        }
+        next(error);
+    }
+};
+
+/**
+ * DELETE /api/auth/delete-account
+ * Protected — permanently delete user and profile
+ */
+exports.deleteAccount = async (req, res, next) => {
+    try {
+        const { password } = req.body;
+        const user = await User.findById(req.user._id).select('+password');
+
+        if (!user || !(await user.comparePassword(password))) {
+            return next(new AppError('Password is incorrect. Account not deleted.', 401));
+        }
+
+        await StudentProfile.findOneAndDelete({ user: user._id });
+        await User.findByIdAndDelete(user._id);
+
+        res.cookie('refreshToken', 'none', {
+            expires: new Date(Date.now() + 10 * 1000),
+            httpOnly: true,
+        });
+
+        logger.info(`Account deleted: ${user.email}`);
+        res.status(200).json({ status: 'success', message: 'Account permanently deleted.' });
+    } catch (error) {
+        next(error);
+    }
+};
