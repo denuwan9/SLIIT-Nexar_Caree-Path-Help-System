@@ -56,14 +56,13 @@ exports.updateMyProfile = async (req, res, next) => {
             await User.findByIdAndUpdate(req.user._id, { fullName: `${first} ${last}`.trim() });
         }
 
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $set: data },
-            { new: true, runValidators: true, upsert: true }
-        ).populate('user', 'fullName email avatarUrl');
+        let profile = await StudentProfile.findOne({ user: req.user._id });
+        if (!profile) return next(new AppError('Profile not found.', 404));
 
-        // Recalculate completeness via pre-save
+        Object.assign(profile, data);
         await profile.save();
+        
+        profile = await profile.populate('user', 'fullName email avatarUrl');
 
         res.status(200).json({ status: 'success', data: { profile } });
     } catch (err) { next(err); }
@@ -77,11 +76,12 @@ exports.uploadAvatar = async (req, res, next) => {
         if (!req.file) return next(new AppError('No image file provided.', 400));
         const avatarUrl = req.file.path; // Cloudinary secure_url
 
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $set: { avatarUrl } },
-            { new: true, upsert: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
+        if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.avatarUrl = avatarUrl;
+        await profile.save();
+        
         await User.findByIdAndUpdate(req.user._id, { avatarUrl });
 
         res.status(200).json({ status: 'success', data: { avatarUrl, profile } });
@@ -96,26 +96,24 @@ exports.uploadAvatar = async (req, res, next) => {
 // ── Education ─────────────────────────────────────────────────────────────
 exports.addEducation = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $push: { education: req.body } },
-            { new: true, runValidators: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.education.push(req.body);
         await profile.save();
+
         res.status(201).json({ status: 'success', data: { education: profile.education } });
     } catch (err) { next(err); }
 };
 
 exports.removeEducation = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $pull: { education: { _id: req.params.id } } },
-            { new: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.education = profile.education.filter(e => e._id.toString() !== req.params.id);
         await profile.save();
+
         res.status(200).json({ status: 'success', data: { education: profile.education } });
     } catch (err) { next(err); }
 };
@@ -123,26 +121,24 @@ exports.removeEducation = async (req, res, next) => {
 // ── Experience ────────────────────────────────────────────────────────────
 exports.addExperience = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $push: { experience: req.body } },
-            { new: true, runValidators: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.experience.push(req.body);
         await profile.save();
+
         res.status(201).json({ status: 'success', data: { experience: profile.experience } });
     } catch (err) { next(err); }
 };
 
 exports.removeExperience = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $pull: { experience: { _id: req.params.id } } },
-            { new: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.experience = profile.experience.filter(e => e._id.toString() !== req.params.id);
         await profile.save();
+
         res.status(200).json({ status: 'success', data: { experience: profile.experience } });
     } catch (err) { next(err); }
 };
@@ -150,26 +146,24 @@ exports.removeExperience = async (req, res, next) => {
 // ── Projects ──────────────────────────────────────────────────────────────
 exports.addProject = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $push: { projects: req.body } },
-            { new: true, runValidators: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.projects.push(req.body);
         await profile.save();
+
         res.status(201).json({ status: 'success', data: { projects: profile.projects } });
     } catch (err) { next(err); }
 };
 
 exports.removeProject = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $pull: { projects: { _id: req.params.id } } },
-            { new: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.projects = profile.projects.filter(p => p._id.toString() !== req.params.id);
         await profile.save();
+
         res.status(200).json({ status: 'success', data: { projects: profile.projects } });
     } catch (err) { next(err); }
 };
@@ -195,13 +189,12 @@ exports.addTechnicalSkill = async (req, res, next) => {
 
 exports.removeTechnicalSkill = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $pull: { technicalSkills: { _id: req.params.id } } },
-            { new: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.technicalSkills = profile.technicalSkills.filter(s => s._id.toString() !== req.params.id);
         await profile.save();
+
         res.status(200).json({ status: 'success', data: { technicalSkills: profile.technicalSkills } });
     } catch (err) { next(err); }
 };
@@ -227,13 +220,12 @@ exports.addSoftSkill = async (req, res, next) => {
 
 exports.removeSoftSkill = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $pull: { softSkills: { _id: req.params.id } } },
-            { new: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.softSkills = profile.softSkills.filter(s => s._id.toString() !== req.params.id);
         await profile.save();
+
         res.status(200).json({ status: 'success', data: { softSkills: profile.softSkills } });
     } catch (err) { next(err); }
 };
@@ -241,12 +233,12 @@ exports.removeSoftSkill = async (req, res, next) => {
 // ── Social Links ──────────────────────────────────────────────────────────
 exports.updateSocialLinks = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $set: { socialLinks: req.body } },
-            { new: true, runValidators: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.socialLinks = req.body;
+        await profile.save();
+
         res.status(200).json({ status: 'success', data: { socialLinks: profile.socialLinks } });
     } catch (err) { next(err); }
 };
@@ -254,12 +246,12 @@ exports.updateSocialLinks = async (req, res, next) => {
 // ── Career Goals ──────────────────────────────────────────────────────────
 exports.updateCareerGoals = async (req, res, next) => {
     try {
-        const profile = await StudentProfile.findOneAndUpdate(
-            { user: req.user._id },
-            { $set: { careerGoals: req.body } },
-            { new: true, runValidators: true }
-        );
+        const profile = await StudentProfile.findOne({ user: req.user._id });
         if (!profile) return next(new AppError('Profile not found.', 404));
+
+        profile.careerGoals = req.body;
+        await profile.save();
+
         res.status(200).json({ status: 'success', data: { careerGoals: profile.careerGoals } });
     } catch (err) { next(err); }
 };

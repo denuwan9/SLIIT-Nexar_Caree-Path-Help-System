@@ -147,15 +147,15 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                 <div className="flex flex-wrap gap-2">
                     {profile.technicalSkills?.length === 0 && <p className="text-sm italic text-slate-400">No technical skills added yet.</p>}
                     {profile.technicalSkills?.map((skill) => (
-                        <div key={skill._id} className="flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-xl border border-slate-200 bg-white shadow-sm group">
-                            <div className="flex flex-col">
-                                <span className="text-sm font-black text-slate-800 leading-tight">{skill.name}</span>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{skill.category}</span>
+                        <div key={skill._id} className="flex items-center gap-3 pl-3 pr-2 py-2 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all group">
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-black text-slate-800 leading-none truncate">{skill.name}</span>
+                                <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-slate-400 mt-1">{skill.category}</span>
                             </div>
-                            <span className={`text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-lg ml-2 ${LEVEL_COLORS[skill.level] || 'bg-slate-100'}`}>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg shrink-0 ${LEVEL_COLORS[skill.level] || 'bg-slate-100'}`}>
                                 {skill.level}
                             </span>
-                            <button onClick={() => handleRemoveTech(skill._id!)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100">
+                            <button onClick={() => handleRemoveTech(skill._id!)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100 shrink-0">
                                 <X size={14} />
                             </button>
                         </div>
@@ -205,12 +205,12 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                 <div className="flex flex-wrap gap-2">
                     {profile.softSkills?.length === 0 && <p className="text-sm italic text-slate-400">No soft skills added yet.</p>}
                     {profile.softSkills?.map((skill) => (
-                        <div key={skill._id} className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-xl border border-slate-200 bg-white shadow-sm group">
-                            <span className="text-sm font-black text-slate-800">{skill.name}</span>
-                            <span className={`text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-lg ml-2 ${LEVEL_COLORS[skill.level] || 'bg-slate-100'}`}>
+                        <div key={skill._id} className="flex items-center gap-3 pl-3 pr-2 py-2 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group">
+                            <span className="text-sm font-black text-slate-800 truncate">{skill.name}</span>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg shrink-0 ${LEVEL_COLORS[skill.level] || 'bg-slate-100'}`}>
                                 {skill.level}
                             </span>
-                            <button onClick={() => handleRemoveSoft(skill._id!)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100">
+                            <button onClick={() => handleRemoveSoft(skill._id!)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100 shrink-0">
                                 <X size={14} />
                             </button>
                         </div>

@@ -14,6 +14,12 @@ export const profileInfoSchema = z.object({
     country: z.string().max(100, 'Country name too long'),
     isOpenToRelocation: z.boolean(),
   }),
+  university: z.string().max(150, 'University name too long').optional().or(z.literal('')),
+  faculty: z.string().max(100, 'Faculty name too long').optional().or(z.literal('')),
+  major: z.string().max(100, 'Major name too long').optional().or(z.literal('')),
+  yearOfStudy: z.number().min(1).max(6).optional(),
+  gpa: z.number().min(0).max(4.0, 'GPA should be between 0 and 4.0').optional(),
+  studentId: z.string().max(20, 'Student ID too long').optional().or(z.literal('')),
   isActivelyLooking: z.boolean(),
   isPublic: z.boolean(),
 });
@@ -64,9 +70,25 @@ export const softSkillSchema = z.object({
   level: z.enum(['developing', 'proficient', 'advanced', 'expert']),
 });
 
+export const careerGoalsSchema = z.object({
+  targetRoles: z.string().optional().or(z.literal('')),
+  preferredIndustries: z.string().optional().or(z.literal('')),
+  careerObjective: z.string().max(600, 'Career objective too long').optional().or(z.literal('')),
+});
+
+export const socialLinksSchema = z.object({
+  linkedin: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  github: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  portfolio: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  twitter: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  stackoverflow: z.string().url('Invalid URL format').optional().or(z.literal('')),
+});
+
 export type ProfileInfoInput = z.infer<typeof profileInfoSchema>;
 export type EducationInput = z.infer<typeof educationSchema>;
 export type ExperienceInput = z.infer<typeof experienceSchema>;
 export type ProjectInput = z.infer<typeof projectSchema>;
 export type TechnicalSkillInput = z.infer<typeof technicalSkillSchema>;
 export type SoftSkillInput = z.infer<typeof softSkillSchema>;
+export type CareerGoalsInput = z.infer<typeof careerGoalsSchema>;
+export type SocialLinksInput = z.infer<typeof socialLinksSchema>;
