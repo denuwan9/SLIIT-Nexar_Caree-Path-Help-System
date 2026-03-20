@@ -5,7 +5,7 @@ import { Edit3, Trash2, Share2, Eye, PlusCircle } from 'lucide-react';
 import ProfileService from '../../services/profileService';
 import JobPostingService from '../../services/jobPostingService';
 import type { StudentProfile } from '../../types/profile';
-import type { JobPost, Visibility, PostingStatus } from '../../types/jobPosting';
+import type { JobPost, Visibility } from '../../types/jobPosting';
 
 const defaultJobTemplate: Omit<JobPost, 'id' | 'createdAt' | 'updatedAt' | 'views' | 'applications'> = {
   authorId: '',
@@ -39,13 +39,6 @@ const availableCareerFields = [
 
 const availableEmployments = ['full-time', 'part-time', 'internship', 'contract', 'freelance'];
 
-const defaultFilters = {
-  query: '',
-  careerField: 'All',
-  visibility: 'All',
-  status: 'All',
-};
-
 function safeName(profile: StudentProfile | null | undefined) {
   if (!profile) return '';
   return `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.fullName || 'Unknown User';
@@ -61,7 +54,6 @@ export const JobPostingDashboard: React.FC = () => {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   const [posts, setPosts] = useState<JobPost[]>(() => JobPostingService.getAll());
-  const [filters, setFilters] = useState(defaultFilters);
   const [isEditing, setIsEditing] = useState(false);
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Omit<JobPost, 'id' | 'createdAt' | 'updatedAt' | 'views' | 'applications'>>({
@@ -88,18 +80,8 @@ export const JobPostingDashboard: React.FC = () => {
   }, [posts]);
 
   const filteredPosts = useMemo(() => {
-    const q = filters.query.trim().toLowerCase();
-    return posts.filter(post => {
-      const matchedText = [post.title, post.careerField, post.summary, post.description, post.skills.join(' ')].some(value =>
-        value.toLowerCase().includes(q),
-      );
-      const matchField = filters.careerField === 'All' || post.careerField === filters.careerField;
-      const matchVisibility =
-        filters.visibility === 'All' || post.visibility === (filters.visibility.toLowerCase() as Visibility);
-      const matchStatus = filters.status === 'All' || post.status === (filters.status.toLowerCase() as PostingStatus);
-      return matchedText && matchField && matchVisibility && matchStatus;
-    });
-  }, [posts, filters]);
+    return posts;
+  }, [posts]);
 
   const autoPopulate = () => {
     if (!profile) {
@@ -413,43 +395,6 @@ export const JobPostingDashboard: React.FC = () => {
                 <li>Applications: <strong>{stats.totalApplications}</strong></li>
               </ul>
             </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">Filters</h3>
-              <input
-                value={filters.query}
-                onChange={e => setFilters(prev => ({ ...prev, query: e.target.value }))}
-                placeholder="Search posts..."
-                className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
-              />
-              <select
-                value={filters.careerField}
-                onChange={e => setFilters(prev => ({ ...prev, careerField: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
-              >
-                <option value="All">All fields</option>
-                {availableCareerFields.map(field => <option key={field} value={field}>{field}</option>)}
-              </select>
-              <select
-                value={filters.visibility}
-                onChange={e => setFilters(prev => ({ ...prev, visibility: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
-              >
-                <option value="All">All visibility</option>
-                <option value="public">Public</option>
-                <option value="private">Private</option>
-              </select>
-              <select
-                value={filters.status}
-                onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="All">All status</option>
-                <option value="active">Active</option>
-                <option value="closed">Closed</option>
-                <option value="draft">Draft</option>
-              </select>
-            </div>
           </aside>
         </div>
 
@@ -460,7 +405,7 @@ export const JobPostingDashboard: React.FC = () => {
           </div>
 
           {filteredPosts.length === 0 ? (
-            <div className="text-slate-500 text-sm py-8 text-center">No posts match current filters yet.</div>
+            <div className="text-slate-500 text-sm py-8 text-center">No posts yet.</div>
           ) : (
             <div className="space-y-4">
               {filteredPosts.map(post => (

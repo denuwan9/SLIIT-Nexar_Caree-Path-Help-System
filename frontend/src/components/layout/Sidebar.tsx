@@ -10,11 +10,13 @@ import {
     Settings,
     LogOut,
     Menu,
-    X
+    X,
+    Shield,
+    Form
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 
-const navItems = [
+const baseNavItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/profile', icon: User, label: 'Profile' },
     { to: '/advisor', icon: Sparkles, label: 'AI Advisor' },
@@ -65,8 +67,13 @@ const MobileNavItem: React.FC<{ to: string; icon: React.ElementType; label: stri
 );
 
 export const Sidebar: React.FC = () => {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    const navItems = [
+        ...baseNavItems,
+        ...(user?.role === 'admin' ? [{ to: '/admin', icon: Form, label: 'Job Posts' }] : []),
+    ];
 
     return (
         <>
