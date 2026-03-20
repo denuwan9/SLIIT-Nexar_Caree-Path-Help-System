@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './components/auth/AuthProvider';
+import { AuthProvider, useAuth } from './components/auth/AuthProvider';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Layout } from './components/layout/Layout';
 import { Toaster } from 'react-hot-toast';
@@ -13,6 +13,14 @@ const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const ComingSoon = React.lazy(() => import('./pages/ComingSoon'));
 const AiAdvisorPage = React.lazy(() => import('./pages/AiAdvisorPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+
+const RootRedirect: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  return <Navigate to="/dashboard" replace />;
+};
 
 const App: React.FC = () => {
   return (
@@ -47,21 +55,26 @@ const App: React.FC = () => {
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/advisor" element={<AiAdvisorPage />} />
-              <Route
-                path="/interviews"
-                element={<ComingSoon title="Interview Scheduling" description="Prepare for your dream role with our upcoming AI-powered interview simulators and scheduling system." />}
-              />
-              <Route
-                path="/study"
-                element={<ComingSoon title="Study Plan Generator" description="Master any skill with personalized, AI-curated study paths and resource tracking coming soon." />}
-              />
-              <Route
-                path="/careers"
-                element={<ComingSoon title="Career Explored" description="Discover your ideal career path with our advanced matching engine and job market analysis tools." />}
-              />
+              {/* Student Only */}
+              <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/advisor" element={<AiAdvisorPage />} />
+                <Route
+                  path="/interviews"
+                  element={<ComingSoon title="Interview Scheduling" description="Prepare for your dream role with our upcoming AI-powered interview simulators and scheduling system." />}
+                />
+                <Route
+                  path="/study"
+                  element={<ComingSoon title="Study Plan Generator" description="Master any skill with personalized, AI-curated study paths and resource tracking coming soon." />}
+                />
+                <Route
+                  path="/careers"
+                  element={<ComingSoon title="Career Explored" description="Discover your ideal career path with our advanced matching engine and job market analysis tools." />}
+                />
+              </Route>
+              
+              {/* Shared Routes */}
               <Route path="/settings" element={<SettingsPage />} />
 
               {/* Admin Only */}
@@ -69,14 +82,14 @@ const App: React.FC = () => {
                 path="/admin"
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
-                    <div className="card">Admin Dashboard Skeleton</div>
+                    <AdminDashboard />
                   </ProtectedRoute>
                 }
               />
             </Route>
 
             {/* Redirects */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<RootRedirect />} />
             <Route path="/unauthorized" element={<div className="flex h-screen items-center justify-center font-bold text-red-500 text-xl">403 - Unauthorized</div>} />
             <Route path="*" element={<div className="flex h-screen items-center justify-center font-bold text-slate-500 text-xl">404 - Not Found</div>} />
           </Routes>

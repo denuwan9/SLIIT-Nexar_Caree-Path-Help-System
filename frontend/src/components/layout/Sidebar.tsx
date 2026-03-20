@@ -23,6 +23,10 @@ const navItems = [
     { to: '/careers', icon: Briefcase, label: 'Careers' },
 ];
 
+const adminNavItems = [
+    { to: '/admin', icon: LayoutDashboard, label: 'Admin Dashboard' },
+];
+
 // Desktop sidebar icon item with tooltip
 const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
     <NavLink
@@ -64,8 +68,10 @@ const MobileNavItem: React.FC<{ to: string; icon: React.ElementType; label: stri
 );
 
 export const Sidebar: React.FC = () => {
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    const currentNavItems = user?.role === 'admin' ? adminNavItems : navItems;
 
     return (
         <>
@@ -82,7 +88,7 @@ export const Sidebar: React.FC = () => {
 
                     {/* Nav Items */}
                     <nav className="flex-1 flex flex-col gap-4 w-full items-center overflow-y-auto scrollbar-hide">
-                        {navItems.map(item => (
+                        {currentNavItems.map(item => (
                             <SidebarItem key={item.to} {...item} />
                         ))}
                     </nav>
@@ -121,7 +127,7 @@ export const Sidebar: React.FC = () => {
                 {/* Mobile dropdown nav */}
                 {mobileOpen && (
                     <nav className="px-5 pb-6 pt-4 grid grid-cols-3 gap-3 border-t border-slate-100 bg-white/95 backdrop-blur-3xl animate-in slide-in-from-top duration-300">
-                        {[...navItems, { to: '/settings', icon: Settings, label: 'Settings' }].map(item => (
+                        {[...currentNavItems, { to: '/settings', icon: Settings, label: 'Settings' }].map(item => (
                             <NavLink
                                 key={item.to}
                                 to={item.to}
@@ -148,7 +154,7 @@ export const Sidebar: React.FC = () => {
             {/* ─── Mobile Bottom Nav Bar ─── */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl border-t border-white/50 pb-safe">
                 <nav className="flex items-center justify-around px-2 py-2.5">
-                    {navItems.map(item => (
+                    {currentNavItems.map(item => (
                         <MobileNavItem key={item.to} {...item} />
                     ))}
                 </nav>
