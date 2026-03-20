@@ -13,6 +13,8 @@ const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const ComingSoon = React.lazy(() => import('./pages/ComingSoon'));
 const AiAdvisorPage = React.lazy(() => import('./pages/AiAdvisorPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const JobPostingDashboard = React.lazy(() => import('./pages/jobPosting/JobPostingDashboard'));
+const PublicJobPost = React.lazy(() => import('./pages/jobPosting/PublicJobPost'));
 
 const App: React.FC = () => {
   return (
@@ -62,6 +64,8 @@ const App: React.FC = () => {
                 path="/careers"
                 element={<ComingSoon title="Career Explored" description="Discover your ideal career path with our advanced matching engine and job market analysis tools." />}
               />
+              <Route path="/job-posting" element={<JobPostingDashboard />} />
+              <Route path="/job-posting/public/:id" element={<PublicJobPost />} />
               <Route path="/settings" element={<SettingsPage />} />
 
               {/* Admin Only */}
