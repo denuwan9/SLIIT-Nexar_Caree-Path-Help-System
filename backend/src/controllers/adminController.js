@@ -26,14 +26,22 @@ exports.getAllUsers = async (req, res, next) => {
  */
 exports.getAllStudents = async (req, res, next) => {
     try {
+        // Find all student profiles, but strictly populate users who are only 'students'
         const students = await StudentProfile.find()
-            .populate('user', 'email isActive lastLogin')
+            .populate({
+                path: 'user',
+                match: { role: 'student' },
+                select: 'email isActive lastLogin role'
+            })
             .sort('-profileCompleteness');
+            
+        // Filter out profiles where the user role did not match 'student' (the populated user is null)
+        const validStudents = students.filter(student => student.user !== null);
             
         res.status(200).json({
             status: 'success',
-            results: students.length,
-            data: { students }
+            results: validStudents.length,
+            data: { students: validStudents }
         });
     } catch (error) {
         next(error);
@@ -170,4 +178,24 @@ exports.resetUserPassword = async (req, res, next) => {
     }
 };
 
+/**
+ * GET /api/v1/admin/students/:id
+ * Protected (Admin) — Get a single detailed student profile
+ */
+exports.getStudentProfileById = async (req, res, next) => {
+    try {
+        const student = await StudentProfile.findById(req.params.id)
+            .populate('user', 'firstName lastName email isActive lastLogin role');
 
+        if (!student) {
+            return next(new AppError('No student profile found with that ID', 404));
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: { student }
+        });
+    } catch (error) {
+        next(error);
+    }
+};

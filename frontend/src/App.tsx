@@ -14,6 +14,8 @@ const ComingSoon = React.lazy(() => import('./pages/ComingSoon'));
 const AiAdvisorPage = React.lazy(() => import('./pages/AiAdvisorPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const AdminCareerProfiles = React.lazy(() => import('./pages/AdminCareerProfiles'));
+const AdminStudentPreview = React.lazy(() => import('./pages/AdminStudentPreview'));
 
 const RootRedirect: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -78,14 +80,11 @@ const App: React.FC = () => {
               <Route path="/settings" element={<SettingsPage />} />
 
               {/* Admin Only */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/profiles" element={<AdminCareerProfiles />} />
+                <Route path="/admin/profiles/:id" element={<AdminStudentPreview />} />
+              </Route>
             </Route>
 
             {/* Redirects */}

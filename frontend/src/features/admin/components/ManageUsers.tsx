@@ -11,6 +11,7 @@ export const ManageUsers: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [roleFilter, setRoleFilter] = useState('all');
 
     // Modal States
     const [confirmModal, setConfirmModal] = useState<{
@@ -129,27 +130,44 @@ export const ManageUsers: React.FC = () => {
 
     const filteredUsers = users.filter(user => {
         const query = searchQuery.toLowerCase();
-        return (
+        const matchesSearch = (
             user.firstName.toLowerCase().includes(query) ||
             user.lastName.toLowerCase().includes(query) ||
             user.email.toLowerCase().includes(query) ||
             user.role.toLowerCase().includes(query)
         );
+        const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+        
+        return matchesSearch && matchesRole;
     });
 
     return (
         <div className="pb-10">
-            <div className="flex justify-between items-center mb-6 px-2">
-                <h3 className="text-xl font-black text-slate-800">System Members</h3>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search users..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[250px] transition-shadow shadow-sm"
-                    />
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-2 gap-4">
+                <h3 className="text-xl font-black text-slate-800 self-start sm:self-auto">System Members</h3>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <div className="relative min-w-[150px]">
+                        <select
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer shadow-sm transition-shadow uppercase tracking-wider"
+                        >
+                            <option value="all">All Roles</option>
+                            <option value="student">Students</option>
+                            <option value="admin">Admins</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                    </div>
+                    <div className="relative flex-1 sm:flex-none">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search users..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:min-w-[250px] transition-shadow shadow-sm bg-white"
+                        />
+                    </div>
                 </div>
             </div>
             

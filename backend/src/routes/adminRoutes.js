@@ -9,6 +9,7 @@ router.use(restrictTo('admin'));
 
 router.get('/users', adminController.getAllUsers);
 router.get('/students', adminController.getAllStudents);
+router.get('/students/:id', adminController.getStudentProfileById);
 
 router.patch('/users/:id/status', adminController.toggleUserStatus);
 router.delete('/users/:id', adminController.deleteUser);

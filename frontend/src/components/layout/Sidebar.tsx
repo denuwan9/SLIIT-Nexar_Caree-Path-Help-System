@@ -24,7 +24,8 @@ const navItems = [
 ];
 
 const adminNavItems = [
-    { to: '/admin', icon: LayoutDashboard, label: 'Admin Dashboard' },
+    { to: '/admin', icon: LayoutDashboard, label: 'Command Center' },
+    { to: '/admin/profiles', icon: Briefcase, label: 'Career Profiles' },
 ];
 
 // Desktop sidebar icon item with tooltip

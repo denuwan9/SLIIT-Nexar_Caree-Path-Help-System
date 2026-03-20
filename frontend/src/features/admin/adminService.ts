@@ -39,6 +39,11 @@ const adminService = {
         return response.data.data.students;
     },
 
+    getStudentProfileById: async (id: string): Promise<any> => {
+        const response = await api.get(`/admin/students/${id}`);
+        return response.data.data.student;
+    },
+
     toggleUserStatus: async (userId: string): Promise<UserDTO> => {
         const response = await api.patch(`/admin/users/${userId}/status`);
         return response.data.data.user;
