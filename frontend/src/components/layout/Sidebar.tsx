@@ -28,10 +28,10 @@ const adminNavItems = [
     { to: '/admin/profiles', icon: Briefcase, label: 'Career Profiles' },
 ];
 
-// Desktop sidebar icon item with tooltip
 const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
     <NavLink
         to={to}
+        end
         title={label}
         className={({ isActive }) => `
             group relative flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-500
@@ -48,10 +48,10 @@ const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string
     </NavLink>
 );
 
-// Mobile bottom nav item optimized for light theme
 const MobileNavItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
     <NavLink
         to={to}
+        end
         className={({ isActive }) => `
             flex flex-col items-center gap-1.5 px-3 py-2 transition-all duration-300
             ${isActive ? 'text-purple-600 scale-110' : 'text-slate-400'}
@@ -132,6 +132,7 @@ export const Sidebar: React.FC = () => {
                             <NavLink
                                 key={item.to}
                                 to={item.to}
+                                end
                                 onClick={() => setMobileOpen(false)}
                                 className={({ isActive }) =>
                                     `flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] text-center transition-all duration-300 ${isActive ? 'bg-gradient-to-br from-purple-600 to-cyan-600 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50'}`

@@ -21,11 +21,17 @@ export interface StudentAnalyticsDTO {
     };
     firstName: string;
     lastName: string;
+    bio?: string;
     major: string;
     university?: string;
     profileCompleteness: number;
     gpa?: number;
     yearOfStudy?: number;
+    avatarUrl?: string;
+    isActivelyLooking?: boolean;
+    careerGoals?: {
+        targetRoles?: string[];
+    };
 }
 
 const adminService = {
