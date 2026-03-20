@@ -12,10 +12,14 @@ const StatCard: React.FC<{ icon: any; label: string; value: string | number; col
                 <Icon size={20} className="text-white" />
             </div>
             <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">{label}</p>
-                <div className="flex items-baseline gap-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{label}</p>
+                <div className="flex flex-col justify-center">
                     <p className="text-xl font-black text-slate-900 leading-none">{value}</p>
-                    {subtitle && <span className="text-xs font-bold text-slate-400">{subtitle}</span>}
+                    {subtitle && (
+                        <p className="text-[10px] font-bold text-slate-400 mt-1 leading-tight max-w-[100px]">
+                            {subtitle}
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
