@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { Plus, X, Award, Loader2, AlertCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import profileService from '../../../services/profileService';
 import type { StudentProfile } from '../../../types/profile';
+import { 
+    technicalSkillSchema, 
+    softSkillSchema, 
+    type TechnicalSkillInput, 
+    type SoftSkillInput 
+} from '../profileSchemas';
+import toast from 'react-hot-toast';
 
 interface Props {
     profile: StudentProfile;
@@ -18,20 +27,29 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
-    const [techSkill, setTechSkill] = useState({ name: '', category: 'language', level: 'intermediate' });
-    const [softSkill, setSoftSkill] = useState({ name: '', level: 'proficient' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleAddTech = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const techForm = useForm<TechnicalSkillInput>({
+        resolver: zodResolver(technicalSkillSchema),
+        defaultValues: { name: '', category: 'language', level: 'intermediate' }
+    });
+
+    const softForm = useForm<SoftSkillInput>({
+        resolver: zodResolver(softSkillSchema),
+        defaultValues: { name: '', level: 'proficient' }
+    });
+
+    const onAddTech = async (data: TechnicalSkillInput) => {
         try {
             setLoading(true); setError(null);
-            const technicalSkills = await profileService.addTechnicalSkill(techSkill as any);
+            const technicalSkills = await profileService.addTechnicalSkill(data as any);
             setProfile({ ...profile, technicalSkills });
-            setTechSkill({ name: '', category: 'language', level: 'intermediate' });
+            techForm.reset();
+            toast.success('Technical skill added');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to add tech skill');
+            toast.error('Failed to add technical skill');
         } finally { setLoading(false); }
     };
 
@@ -39,18 +57,23 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
         try {
             const technicalSkills = await profileService.removeTechnicalSkill(id);
             setProfile({ ...profile, technicalSkills });
-        } catch (err: any) { setError('Failed to remove skill'); }
+            toast.success('Skill removed');
+        } catch (err: any) { 
+            setError('Failed to remove skill');
+            toast.error('Failed to remove skill');
+        }
     };
 
-    const handleAddSoft = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onAddSoft = async (data: SoftSkillInput) => {
         try {
             setLoading(true); setError(null);
-            const softSkills = await profileService.addSoftSkill(softSkill as any);
+            const softSkills = await profileService.addSoftSkill(data as any);
             setProfile({ ...profile, softSkills });
-            setSoftSkill({ name: '', level: 'proficient' });
+            softForm.reset();
+            toast.success('Soft skill added');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to add soft skill');
+            toast.error('Failed to add soft skill');
         } finally { setLoading(false); }
     };
 
@@ -58,7 +81,11 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
         try {
             const softSkills = await profileService.removeSoftSkill(id);
             setProfile({ ...profile, softSkills });
-        } catch (err: any) { setError('Failed to remove skill'); }
+            toast.success('Skill removed');
+        } catch (err: any) { 
+            setError('Failed to remove skill');
+            toast.error('Failed to remove skill');
+        }
     };
 
     return (
@@ -78,14 +105,20 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                     <p className="text-sm font-bold text-slate-500 mt-1">Languages, frameworks, tools, and platforms.</p>
                 </div>
 
-                <form onSubmit={handleAddTech} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-100 items-end">
+                <form onSubmit={techForm.handleSubmit(onAddTech)} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-100 items-end">
                     <div className="md:col-span-2 space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Skill Name</label>
-                        <input type="text" required value={techSkill.name} onChange={e => setTechSkill({ ...techSkill, name: e.target.value })} placeholder="e.g. React" className="input-field py-2 text-sm" />
+                        <input 
+                            type="text" 
+                            {...techForm.register('name')} 
+                            placeholder="e.g. React" 
+                            className={`input-field py-2 text-sm ${techForm.formState.errors.name ? 'border-red-500' : ''}`} 
+                        />
+                        {techForm.formState.errors.name && <p className="text-[10px] font-bold text-red-500">{techForm.formState.errors.name.message}</p>}
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Category</label>
-                        <select value={techSkill.category} onChange={e => setTechSkill({ ...techSkill, category: e.target.value })} className="input-field py-2 text-sm">
+                        <select {...techForm.register('category')} className="input-field py-2 text-sm">
                             <option value="language">Language</option>
                             <option value="framework">Framework</option>
                             <option value="database">Database</option>
@@ -96,7 +129,7 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Level</label>
-                        <select value={techSkill.level} onChange={e => setTechSkill({ ...techSkill, level: e.target.value })} className="input-field py-2 text-sm">
+                        <select {...techForm.register('level')} className="input-field py-2 text-sm">
                             <option value="beginner">Beginner</option>
                             <option value="intermediate">Intermediate</option>
                             <option value="advanced">Advanced</option>
@@ -105,8 +138,8 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">&nbsp;</label>
-                        <button type="submit" disabled={loading || !techSkill.name} className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2">
-                            {loading && techSkill.name ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Add Skill
+                        <button type="submit" disabled={loading} className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2">
+                            {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Add Skill
                         </button>
                     </div>
                 </form>
@@ -114,15 +147,15 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                 <div className="flex flex-wrap gap-2">
                     {profile.technicalSkills?.length === 0 && <p className="text-sm italic text-slate-400">No technical skills added yet.</p>}
                     {profile.technicalSkills?.map((skill) => (
-                        <div key={skill._id} className="flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-xl border border-slate-200 bg-white shadow-sm group">
-                            <div className="flex flex-col">
-                                <span className="text-sm font-black text-slate-800 leading-tight">{skill.name}</span>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{skill.category}</span>
+                        <div key={skill._id} className="flex items-center gap-3 pl-3 pr-2 py-2 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all group">
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-black text-slate-800 leading-none truncate">{skill.name}</span>
+                                <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-slate-400 mt-1">{skill.category}</span>
                             </div>
-                            <span className={`text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-lg ml-2 ${LEVEL_COLORS[skill.level]}`}>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg shrink-0 ${LEVEL_COLORS[skill.level] || 'bg-slate-100'}`}>
                                 {skill.level}
                             </span>
-                            <button onClick={() => handleRemoveTech(skill._id!)} className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100">
+                            <button onClick={() => handleRemoveTech(skill._id!)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100 shrink-0">
                                 <X size={14} />
                             </button>
                         </div>
@@ -141,14 +174,20 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                     <p className="text-sm font-bold text-slate-500 mt-1">Interpersonal and non-technical proficiencies.</p>
                 </div>
 
-                <form onSubmit={handleAddSoft} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-100 items-end">
+                <form onSubmit={softForm.handleSubmit(onAddSoft)} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-100 items-end">
                     <div className="md:col-span-2 space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Skill Name</label>
-                        <input type="text" required value={softSkill.name} onChange={e => setSoftSkill({ ...softSkill, name: e.target.value })} placeholder="e.g. Leadership, Communication" className="input-field py-2 text-sm" />
+                        <input 
+                            type="text" 
+                            {...softForm.register('name')} 
+                            placeholder="e.g. Leadership, Communication" 
+                            className={`input-field py-2 text-sm ${softForm.formState.errors.name ? 'border-red-500' : ''}`} 
+                        />
+                        {softForm.formState.errors.name && <p className="text-[10px] font-bold text-red-500">{softForm.formState.errors.name.message}</p>}
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Level</label>
-                        <select value={softSkill.level} onChange={e => setSoftSkill({ ...softSkill, level: e.target.value })} className="input-field py-2 text-sm">
+                        <select {...softForm.register('level')} className="input-field py-2 text-sm">
                             <option value="developing">Developing</option>
                             <option value="proficient">Proficient</option>
                             <option value="advanced">Advanced</option>
@@ -157,8 +196,8 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">&nbsp;</label>
-                        <button type="submit" disabled={loading || !softSkill.name} className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2">
-                            {loading && softSkill.name ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Add Skill
+                        <button type="submit" disabled={loading} className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2">
+                            {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Add Skill
                         </button>
                     </div>
                 </form>
@@ -166,12 +205,12 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                 <div className="flex flex-wrap gap-2">
                     {profile.softSkills?.length === 0 && <p className="text-sm italic text-slate-400">No soft skills added yet.</p>}
                     {profile.softSkills?.map((skill) => (
-                        <div key={skill._id} className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-xl border border-slate-200 bg-white shadow-sm group">
-                            <span className="text-sm font-black text-slate-800">{skill.name}</span>
-                            <span className={`text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-lg ml-2 ${LEVEL_COLORS[skill.level]}`}>
+                        <div key={skill._id} className="flex items-center gap-3 pl-3 pr-2 py-2 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group">
+                            <span className="text-sm font-black text-slate-800 truncate">{skill.name}</span>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg shrink-0 ${LEVEL_COLORS[skill.level] || 'bg-slate-100'}`}>
                                 {skill.level}
                             </span>
-                            <button onClick={() => handleRemoveSoft(skill._id!)} className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100">
+                            <button onClick={() => handleRemoveSoft(skill._id!)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100 shrink-0">
                                 <X size={14} />
                             </button>
                         </div>

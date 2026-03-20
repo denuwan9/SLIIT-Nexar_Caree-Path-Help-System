@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, X, BookOpen, GraduationCap, Loader2, AlertCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import profileService from '../../../services/profileService';
-import type { StudentProfile, Education, DegreeType } from '../../../types/profile';
+import type { StudentProfile } from '../../../types/profile';
+import { educationSchema, type EducationInput } from '../profileSchemas';
+import toast from 'react-hot-toast';
 
 interface Props {
     profile: StudentProfile;
@@ -13,28 +17,51 @@ const EducationTab: React.FC<Props> = ({ profile, setProfile }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const initialForm: Omit<Education, '_id'> = {
-        institution: '', degree: "Bachelor's", field: '',
-        startYear: new Date().getFullYear(),
-        isCurrent: true,
-        gpa: undefined, description: ''
-    };
-    const [formData, setFormData] = useState<Omit<Education, '_id'>>(initialForm);
+    const {
+        register,
+        handleSubmit,
+        reset,
+        watch,
+        formState: { errors },
+    } = useForm<EducationInput>({
+        resolver: zodResolver(educationSchema),
+        defaultValues: {
+            institution: '',
+            degree: "Bachelor's",
+            field: '',
+            startYear: new Date().getFullYear(),
+            isCurrent: true,
+            description: '',
+        },
+    });
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const isCurrent = watch('isCurrent');
+
+    const onSubmit = async (data: EducationInput) => {
         try {
-            setLoading(true); setError(null);
-            const dataToSubmit = { ...formData };
-            if (dataToSubmit.isCurrent) delete dataToSubmit.endYear;
+            setLoading(true);
+            setError(null);
+            
+            // Clean up data before submit
+            const dataToSubmit = { ...data };
+            if (dataToSubmit.isCurrent) {
+                delete dataToSubmit.endYear;
+            }
+            if (!dataToSubmit.gpa) {
+                delete dataToSubmit.gpa;
+            }
 
-            const education = await profileService.addEducation(dataToSubmit);
+            const education = await profileService.addEducation(dataToSubmit as any);
             setProfile({ ...profile, education });
-            setFormData(initialForm);
+            reset();
             setIsAdding(false);
+            toast.success('Education entry added');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to add education');
-        } finally { setLoading(false); }
+            toast.error('Failed to add education');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleRemove = async (id: string) => {
@@ -68,7 +95,7 @@ const EducationTab: React.FC<Props> = ({ profile, setProfile }) => {
             )}
 
             {isAdding && (
-                <form onSubmit={handleSubmit} className="p-6 rounded-3xl bg-slate-50 border border-slate-200 animate-in slide-in-from-top-4 duration-300">
+                <form onSubmit={handleSubmit(onSubmit)} className="p-6 rounded-3xl bg-slate-50 border border-slate-200 animate-in slide-in-from-top-4 duration-300">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-black text-slate-900">Add Academic Background</h3>
                         <button type="button" onClick={() => setIsAdding(false)} className="p-1 text-slate-400 hover:text-slate-900 transition-colors">
@@ -79,11 +106,20 @@ const EducationTab: React.FC<Props> = ({ profile, setProfile }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Institution</label>
-                            <input type="text" required value={formData.institution} onChange={e => setFormData({ ...formData, institution: e.target.value })} placeholder="SLIIT" className="input-field py-2" />
+                            <input 
+                                type="text" 
+                                {...register('institution')} 
+                                placeholder="SLIIT" 
+                                className={`input-field py-2 ${errors.institution ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.institution && <p className="text-[10px] font-bold text-red-500">{errors.institution.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Degree/Level</label>
-                            <select value={formData.degree} onChange={e => setFormData({ ...formData, degree: e.target.value as DegreeType })} className="input-field py-2">
+                            <select 
+                                {...register('degree')} 
+                                className={`input-field py-2 ${errors.degree ? 'border-red-500 bg-red-50' : ''}`}
+                            >
                                 <option value="Certificate">Certificate</option>
                                 <option value="Diploma">Diploma</option>
                                 <option value="HND">HND</option>
@@ -92,42 +128,76 @@ const EducationTab: React.FC<Props> = ({ profile, setProfile }) => {
                                 <option value="PhD">PhD</option>
                                 <option value="Other">Other</option>
                             </select>
+                            {errors.degree && <p className="text-[10px] font-bold text-red-500">{errors.degree.message}</p>}
                         </div>
                         <div className="space-y-1.5 md:col-span-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Field of Study</label>
-                            <input type="text" required value={formData.field} onChange={e => setFormData({ ...formData, field: e.target.value })} placeholder="Software Engineering" className="input-field py-2" />
+                            <input 
+                                type="text" 
+                                {...register('field')} 
+                                placeholder="Software Engineering" 
+                                className={`input-field py-2 ${errors.field ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.field && <p className="text-[10px] font-bold text-red-500">{errors.field.message}</p>}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Start Year</label>
-                            <input type="number" required min="1990" max="2100" value={formData.startYear} onChange={e => setFormData({ ...formData, startYear: Number(e.target.value) })} className="input-field py-2" />
+                            <input 
+                                type="number" 
+                                {...register('startYear', { valueAsNumber: true })} 
+                                className={`input-field py-2 ${errors.startYear ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.startYear && <p className="text-[10px] font-bold text-red-500">{errors.startYear.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">End/Expected Year</label>
-                            <input type="number" disabled={formData.isCurrent} required={!formData.isCurrent} min="1990" max="2100" value={formData.endYear || ''} onChange={e => setFormData({ ...formData, endYear: Number(e.target.value) })} className="input-field py-2 disabled:bg-slate-100" />
+                            <input 
+                                type="number" 
+                                disabled={isCurrent} 
+                                {...register('endYear', { valueAsNumber: true })} 
+                                className={`input-field py-2 disabled:bg-slate-100 ${errors.endYear ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.endYear && <p className="text-[10px] font-bold text-red-500">{errors.endYear.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">GPA (Optional)</label>
-                            <input type="number" step="0.01" min="0" max="4.0" value={formData.gpa || ''} onChange={e => setFormData({ ...formData, gpa: e.target.value ? Number(e.target.value) : undefined })} placeholder="3.8" className="input-field py-2" />
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                {...register('gpa', { valueAsNumber: true })} 
+                                placeholder="3.8" 
+                                className={`input-field py-2 ${errors.gpa ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.gpa && <p className="text-[10px] font-bold text-red-500">{errors.gpa.message}</p>}
                         </div>
                     </div>
 
                     <div className="mb-5">
                         <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={formData.isCurrent} onChange={e => setFormData({ ...formData, isCurrent: e.target.checked })} className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500" />
+                            <input 
+                                type="checkbox" 
+                                {...register('isCurrent')} 
+                                className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500" 
+                            />
                             <span className="text-sm font-bold text-slate-700">I am currently studying here</span>
                         </label>
                     </div>
 
                     <div className="space-y-1.5 mb-6">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description / Achievements (Optional)</label>
-                        <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="E.g. Deans List 2023, President of IT Club..." className="input-field min-h-[80px] py-2 resize-y" maxLength={400} />
+                        <textarea 
+                            {...register('description')} 
+                            placeholder="E.g. Deans List 2023, President of IT Club..." 
+                            className={`input-field min-h-[80px] py-2 resize-y ${errors.description ? 'border-red-500 bg-red-50' : ''}`} 
+                        />
+                        {errors.description && <p className="text-[10px] font-bold text-red-500">{errors.description.message}</p>}
                     </div>
 
                     <div className="flex justify-end gap-3">
-                        <button type="button" onClick={() => setIsAdding(false)} className="btn-secondary py-2">Cancel</button>
+                        <button type="button" onClick={() => { setIsAdding(false); reset(); }} className="btn-secondary py-2">Cancel</button>
                         <button type="submit" disabled={loading} className="btn-primary py-2 w-32 flex justify-center bg-amber-600 hover:bg-amber-700 ring-amber-500">
                             {loading ? <Loader2 size={18} className="animate-spin" /> : 'Save Entry'}
                         </button>

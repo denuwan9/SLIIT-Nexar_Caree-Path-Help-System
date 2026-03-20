@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Camera, Save, Loader2, AlertCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import profileService from '../../../services/profileService';
 import type { StudentProfile } from '../../../types/profile';
+import { profileInfoSchema, type ProfileInfoInput } from '../profileSchemas';
+import toast from 'react-hot-toast';
 
 interface Props {
     profile: StudentProfile;
@@ -9,25 +13,62 @@ interface Props {
 }
 
 const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
-    const [formData, setFormData] = useState({
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        headline: profile.headline || '',
-        bio: profile.bio || '',
-        phone: profile.phone || '',
-        location: {
-            city: profile.location?.city || '',
-            country: profile.location?.country || 'Sri Lanka',
-            isOpenToRelocation: profile.location?.isOpenToRelocation || false,
-        },
-        isActivelyLooking: profile.isActivelyLooking || false,
-        isPublic: profile.isPublic ?? true,
-    });
-
-    const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors, isSubmitting, isDirty },
+    } = useForm<ProfileInfoInput>({
+        resolver: zodResolver(profileInfoSchema),
+        defaultValues: {
+            firstName: profile.firstName || '',
+            lastName: profile.lastName || '',
+            headline: profile.headline || '',
+            bio: profile.bio || '',
+            phone: profile.phone || '',
+            location: {
+                city: profile.location?.city || '',
+                country: profile.location?.country || 'Sri Lanka',
+                isOpenToRelocation: !!profile.location?.isOpenToRelocation,
+            },
+            university: profile.university || '',
+            faculty: profile.faculty || '',
+            major: profile.major || '',
+            yearOfStudy: profile.yearOfStudy || undefined,
+            gpa: profile.gpa || undefined,
+            studentId: profile.studentId || undefined,
+            isActivelyLooking: !!profile.isActivelyLooking,
+            isPublic: profile.isPublic ?? true,
+        },
+    });
+
+    // Update form when profile prop changes
+    useEffect(() => {
+        reset({
+            firstName: profile.firstName || '',
+            lastName: profile.lastName || '',
+            headline: profile.headline || '',
+            bio: profile.bio || '',
+            phone: profile.phone || '',
+            location: {
+                city: profile.location?.city || '',
+                country: profile.location?.country || 'Sri Lanka',
+                isOpenToRelocation: !!profile.location?.isOpenToRelocation,
+            },
+            university: profile.university || '',
+            faculty: profile.faculty || '',
+            major: profile.major || '',
+            yearOfStudy: profile.yearOfStudy || undefined,
+            gpa: profile.gpa || undefined,
+            studentId: profile.studentId || undefined,
+            isActivelyLooking: !!profile.isActivelyLooking,
+            isPublic: profile.isPublic ?? true,
+        });
+    }, [profile, reset]);
 
     const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -38,27 +79,27 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
             setError(null);
             const { avatarUrl, profile: updatedProfile } = await profileService.uploadAvatar(file);
             setProfile({ ...profile, avatarUrl, ...updatedProfile });
+            toast.success('Avatar updated successfully');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Avatar upload failed');
+            toast.error('Avatar upload failed');
         } finally {
             setUploading(false);
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onFormSubmit = async (data: ProfileInfoInput) => {
         try {
-            setLoading(true);
             setError(null);
             setSuccess(false);
-            const updated = await profileService.updateMe(formData);
+            const updated = await profileService.updateMe(data);
             setProfile({ ...profile, ...updated });
             setSuccess(true);
+            toast.success('Profile saved successfully');
             setTimeout(() => setSuccess(false), 3000);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to save profile');
-        } finally {
-            setLoading(false);
+            toast.error('Failed to save profile');
         }
     };
 
@@ -69,7 +110,7 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
                 <p className="text-sm font-bold text-slate-500">Update your basic details and profile photo.</p>
             </div>
 
-            {/* Avatar Upload */}
+            {/* Avatar Upload Container remains same... */}
             <div className="flex items-center gap-6 p-6 rounded-3xl bg-slate-50 border border-slate-100">
                 <div className="relative group">
                     <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white border-4 border-white shadow-sm">
@@ -102,86 +143,189 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">First Name</label>
-                        <input
-                            type="text"
-                            required
-                            value={formData.firstName}
-                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                            className="input-field"
-                            placeholder="John"
-                        />
+            <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-10">
+                {/* Basic Info Section */}
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">First Name</label>
+                            <input
+                                {...register('firstName')}
+                                type="text"
+                                className={`input-field ${errors.firstName ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="John"
+                            />
+                            {errors.firstName && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.firstName.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Last Name</label>
+                            <input
+                                {...register('lastName')}
+                                type="text"
+                                className={`input-field ${errors.lastName ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="Doe"
+                            />
+                            {errors.lastName && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.lastName.message}</p>
+                            )}
+                        </div>
                     </div>
+
                     <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">Last Name</label>
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">Professional Headline</label>
                         <input
+                            {...register('headline')}
                             type="text"
-                            required
-                            value={formData.lastName}
-                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                            className="input-field"
-                            placeholder="Doe"
+                            className={`input-field ${errors.headline ? 'border-red-500 bg-red-50' : ''}`}
+                            placeholder="e.g. Full Stack Developer | React Enthusiast"
                         />
+                        {errors.headline && (
+                            <p className="text-[10px] font-bold text-red-500 mt-1">{errors.headline.message}</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">About Me (Bio)</label>
+                        <textarea
+                            {...register('bio')}
+                            className={`input-field min-h-[120px] resize-y ${errors.bio ? 'border-red-500 bg-red-50' : ''}`}
+                            placeholder="Write a short summary about yourself..."
+                        />
+                        {errors.bio && (
+                            <p className="text-[10px] font-bold text-red-500 mt-1">{errors.bio.message}</p>
+                        )}
                     </div>
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-500">Professional Headline</label>
-                    <input
-                        type="text"
-                        value={formData.headline}
-                        onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
-                        className="input-field"
-                        placeholder="e.g. Full Stack Developer | React Enthusiast"
-                        maxLength={120}
-                    />
+                {/* Academic Information Section */}
+                <div className="pt-8 border-t border-slate-100 flex flex-col gap-6">
+                    <div>
+                        <h3 className="text-lg font-black tracking-tight text-slate-900">Academic Information</h3>
+                        <p className="text-sm font-bold text-slate-500">Your current university and study status.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">University</label>
+                            <input
+                                {...register('university')}
+                                type="text"
+                                className={`input-field ${errors.university ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="e.g. SLIIT"
+                            />
+                            {errors.university && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.university.message}</p>}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Faculty</label>
+                            <input
+                                {...register('faculty')}
+                                type="text"
+                                className={`input-field ${errors.faculty ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="e.g. Computing"
+                            />
+                            {errors.faculty && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.faculty.message}</p>}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Major / Degree</label>
+                            <input
+                                {...register('major')}
+                                type="text"
+                                className={`input-field ${errors.major ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="e.g. Information Technology"
+                            />
+                            {errors.major && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.major.message}</p>}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-6 md:col-span-2">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Year of Study</label>
+                                <input
+                                    {...register('yearOfStudy', { valueAsNumber: true })}
+                                    type="number"
+                                    min="1"
+                                    max="6"
+                                    className={`input-field ${errors.yearOfStudy ? 'border-red-500 bg-red-50' : ''}`}
+                                    placeholder="1-4"
+                                />
+                                {errors.yearOfStudy && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.yearOfStudy.message}</p>}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Current GPA</label>
+                                <input
+                                    {...register('gpa', { valueAsNumber: true })}
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="4.0"
+                                    className={`input-field ${errors.gpa ? 'border-red-500 bg-red-50' : ''}`}
+                                    placeholder="0.00 - 4.00"
+                                />
+                                {errors.gpa && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.gpa.message}</p>}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Student ID</label>
+                                <input
+                                    {...register('studentId')}
+                                    type="text"
+                                    className={`input-field ${errors.studentId ? 'border-red-500 bg-red-50' : ''}`}
+                                    placeholder="e.g. IT12345678"
+                                />
+                                {errors.studentId && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.studentId.message}</p>}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-500">About Me (Bio)</label>
-                    <textarea
-                        value={formData.bio}
-                        onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                        className="input-field min-h-[120px] resize-y"
-                        placeholder="Write a short summary about yourself to help the AI understand your background and goals..."
-                        maxLength={800}
-                    />
-                    <div className="text-right text-[10px] text-slate-400 font-bold">{formData.bio.length}/800</div>
-                </div>
+                {/* Location Information Section */}
+                <div className="pt-8 border-t border-slate-100 space-y-6">
+                    <div>
+                        <h3 className="text-lg font-black tracking-tight text-slate-900">Location & Contact</h3>
+                        <p className="text-sm font-bold text-slate-500">How researchers and peers can find you.</p>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">City</label>
-                        <input
-                            type="text"
-                            value={formData.location.city}
-                            onChange={(e) => setFormData({ ...formData, location: { ...formData.location, city: e.target.value } })}
-                            className="input-field"
-                            placeholder="Colombo"
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">Country</label>
-                        <input
-                            type="text"
-                            value={formData.location.country}
-                            onChange={(e) => setFormData({ ...formData, location: { ...formData.location, country: e.target.value } })}
-                            className="input-field"
-                            placeholder="Sri Lanka"
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">Phone</label>
-                        <input
-                            type="tel"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            className="input-field"
-                            placeholder="+94 7X XXX XXXX"
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">City</label>
+                            <input
+                                {...register('location.city')}
+                                type="text"
+                                className={`input-field ${errors.location?.city ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="Colombo"
+                            />
+                            {errors.location?.city && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.location.city.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Country</label>
+                            <input
+                                {...register('location.country')}
+                                type="text"
+                                className={`input-field ${errors.location?.country ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="Sri Lanka"
+                            />
+                            {errors.location?.country && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.location.country.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Phone</label>
+                            <input
+                                {...register('phone')}
+                                type="tel"
+                                className={`input-field ${errors.phone ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="+94 7X XXX XXXX"
+                            />
+                            {errors.phone && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.phone.message}</p>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -190,26 +334,28 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
                     <div className="flex gap-6">
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
+                                {...register('isActivelyLooking')}
                                 type="checkbox"
-                                checked={formData.isActivelyLooking}
-                                onChange={(e) => setFormData({ ...formData, isActivelyLooking: e.target.checked })}
                                 className="w-4 h-4 text-blue-600 rounded border-slate-300 ring-blue-500"
                             />
                             <span className="text-sm font-bold text-slate-700">Actively looking for work</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
+                                {...register('isPublic')}
                                 type="checkbox"
-                                checked={formData.isPublic}
-                                onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
                                 className="w-4 h-4 text-blue-600 rounded border-slate-300 ring-blue-500"
                             />
                             <span className="text-sm font-bold text-slate-700">Public Profile</span>
                         </label>
                     </div>
 
-                    <button type="submit" disabled={loading} className="btn-primary flex items-center gap-2">
-                        {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    <button 
+                        type="submit" 
+                        disabled={isSubmitting || (!isDirty && !!profile.avatarUrl)} 
+                        className={`btn-primary flex items-center gap-2 ${(isSubmitting || (!isDirty && !!profile.avatarUrl)) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         {success ? 'Saved!' : 'Save Changes'}
                     </button>
                 </div>

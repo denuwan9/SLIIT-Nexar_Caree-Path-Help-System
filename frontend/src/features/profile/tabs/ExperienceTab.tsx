@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, X, Briefcase, Calendar, MapPin, Loader2, AlertCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import profileService from '../../../services/profileService';
-import type { StudentProfile, Experience, EmploymentType } from '../../../types/profile';
+import type { StudentProfile } from '../../../types/profile';
+import { experienceSchema, type ExperienceInput } from '../profileSchemas';
+import toast from 'react-hot-toast';
 
 interface Props {
     profile: StudentProfile;
@@ -13,28 +17,50 @@ const ExperienceTab: React.FC<Props> = ({ profile, setProfile }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const initialForm: Omit<Experience, '_id'> = {
-        title: '', company: '', type: 'full-time',
-        location: '', isRemote: false,
-        startDate: '', endDate: '', isCurrent: false,
-        description: ''
-    };
-    const [formData, setFormData] = useState(initialForm);
+    const {
+        register,
+        handleSubmit,
+        reset,
+        watch,
+        formState: { errors },
+    } = useForm<ExperienceInput>({
+        resolver: zodResolver(experienceSchema),
+        defaultValues: {
+            title: '',
+            company: '',
+            type: 'full-time',
+            location: '',
+            isRemote: false,
+            startDate: '',
+            endDate: '',
+            isCurrent: false,
+            description: ''
+        },
+    });
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const isCurrent = watch('isCurrent');
+
+    const onSubmit = async (data: ExperienceInput) => {
         try {
-            setLoading(true); setError(null);
-            const dataToSubmit = { ...formData };
-            if (dataToSubmit.isCurrent) delete dataToSubmit.endDate;
+            setLoading(true);
+            setError(null);
+            
+            const dataToSubmit = { ...data };
+            if (dataToSubmit.isCurrent) {
+                delete dataToSubmit.endDate;
+            }
 
-            const experience = await profileService.addExperience(dataToSubmit);
+            const experience = await profileService.addExperience(dataToSubmit as any);
             setProfile({ ...profile, experience });
-            setFormData(initialForm);
+            reset();
             setIsAdding(false);
+            toast.success('Experience role added');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to add experience');
-        } finally { setLoading(false); }
+            toast.error('Failed to add experience');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleRemove = async (id: string) => {
@@ -42,7 +68,11 @@ const ExperienceTab: React.FC<Props> = ({ profile, setProfile }) => {
         try {
             const experience = await profileService.removeExperience(id);
             setProfile({ ...profile, experience });
-        } catch (err: any) { setError('Failed to remove entry'); }
+            toast.success('Experience role removed');
+        } catch (err: any) { 
+            setError('Failed to remove entry'); 
+            toast.error('Failed to remove entry');
+        }
     };
 
     const formatDate = (dateStr?: string) => {
@@ -73,10 +103,10 @@ const ExperienceTab: React.FC<Props> = ({ profile, setProfile }) => {
             )}
 
             {isAdding && (
-                <form onSubmit={handleSubmit} className="p-6 rounded-3xl bg-slate-50 border border-slate-200 animate-in slide-in-from-top-4 duration-300">
+                <form onSubmit={handleSubmit(onSubmit)} className="p-6 rounded-3xl bg-slate-50 border border-slate-200 animate-in slide-in-from-top-4 duration-300">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-black text-slate-900">Add New Role</h3>
-                        <button type="button" onClick={() => setIsAdding(false)} className="p-1 text-slate-400 hover:text-slate-900 transition-colors">
+                        <button type="button" onClick={() => { setIsAdding(false); reset(); }} className="p-1 text-slate-400 hover:text-slate-900 transition-colors">
                             <X size={20} />
                         </button>
                     </div>
@@ -84,15 +114,30 @@ const ExperienceTab: React.FC<Props> = ({ profile, setProfile }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Job Title</label>
-                            <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="Software Engineer Intern" className="input-field py-2" />
+                            <input 
+                                type="text" 
+                                {...register('title')} 
+                                placeholder="Software Engineer Intern" 
+                                className={`input-field py-2 ${errors.title ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.title && <p className="text-[10px] font-bold text-red-50">{errors.title.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Company</label>
-                            <input type="text" required value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} placeholder="Tech Corp" className="input-field py-2" />
+                            <input 
+                                type="text" 
+                                {...register('company')} 
+                                placeholder="Tech Corp" 
+                                className={`input-field py-2 ${errors.company ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.company && <p className="text-[10px] font-bold text-red-500">{errors.company.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Employment Type</label>
-                            <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as EmploymentType })} className="input-field py-2">
+                            <select 
+                                {...register('type')} 
+                                className="input-field py-2"
+                            >
                                 <option value="full-time">Full-time</option>
                                 <option value="part-time">Part-time</option>
                                 <option value="internship">Internship</option>
@@ -103,39 +148,68 @@ const ExperienceTab: React.FC<Props> = ({ profile, setProfile }) => {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Location</label>
-                            <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Colombo, LK" className="input-field py-2" />
+                            <input 
+                                type="text" 
+                                {...register('location')} 
+                                placeholder="Colombo, LK" 
+                                className={`input-field py-2 ${errors.location ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Start Date</label>
-                            <input type="month" required value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} className="input-field py-2" />
+                            <input 
+                                type="month" 
+                                {...register('startDate')} 
+                                className={`input-field py-2 ${errors.startDate ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.startDate && <p className="text-[10px] font-bold text-red-500">{errors.startDate.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">End Date</label>
-                            <input type="month" disabled={formData.isCurrent} required={!formData.isCurrent} value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} className="input-field py-2 disabled:bg-slate-100 disabled:text-slate-400" />
+                            <input 
+                                type="month" 
+                                disabled={isCurrent} 
+                                {...register('endDate')} 
+                                className={`input-field py-2 disabled:bg-slate-100 disabled:text-slate-400 ${errors.endDate ? 'border-red-500 bg-red-50' : ''}`} 
+                            />
+                            {errors.endDate && <p className="text-[10px] font-bold text-red-500">{errors.endDate.message}</p>}
                         </div>
                     </div>
 
                     <div className="flex items-center gap-6 mb-5">
                         <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={formData.isCurrent} onChange={e => setFormData({ ...formData, isCurrent: e.target.checked })} className="w-4 h-4 text-blue-600 rounded border-slate-300" />
+                            <input 
+                                type="checkbox" 
+                                {...register('isCurrent')} 
+                                className="w-4 h-4 text-blue-600 rounded border-slate-300" 
+                            />
                             <span className="text-sm font-bold text-slate-700">I currently work here</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={formData.isRemote} onChange={e => setFormData({ ...formData, isRemote: e.target.checked })} className="w-4 h-4 text-blue-600 rounded border-slate-300" />
+                            <input 
+                                type="checkbox" 
+                                {...register('isRemote')} 
+                                className="w-4 h-4 text-blue-600 rounded border-slate-300" 
+                            />
                             <span className="text-sm font-bold text-slate-700">Remote Position</span>
                         </label>
                     </div>
 
                     <div className="space-y-1.5 mb-6">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description (Optional)</label>
-                        <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Describe your responsibilities and achievements..." className="input-field min-h-[100px] resize-y py-2" maxLength={600} />
+                        <textarea 
+                            {...register('description')} 
+                            placeholder="Describe your responsibilities and achievements..." 
+                            className={`input-field min-h-[100px] resize-y py-2 ${errors.description ? 'border-red-500 bg-red-50' : ''}`} 
+                        />
+                        {errors.description && <p className="text-[10px] font-bold text-red-500">{errors.description.message}</p>}
                     </div>
 
                     <div className="flex justify-end gap-3">
-                        <button type="button" onClick={() => setIsAdding(false)} className="btn-secondary py-2">Cancel</button>
+                        <button type="button" onClick={() => { setIsAdding(false); reset(); }} className="btn-secondary py-2">Cancel</button>
                         <button type="submit" disabled={loading} className="btn-primary py-2 w-32 flex justify-center">
                             {loading ? <Loader2 size={18} className="animate-spin" /> : 'Save Role'}
                         </button>
