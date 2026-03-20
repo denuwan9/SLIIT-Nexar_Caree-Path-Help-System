@@ -32,3 +32,6 @@ export const signupSchema = z.object({
 
 export type LoginFields = z.infer<typeof loginSchema>;
 export type SignupFields = z.infer<typeof signupSchema>;
+
+export type LoginInput = LoginFields;
+export type SignupInput = SignupFields;

@@ -1,304 +1,249 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSystemBoot } from '../hooks/useSystemBoot';
+import { useAuth } from '../components/auth/AuthProvider';
+import { DashboardSkeleton } from '../components/ui/DashboardSkeleton';
 import { 
-    Zap, 
+    LayoutDashboard, 
+    User, 
+    Settings, 
     Bell, 
-    TrendingUp, 
-    Target, 
-    Activity, 
-    BookOpen,
-    Cpu,
-    Shield,
-    Terminal,
-    ArrowRight
+    ShieldCheck, 
+    ArrowUpRight,
+    Search
 } from 'lucide-react';
-import { useSystemInit } from '../hooks/useSystemInit';
-import { SystemLoader } from '../components/ui/SystemLoader';
 import { motion } from 'framer-motion';
 
-// Cyber-minimalist Bento Card
-const BentoCard: React.FC<{
-    children: React.ReactNode,
-    className?: string,
-    title?: React.ReactNode,
-    subtitle?: string,
-    headerRight?: React.ReactNode,
-    noPadding?: boolean
-}> = ({ children, className = "", title, subtitle, headerRight, noPadding = false }) => (
-    <div className={`glass-dark rounded-[24px] border-white/5 flex flex-col overflow-hidden transition-all hover:border-white/10 group ${className}`}>
-        {(title || subtitle || headerRight) && (
-            <div className="flex justify-between items-start p-4 shrink-0 border-b border-white/5">
-                <div className="min-w-0">
-                    {title && <h3 className="text-white font-black text-sm uppercase italic tracking-tight truncate">{title}</h3>}
-                    {subtitle && <p className="text-cobalt-electric text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">{subtitle}</p>}
-                </div>
-                {headerRight && <div className="ml-2">{headerRight}</div>}
-            </div>
-        )}
-        <div className={`flex-1 w-full overflow-y-auto scrollbar-hide flex flex-col ${noPadding ? '' : 'p-4'}`}>
-            {children}
-        </div>
-    </div>
-);
-
-// Cyber Metric Widget
-const MetricWidget: React.FC<{ title: string, value: string, icon: React.ElementType, change?: string, status?: 'stable' | 'alert' | 'high' }> = ({ title, value, icon: Icon, change, status = 'stable' }) => (
-    <div className="glass-dark border-white/5 rounded-2xl p-4 flex items-center justify-between group hover:border-cobalt-electric/20 transition-all cursor-default relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-16 h-16 bg-cobalt-electric/5 blur-2xl" />
-        <div className="flex items-center gap-3.5 relative">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all group-hover:scale-110 ${
-                status === 'high' ? 'bg-cobalt-electric/20 border-cobalt-electric/30 text-cobalt-electric' : 
-                status === 'alert' ? 'bg-rose-500/20 border-rose-500/30 text-rose-500' :
-                'bg-white/5 border-white/10 text-silver-base'
-            }`}>
-                <Icon size={16} />
-            </div>
-            <div>
-                <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">{title}</p>
-                <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className="text-white font-black text-lg tracking-tighter leading-none">{value}</span>
-                    {change && (
-                        <span className="text-[9px] font-mono text-cobalt-electric/80 uppercase">
-                            [{change}]
-                        </span>
-                    )}
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
 const Dashboard: React.FC = () => {
-    const { data: systemData, isLoading } = useSystemInit();
+    const { user } = useAuth();
+    const { boot, bootData, isLoading, error } = useSystemBoot();
 
-    if (isLoading) return <SystemLoader />;
+    useEffect(() => {
+        boot();
+    }, [boot]);
 
-    const user = systemData?.user;
-    const profile = systemData?.profile;
-    const completeness = profile?.profileCompleteness || 0;
+    if (isLoading || !bootData) {
+        return <DashboardSkeleton />;
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-silver-ultra font-main">
+                <div className="soft-glass p-8 text-center max-w-md">
+                    <h2 className="text-xl font-black text-rose-500 uppercase tracking-widest mb-4">Boot Error</h2>
+                    <p className="text-slate-soft text-sm mb-6">{error}</p>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-2 bg-cobalt-sliit text-white rounded-lg font-bold text-xs uppercase"
+                    >
+                        Re-initialize System
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const { UserPermissions, DashboardState, ProfileData } = bootData;
 
     return (
-        <div className="h-full flex flex-col pb-4 gap-6 overflow-hidden bg-charcoal-deep text-white p-6">
-            
-            {/* Header - Cyber Theme */}
-            <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 gap-4">
-                <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <Terminal size={12} className="text-cobalt-electric" />
-                        <span className="text-slate-500 text-[10px] font-mono uppercase tracking-[0.4em]">Nexar_Kernel.V4.0</span>
+        <div className="min-h-screen bg-silver-ultra font-main text-slate-800 p-8">
+            {/* Top Navigation Bar */}
+            <header className="flex justify-between items-center mb-12">
+                <div className="flex items-center gap-4">
+                    <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain" />
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-black text-cobalt-sliit uppercase tracking-[0.3em]">Institutional Node</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-success animate-pulse" />
+                        </div>
+                        <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">
+                            Nexar <span className="text-cobalt-sliit">Command</span>
+                        </h1>
                     </div>
-                    <h2 className="text-2xl font-black text-white tracking-tighter italic uppercase leading-none">
-                        Welcome, <span className="text-cobalt-electric">{user?.firstName ?? 'Operator'}</span>
-                    </h2>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <button className="relative p-3 glass-dark border-white/5 rounded-xl hover:border-white/20 transition-all group">
-                        <Bell size={20} className="text-slate-400 group-hover:text-cobalt-electric transition-colors" />
-                        <span className="absolute top-3 right-3 w-2 h-2 bg-cobalt-electric rounded-full shadow-[0_0_10px_rgba(46,91,255,0.8)]"></span>
-                    </button>
-                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-[20px] p-1.5 pr-5 shadow-inner hover:border-white/20 transition-all cursor-pointer group">
-                        <div className="w-10 h-10 rounded-2xl overflow-hidden border border-white/10 shrink-0 relative">
-                            <img src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName}&background=2e5bff&color=fff`} alt={user?.fullName} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-cobalt-electric/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center gap-6">
+                    <div className="relative group hidden md:block">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                            placeholder="SEARCH CORE..." 
+                            className="bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2 text-[10px] font-bold uppercase tracking-widest focus:outline-none focus:border-cobalt-sliit transition-all w-64"
+                        />
+                    </div>
+                    <div className="flex items-center gap-3 soft-glass p-1 pr-4 rounded-full border border-slate-200 bg-white">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
+                            {user?.avatarUrl ? <img src={user.avatarUrl} alt="Avatar" /> : <User size={20} className="text-slate-400" />}
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs font-black text-white leading-none mb-1 uppercase italic">{user?.fullName}</span>
-                            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">Verified Protocol</span>
+                        <div className="text-left">
+                            <p className="text-[10px] font-black uppercase text-slate-900 leading-none">
+                                {user?.firstName} {user?.lastName}
+                            </p>
+                            <span className="text-[8px] font-bold text-cobalt-sliit uppercase tracking-tighter">
+                                {UserPermissions.role}
+                            </span>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Core Metrics Bento Section */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
-                <MetricWidget title="Neural integrity" value={`${completeness}%`} icon={Target} change="Synced" status="high" />
-                <MetricWidget title="Simulated Nodes" value={profile?.technicalSkills?.length || '0'} icon={Activity} change="+2 Today" />
-                <MetricWidget title="Target Vector" value={profile?.careerGoals?.targetRoles?.[0] || 'Unset'} icon={TrendingUp} status={profile?.careerGoals?.targetRoles?.[0] ? 'stable' : 'alert'} />
-                <MetricWidget title="Network status" value="Encrypted" icon={Shield} change="Live" />
-            </div>
-
-            {/* Analytical Grid */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-hidden">
+            {/* Bento Grid Command Center */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 
-                {/* Visual Intelligence Section */}
-                <div className="lg:col-span-4 flex flex-col gap-6 h-full">
-                    <BentoCard title="Matrix Synthesis" subtitle="System Health Monitor">
-                        <div className="flex flex-col gap-6 py-2">
-                            <div className="flex items-center justify-between">
-                                <div className="relative w-24 h-24 flex items-center justify-center">
-                                    <svg className="w-full h-full rotate-[-90deg]">
-                                        <circle cx="50%" cy="50%" r="42%" className="stroke-white/5 fill-none" strokeWidth="4" />
-                                        <motion.circle 
-                                            cx="50%" cy="50%" r="42%" 
-                                            className="stroke-cobalt-electric fill-none" 
-                                            strokeWidth="6" 
-                                            strokeLinecap="round"
-                                            initial={{ pathLength: 0 }}
-                                            animate={{ pathLength: completeness / 100 }}
-                                            transition={{ duration: 2, ease: "easeOut" }}
-                                        />
-                                    </svg>
-                                    <div className="absolute flex flex-col items-center">
-                                        <span className="text-xl font-black text-white leading-none italic">{completeness}</span>
-                                        <span className="text-[8px] font-mono text-slate-500 uppercase">Index</span>
-                                    </div>
-                                </div>
-                                <div className="flex-1 pl-6 space-y-4">
-                                    {[
-                                        { l: 'Logic', v: '88', c: 'bg-cobalt-electric' },
-                                        { l: 'Synthesis', v: '92', c: 'bg-white/20' },
-                                        { l: 'Output', v: '74', c: 'bg-silver-base' }
-                                    ].map((s, i) => (
-                                        <div key={i} className="space-y-1.5">
-                                            <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                                                <span className="text-slate-500">{s.l}</span>
-                                                <span className="text-white">{s.v}%</span>
-                                            </div>
-                                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                                <motion.div 
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${s.v}%` }}
-                                                    transition={{ duration: 1, delay: i * 0.2 }}
-                                                    className={`h-full ${s.c} rounded-full`}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                {/* Profile Snapshot */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="md:col-span-2 bg-white border border-slate-100 rounded-[2.5rem] p-8 relative overflow-hidden group shadow-sm hover:shadow-xl transition-all duration-500"
+                >
+                    <div className="relative z-10">
+                        <div className="flex justify-between items-start mb-12">
+                            <div className="p-3 bg-cobalt-sliit/5 rounded-2xl text-cobalt-sliit">
+                                <LayoutDashboard size={24} />
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="px-3 py-1 bg-emerald-success/10 text-emerald-success text-[10px] font-black uppercase rounded-full">Active Path</span>
+                                <span className="px-3 py-1 bg-slate-50 text-slate-400 text-[10px] font-black uppercase rounded-full border border-slate-100">V2.5</span>
                             </div>
                         </div>
-                    </BentoCard>
-
-                    <BentoCard title="Protocol Stream" className="flex-1 min-h-0">
-                        <div className="space-y-3 overflow-y-auto scrollbar-hide pr-2">
-                            {systemData?.notifications?.map((notif: any, i: number) => (
-                                <motion.div 
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    key={i} 
-                                    className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-cobalt-electric/30 transition-all cursor-pointer group flex items-start gap-4"
-                                >
-                                    <div className="w-10 h-10 rounded-xl bg-cobalt-electric/10 flex items-center justify-center shrink-0 border border-cobalt-electric/20">
-                                        <Cpu className="text-cobalt-electric" size={16} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="text-white font-bold text-xs uppercase italic tracking-tight mb-1">{notif.title}</h4>
-                                        <p className="text-slate-500 text-[10px] leading-relaxed line-clamp-2 mb-2">{notif.message}</p>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[8px] font-mono text-cobalt-electric/60 uppercase">Received: {new Date(notif.createdAt).toLocaleTimeString()}</span>
-                                            <span className="text-[8px] font-black text-white uppercase group-hover:text-cobalt-electric transition-colors">Acknowledge</span>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </BentoCard>
-                </div>
-
-                {/* Central Simulation Hub */}
-                <div className="lg:col-span-8 flex flex-col gap-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-                        <BentoCard title="Career Projection Matrix" className="h-full">
-                            <div className="flex-1 flex flex-col gap-4">
-                                <div className="h-48 bg-white/5 rounded-[24px] border border-white/5 relative overflow-hidden flex items-center justify-center group">
-                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(46,91,255,0.1),transparent)] group-hover:opacity-100 opacity-50 transition-opacity" />
-                                    <svg className="w-full h-full p-6 text-cobalt-electric/20" viewBox="0 0 400 200">
-                                        <path d="M0 100 Q100 50 200 100 T400 100" className="fill-none stroke-current" strokeWidth="1" strokeDasharray="5,5" />
-                                        <motion.path 
-                                            d="M0 100 Q100 80 200 120 T400 90" 
-                                            className="fill-none stroke-cobalt-electric" 
-                                            strokeWidth="2"
-                                            animate={{ strokeDashoffset: [0, -20] }}
-                                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                            strokeDasharray="10,10"
-                                        />
-                                    </svg>
-                                    <div className="absolute bottom-4 left-4 right-4 flex justify-between bg-charcoal-deep/80 backdrop-blur-md p-3 rounded-xl border border-white/5">
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-slate-500 uppercase">Projection Mode</span>
-                                            <span className="text-[10px] font-mono text-white">Neural Optimizer</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                            <span className="text-[9px] font-black uppercase">Active</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-4">
-                                    {[
-                                        { t: 'Market demand', v: 'High', i: TrendingUp },
-                                        { t: 'Skill gap', v: '2 Nodes', i: BookOpen }
-                                    ].map((it, idx) => (
-                                        <div key={idx} className="p-3 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-3">
-                                            <it.i size={14} className="text-cobalt-electric" />
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-slate-500 uppercase">{it.t}</span>
-                                                <span className="text-xs font-black text-white italic">{it.v}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </BentoCard>
-
-                        <BentoCard title="AI Intelligence Hub" noPadding>
-                            <div className="flex flex-col h-full bg-white/[0.02]">
-                                <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-cobalt-electric" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest italic">Core Mind.V1</span>
-                                    </div>
-                                    <Zap size={14} className="text-cobalt-electric animate-pulse" />
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide font-mono">
-                                    <div className="flex gap-3">
-                                        <div className="bg-white/5 border border-white/5 p-3 rounded-2xl rounded-tl-none text-[10px] text-silver-base leading-relaxed tracking-tight">
-                                            &gt; Neural analysis complete. System suggests focusing on Vector Database architecture for next simulation node.
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-3 justify-end">
-                                        <div className="bg-cobalt-electric/10 border border-cobalt-electric/20 p-3 rounded-2xl rounded-tr-none text-[10px] text-white leading-relaxed tracking-tight">
-                                            &gt; Execute optimization protocol.
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-4">
-                                    <div className="relative group">
-                                        <input
-                                            type="text"
-                                            placeholder="CMD_PROMPT"
-                                            className="w-full bg-charcoal-deep border border-white/10 text-[10px] text-white rounded-xl py-3 pl-4 pr-12 focus:outline-none focus:border-cobalt-electric transition-all placeholder:text-slate-700 font-mono"
-                                        />
-                                        <button className="absolute right-2 top-2 bottom-2 w-8 rounded-lg bg-cobalt-electric flex items-center justify-center shadow-[0_0_15px_rgba(46,91,255,0.4)] active:scale-90 transition-all">
-                                            <ArrowRight size={14} className="text-white" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </BentoCard>
-                    </div>
-
-                    <div className="h-24 glass-dark border-white/5 rounded-[24px] flex items-center justify-between px-8 relative overflow-hidden group">
-                        <div className="absolute inset-y-0 left-0 w-1 bg-cobalt-electric" />
-                        <div className="flex items-center gap-6">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Simulation status</span>
-                                <span className="text-xl font-black text-white italic uppercase italic">Operational</span>
-                            </div>
-                            <div className="h-10 w-px bg-white/10" />
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Protocol Version</span>
-                                <span className="text-sm font-mono text-cobalt-electric">2026.SLIIT.NX</span>
-                            </div>
-                        </div>
-                        <button className="bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] px-6 py-3 rounded-xl hover:bg-cobalt-electric hover:text-white transition-all shadow-lg">
-                            Initiate Deep Scan
+                        <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Career Architecture</h2>
+                        <p className="text-slate-soft text-sm mb-8 font-medium max-w-xs italic">
+                            Currently optimized for <span className="text-cobalt-sliit font-bold">{ProfileData?.targetRole || 'Not Set'}</span> path discovery.
+                        </p>
+                        <button className="flex items-center gap-2 text-cobalt-sliit text-xs font-black uppercase tracking-widest group-hover:gap-4 transition-all">
+                            Configure Stream <ArrowUpRight size={14} />
                         </button>
                     </div>
-                </div>
+                    {/* Background Graphic */}
+                    <div className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] bg-cobalt-sliit/5 rounded-full blur-[80px] pointer-events-none group-hover:bg-cobalt-sliit/10 transition-colors" />
+                </motion.div>
+
+                {/* Notifications Module */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500"
+                >
+                    <div className="flex justify-between items-center mb-8">
+                        <div className="p-3 bg-rose-500/5 rounded-2xl text-rose-500">
+                            <Bell size={24} />
+                        </div>
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-rose-500 animate-ping rounded-full opacity-20" />
+                            <span className="relative w-6 h-6 flex items-center justify-center bg-rose-500 text-white text-[10px] font-black rounded-full">
+                                {DashboardState.unreadNotifications}
+                            </span>
+                        </div>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Protocol Alerts</h3>
+                    <p className="text-slate-soft text-[11px] font-medium leading-relaxed mb-6">
+                        Latest system updates and institutional requests pending your review.
+                    </p>
+                    <div className="space-y-2">
+                        {[1, 2].map(i => (
+                            <div key={i} className="h-2 bg-slate-50 rounded-full w-full" />
+                        ))}
+                        <div className="h-2 bg-slate-50 rounded-full w-3/4" />
+                    </div>
+                </motion.div>
+
+                {/* System Permissions */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500"
+                >
+                    <div className="p-3 bg-emerald-success/5 rounded-2xl text-emerald-success inline-block mb-8">
+                        <ShieldCheck size={24} />
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Security Level</h3>
+                    <div className="flex items-end gap-2 mb-6">
+                        <span className="text-4xl font-black text-slate-900 leading-none">{UserPermissions.accessLevel}</span>
+                        <span className="text-[10px] font-black text-slate-300 uppercase mb-1">Clearance</span>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-success" />
+                            <span className="text-[9px] font-black uppercase text-slate-500">Neural Sync</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-success" />
+                            <span className="text-[9px] font-black uppercase text-slate-500">Data Crypt</span>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* System Settings & Configuration (Wide) */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="md:col-span-3 bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm hover:shadow-xl transition-all duration-500"
+                >
+                    <div className="flex justify-between items-center mb-10">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-slate-100 rounded-2xl text-slate-500">
+                                <Settings size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">System Configuration</h3>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Global Session Parameters</p>
+                            </div>
+                        </div>
+                        <div className="h-px bg-slate-100 flex-grow mx-8" />
+                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">v2.5.0-STABLE</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sync Node</p>
+                            <p className="text-sm font-bold text-slate-800">SLIIT-EAST-01</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Last Boot</p>
+                            <p className="text-sm font-bold text-slate-800">{new Date(DashboardState.lastSync).toLocaleTimeString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Auth Mode</p>
+                            <p className="text-sm font-bold text-slate-800">MULTI-LINK</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Environment</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-emerald-success text-sm font-black italic">PROD</span>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Quick Action Circle */}
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="bg-cobalt-sliit rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center shadow-2xl shadow-cobalt-sliit/40 group relative overflow-hidden"
+                >
+                    <div className="relative z-10">
+                        <div className="w-20 h-20 rounded-full border-4 border-white/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <ArrowUpRight className="text-white" size={32} />
+                        </div>
+                        <button className="text-[11px] font-black text-white uppercase tracking-[0.3em] hover:tracking-[0.4em] transition-all">
+                            Initialize<br/>Link Discovery
+                        </button>
+                    </div>
+                    {/* Ring animation */}
+                    <div className="absolute inset-0 border-[20px] border-white/5 rounded-full scale-150 animate-float" />
+                </motion.div>
             </div>
+
+            {/* Support links */}
+            <footer className="mt-16 flex justify-between items-center text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">
+                <div className="flex gap-8">
+                    <a href="#" className="hover:text-cobalt-sliit transition-colors">Documentation</a>
+                    <a href="#" className="hover:text-cobalt-sliit transition-colors">Privacy Protocol</a>
+                </div>
+                <div>© 2026 SLIIT NEXAR DIGITAL SYSTEMS</div>
+            </footer>
         </div>
     );
 };

@@ -14,6 +14,7 @@ const { globalLimiter } = require('./middleware/rateLimiter');
 
 // ── Route imports ──────────────────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
+const domainLock = require('./middleware/domainLock');
 const profileRoutes = require('./routes/profileRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const studyPlanRoutes = require('./routes/studyPlanRoutes');
@@ -64,6 +65,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // ── API routes ────────────────────────────────────────────────────
+app.use('/api/v1/auth/login', domainLock);
+app.use('/api/v1/auth/register', domainLock);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/interviews', interviewRoutes);

@@ -10,5 +10,6 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/init', ctrl.initSystemData);
+router.get('/boot', ctrl.bootSystem);
 
 module.exports = router;
