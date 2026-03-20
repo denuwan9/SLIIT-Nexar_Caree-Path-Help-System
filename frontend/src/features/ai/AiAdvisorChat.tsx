@@ -14,22 +14,24 @@ import ReactMarkdown from 'react-markdown';
 import { Send, Sparkles, User, RotateCcw } from 'lucide-react';
 import type { ChatMessage } from '../../types/ai';
 import { sendChatMessage } from '../../services/aiService';
+import profileService from '../../services/profileService';
+import type { StudentProfile } from '../../types/profile';
 
-// ── Starter prompts ───────────────────────────────────────────────────────
-const STARTERS = [
+// ── Default starters ───────────────────────────────────────────────────────
+const DEFAULT_STARTERS = [
     '🎯 What career path suits me best?',
-    '📈 How can I improve my profile completeness?',
     '💻 What projects should I build next?',
     '🔍 What skills do I need for a Data Science role?',
+    '⚡ Analyse my skill gaps for a Senior SE role.',
 ];
 
 // ── Typing Indicator Sub-Component ────────────────────────────────────────
-const TypingIndicator: React.FC = () => (
+const TypingIndicator: React.FC<{ statusText: string }> = ({ statusText }) => (
     <div className="flex items-end gap-3 mb-4">
         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-md">
             <Sparkles size={13} className="text-white" />
         </div>
-        <div className="glass px-4 py-3 rounded-2xl rounded-bl-md">
+        <div className="glass px-4 py-3 rounded-2xl rounded-bl-md flex flex-col gap-2">
             <div className="flex gap-1.5 items-center h-4">
                 {[0, 1, 2].map((i) => (
                     <span
@@ -41,9 +43,59 @@ const TypingIndicator: React.FC = () => (
                     />
                 ))}
             </div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-purple-600/80 animate-pulse">{statusText}</p>
         </div>
     </div>
 );
+
+// ── Message Content Parser for [ACTION_CARD] ──────────────────────────────
+const renderMessageContent = (content: string, isUser: boolean) => {
+    if (isUser) return <p>{content}</p>;
+
+    const cardRegex = /\[ACTION_CARD:\s*([^|]+)\s*\|\s*([^\]]+)\]/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = cardRegex.exec(content)) !== null) {
+        if (match.index > lastIndex) {
+            parts.push({ type: 'text', text: content.slice(lastIndex, match.index) });
+        }
+        parts.push({ type: 'card', title: match[1].trim(), content: match[2].trim() });
+        lastIndex = cardRegex.lastIndex;
+    }
+
+    if (lastIndex < content.length) {
+        parts.push({ type: 'text', text: content.slice(lastIndex) });
+    }
+
+    return parts.map((part, idx) => {
+        if (part.type === 'text') {
+            return (
+                <div key={idx} className="prose prose-sm prose-slate max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-slate-800 prose-strong:text-slate-900">
+                    <ReactMarkdown>{part.text}</ReactMarkdown>
+                </div>
+            );
+        } else {
+            return (
+                <div key={idx} className="my-3 bg-white/80 border border-purple-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 group">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-100 to-cyan-100 flex items-center justify-center">
+                            <Sparkles size={12} className="text-purple-600" />
+                        </div>
+                        <h4 className="font-black text-slate-800 text-sm group-hover:text-purple-700 transition-colors">{part.title}</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed font-medium mb-3">
+                        {part.content}
+                    </p>
+                    <button className="text-[10px] uppercase font-black tracking-widest text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors w-full sm:w-auto">
+                        Execute Action
+                    </button>
+                </div>
+            );
+        }
+    });
+};
 
 // ── Message Bubble Sub-Component ──────────────────────────────────────────
 const MessageBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
@@ -65,24 +117,17 @@ const MessageBubble: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
 
             {/* Bubble */}
             <div
-                className={`max-w-[78%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${isUser
+                className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${isUser
                     ? 'bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-br-md shadow-lg shadow-purple-500/20'
                     : 'glass text-slate-800 rounded-bl-md'
                     }`}
             >
-                {isUser ? (
-                    <p>{msg.content}</p>
-                ) : (
-                    <div className="prose prose-sm prose-slate max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-slate-800 prose-strong:text-slate-900">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    </div>
-                )}
+                {renderMessageContent(msg.content, isUser)}
             </div>
         </div>
     );
 };
 
-// ── Main Component ────────────────────────────────────────────────────────
 const AiAdvisorChat: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
@@ -94,13 +139,56 @@ const AiAdvisorChat: React.FC = () => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [thinkingState, setThinkingState] = useState('Analyzing Profile...');
+    
+    // Dynamic Starters Profile Fetching
+    const [starters, setStarters] = useState<string[]>(DEFAULT_STARTERS);
+
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const profile = await profileService.getMe();
+                if (profile.profileCompleteness < 50) {
+                    setStarters([
+                        '🚨 Help me complete my profile to unlock advanced analysis.',
+                        ...DEFAULT_STARTERS.slice(0, 3)
+                    ]);
+                } else {
+                    setStarters(DEFAULT_STARTERS);
+                }
+            } catch (err) {
+                console.error('Failed to load profile for starters', err);
+            }
+        };
+        fetchProfile();
+    }, []);
+
+    // Simulated Thinking State Cycler
+    useEffect(() => {
+        if (!isLoading) return;
+        const states = [
+            'Analyzing Profile Data...',
+            'Cross-referencing SLIIT Curriculum...',
+            'Evaluating Tech Stack...',
+            'Checking Sri Lankan Tech Market...',
+            'Formulating Brutal Honesty...'
+        ];
+        let i = 0;
+        setThinkingState(states[0]);
+        const interval = setInterval(() => {
+            i = (i + 1) % states.length;
+            setThinkingState(states[i]);
+        }, 1200);
+        return () => clearInterval(interval);
+    }, [isLoading]);
 
     // Auto-scroll to bottom on new message
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isLoading]);
+    }, [messages, isLoading, thinkingState]);
 
     const handleSend = useCallback(async (text?: string) => {
         const payload = (text ?? input).trim();
@@ -172,11 +260,15 @@ const AiAdvisorChat: React.FC = () => {
                     <div className="mb-6">
                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Quick Starters</p>
                         <div className="flex flex-wrap gap-2">
-                            {STARTERS.map((s) => (
+                            {starters.map((s) => (
                                 <button
                                     key={s}
                                     onClick={() => handleSend(s)}
-                                    className="text-xs px-3 py-2 rounded-xl glass text-slate-700 hover:bg-white/70 transition-all duration-200 font-medium border border-white/60 hover:border-purple-200 hover:text-purple-700"
+                                    className={`text-xs px-3 py-2 rounded-xl glass hover:bg-white/90 transition-all duration-200 font-medium border border-white/60 hover:shadow-sm ${
+                                        s.includes('🚨') 
+                                        ? 'text-rose-700 hover:border-rose-200 hover:text-rose-800'
+                                        : 'text-slate-700 hover:border-purple-200 hover:text-purple-700'
+                                    }`}
                                 >
                                     {s}
                                 </button>
@@ -189,7 +281,7 @@ const AiAdvisorChat: React.FC = () => {
                     <MessageBubble key={i} msg={msg} />
                 ))}
 
-                {isLoading && <TypingIndicator />}
+                {isLoading && <TypingIndicator statusText={thinkingState} />}
 
                 {error && (
                     <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
