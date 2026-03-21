@@ -1,12 +1,12 @@
 import React from 'react';
-import { LightAuthLayout } from '../features/auth/LightAuthLayout';
+import { OrangeAuthLayout } from '../features/auth/OrangeAuthLayout';
 import AuthModule from '../features/auth/AuthModule';
 
 const SignupPage: React.FC = () => {
     return (
-        <LightAuthLayout>
+        <OrangeAuthLayout>
             <AuthModule initialView="signup" />
-        </LightAuthLayout>
+        </OrangeAuthLayout>
     );
 };
 
