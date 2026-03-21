@@ -25,8 +25,8 @@ const userSchema = new mongoose.Schema(
         },
         currentMajor: {
             type: String,
-            required: [true, 'Current major is required'],
             trim: true,
+            default: 'Undeclared',
         },
         skillSet: {
             type: [String],
@@ -34,8 +34,8 @@ const userSchema = new mongoose.Schema(
         },
         targetRole: {
             type: String,
-            required: [true, 'Target role is required'],
             trim: true,
+            default: 'Student',
         },
         avatarUrl: {
             type: String,
