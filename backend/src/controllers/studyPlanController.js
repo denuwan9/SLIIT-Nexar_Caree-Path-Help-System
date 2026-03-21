@@ -3,10 +3,9 @@ const path = require('path');
 const OpenAI = require('openai');
 const StudyPlan = require('../models/StudyPlan');
 const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 // ─── AI Study Plan Engine ─────────────────────────────────────────
-
-const DEFAULT_JSON_MODEL = 'grok-2-1212';
 
 const parseTimeToMinutes = (timeStr = '') => {
     const [h, m] = timeStr.split(':').map((v) => parseInt(v, 10));
@@ -28,8 +27,19 @@ const computeStudyHoursPerDay = ({ availableHoursPerDay, internshipStartTime, in
     return { hoursPerDay: fallback, internshipHours: null };
 };
 
-const resolveAiKey = (req) => {
-    return req.headers['x-ai-key'] || req.body.aiKey || process.env.GROK_API_KEY || '';
+/**
+ * Get the Groq AI client using environment key
+ */
+const getGroqClient = () => {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+        logger.warn('[StudyPlan] GROQ_API_KEY not set. AI features will not work.');
+        return null;
+    }
+    return new OpenAI({
+        apiKey,
+        baseURL: 'https://api.groq.com/openai/v1',
+    });
 };
 
 const readDocumentsToText = (files = []) => {
@@ -48,84 +58,164 @@ const readDocumentsToText = (files = []) => {
                 blobs.push(`FILE: ${file.originalname} (unreadable: ${err.message})`);
             }
         } else {
-            // Without heavier parsers, keep a stub so AI knows the titles
-            blobs.push(`FILE: ${file.originalname} (binary/unsupported type)`);
+            blobs.push(`FILE: ${file.originalname} (binary/unsupported type — PDF, image, or other)`);
         }
     }
     return blobs.join('\n\n');
 };
 
-const fetchTopicsFromDocs = async ({ subjects, docsText, aiKey }) => {
-    if (!docsText.trim()) return null;
+// ─── AI-Powered Study Plan Generation ─────────────────────────────
+
+/**
+ * Uses Groq AI to deeply analyze documents and generate a comprehensive study plan.
+ * Produces detailed daily sessions with specific tasks, instructions, and study techniques.
+ */
+const generateAIStudyPlan = async ({ subjects, docsText, hoursPerDay, totalDays, examStartDate, examEndDate, internshipStartTime, internshipEndTime }) => {
+    const client = getGroqClient();
+    if (!client) return null;
+
+    const subjectsJson = JSON.stringify(subjects, null, 2);
+
+    const systemPrompt = `You are an expert academic study planner for university students. Your job is to analyze uploaded study materials and create a detailed, practical study plan.
+
+IMPORTANT RULES:
+1. Analyze the uploaded documents carefully. Extract actual chapter names, lecture topics, key concepts, and exam-relevant content from the documents.
+2. If documents are binary/unreadable (PDF, images), still use the FILE NAMES to infer the subject and topics.
+3. Create SPECIFIC study tasks — not generic ones. Each task should reference actual topics from the documents.
+4. Schedule study blocks OUTSIDE of internship hours (${internshipStartTime || 'N/A'} to ${internshipEndTime || 'N/A'}).
+5. Vary task types: reading, summarizing, practice problems, revision flashcards, self-testing, mind-mapping, past paper practice.
+6. Give each task a clear, actionable instruction telling the student exactly what to do.
+7. Prioritize harder subjects and topics closer to exam dates.
+8. Include break recommendations and study technique tips.
+
+Return ONLY valid JSON. No markdown, no explanation.`;
+
+    const userPrompt = `SUBJECTS:
+${subjectsJson}
+
+UPLOADED DOCUMENTS (analyze these for topics):
+${docsText.slice(0, 15000)}
+
+CONSTRAINTS:
+- Exam period: ${examStartDate} to ${examEndDate} (${totalDays} days)
+- Available study hours per day: ${hoursPerDay}
+- Internship time: ${internshipStartTime || 'none'} to ${internshipEndTime || 'none'} (schedule study OUTSIDE this window)
+
+Generate a complete study plan in this exact JSON format:
+{
+  "sessions": [
+    {
+      "day": 1,
+      "date": "${examStartDate}",
+      "dayTheme": "Focus on [main subject] fundamentals",
+      "subjects": [
+        {
+          "subjectName": "Exact subject name from the list",
+          "topic": "Specific topic from the documents (e.g., Chapter 3: Binary Trees)",
+          "title": "Clear task title (e.g., Read and annotate Binary Trees chapter)",
+          "taskType": "reading|summarizing|practice|revision|self-test",
+          "instruction": "Detailed step-by-step instruction for this study block (2-3 sentences)",
+          "durationMinutes": 45,
+          "durationHours": 0.75,
+          "technique": "pomodoro|spaced|mixed",
+          "resources": ["Lecture slides Ch3", "Textbook pp. 45-60"],
+          "priority": "critical|high|medium|low"
+        }
+      ],
+      "totalStudyHours": 4,
+      "notes": "AI tip for this day"
+    }
+  ],
+  "aiSummary": "A personalized 3-4 sentence study strategy summary that references the student's specific subjects, exam dates, and uploaded materials",
+  "extractedTopics": [
+    { "subjectName": "Subject", "topics": ["Topic 1 from docs", "Topic 2 from docs"] }
+  ]
+}
+
+CRITICAL:
+- Generate sessions for ALL ${totalDays} days
+- Each day should have ${hoursPerDay} hours of study content
+- Create AT LEAST 3-4 tasks per day, each 25-60 minutes
+- Extract REAL topics from the documents, not generic placeholders
+- Task instructions must be specific and actionable
+- Spread subjects across days using spaced repetition
+- Place revision tasks 2-3 days after initial reading
+- Include self-test tasks before exam dates`;
 
     try {
-        const client = new OpenAI({
-            apiKey: aiKey || process.env.GROK_API_KEY,
-            baseURL: 'https://api.x.ai/v1',
-        });
-
-        const systemPrompt = `You are a concise study-plan compiler. Given subjects and raw document text, extract the most relevant lecture-level topics per subject. Keep topics short (<=6 words). Return JSON only.`;
-
-        const userPrompt = `SUBJECTS:
-${JSON.stringify(subjects, null, 2)}
-
-DOCUMENTS (trimmed):
-${docsText.slice(0, 12000)}
-
-Output JSON:
-{ "subjects": [ { "name": "<subject>", "topics": ["topic1", "topic2"] } ] }
-Rules: Use document content when possible. If a subject is not covered, infer 3-5 core topics from the course name. Max 8 topics per subject.`;
-
         const completion = await client.chat.completions.create({
-            model: DEFAULT_JSON_MODEL,
+            model: 'llama-3.3-70b-versatile',
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
             response_format: { type: 'json_object' },
             temperature: 0.4,
-            max_tokens: 1200,
+            max_tokens: 8000,
         });
 
         const raw = completion.choices[0].message.content;
-        const parsed = JSON.parse(raw);
-        return parsed?.subjects || null;
+        logger.info(`[StudyPlan] AI response length: ${raw.length}`);
+
+        // Robust JSON extraction
+        let text = raw.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+        let start = -1, depth = 0;
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === '{') {
+                if (depth === 0) start = i;
+                depth++;
+            } else if (text[i] === '}') {
+                depth--;
+                if (depth === 0 && start !== -1) {
+                    const candidate = text.slice(start, i + 1);
+                    try {
+                        return JSON.parse(candidate);
+                    } catch {
+                        start = -1;
+                    }
+                }
+            }
+        }
+        return JSON.parse(raw);
     } catch (error) {
-        console.warn('[StudyPlan] Topic extraction failed:', error.message);
+        logger.error(`[StudyPlan] AI generation failed: ${error.message}`);
         return null;
     }
 };
+
+// ─── Fallback: Local Study Plan Generation ───────────────────────
+
 const difficultyWeight = { easy: 1, medium: 2, hard: 3 };
 
 const buildTaskBacklog = (subjects) => {
     const backlog = [];
     const taskTemplates = [
-        { taskType: 'reading', title: (topic) => `Read ${topic} materials`, durationMinutes: 60, technique: 'pomodoro' },
-        { taskType: 'summarizing', title: (topic) => `Summarize ${topic} in your words`, durationMinutes: 40, technique: 'pomodoro' },
-        { taskType: 'practice', title: (topic) => `Practice problems on ${topic}`, durationMinutes: 45, technique: 'mixed' },
-        { taskType: 'revision', title: (topic) => `Revision flashcards: ${topic}`, durationMinutes: 25, technique: 'spaced', offsetDays: 2 },
-        { taskType: 'self-test', title: (topic) => `Self-test: explain ${topic} from memory`, durationMinutes: 25, technique: 'spaced', offsetDays: 4 },
+        { taskType: 'reading', title: (topic, subj) => `Read & annotate: ${topic}`, instruction: (topic, subj) => `Read through ${topic} materials for ${subj}. Highlight key concepts, definitions, and formulas. Write margin notes for anything unclear.`, durationMinutes: 50, technique: 'pomodoro' },
+        { taskType: 'summarizing', title: (topic) => `Create summary notes: ${topic}`, instruction: (topic) => `Summarize ${topic} in your own words. Create a one-page cheat sheet with key points, diagrams, and formulas. Use bullet points for quick review.`, durationMinutes: 40, technique: 'pomodoro' },
+        { taskType: 'practice', title: (topic) => `Practice problems: ${topic}`, instruction: (topic) => `Work through practice problems on ${topic}. Try solving without notes first, then check. Note any gaps in understanding for later review.`, durationMinutes: 45, technique: 'mixed' },
+        { taskType: 'revision', title: (topic) => `Quick revision: ${topic}`, instruction: (topic) => `Review your summary notes and flashcards for ${topic}. Test yourself on key definitions and concepts. Spend extra time on areas you found difficult.`, durationMinutes: 25, technique: 'spaced', offsetDays: 2 },
+        { taskType: 'self-test', title: (topic) => `Self-test: ${topic}`, instruction: (topic) => `Close all notes and try to explain ${topic} from memory. Write down everything you remember, then compare with your notes. Fill in any gaps.`, durationMinutes: 25, technique: 'spaced', offsetDays: 4 },
     ];
 
     subjects.forEach((subj) => {
         const topics = (subj.syllabusTopics && subj.syllabusTopics.length > 0
             ? subj.syllabusTopics
-            : [`${subj.name} core concepts`]).slice(0, 6);
+            : [`${subj.name} fundamentals`, `${subj.name} key concepts`, `${subj.name} applications`]).slice(0, 6);
 
         let taskCount = 0;
         topics.forEach((topic) => {
             taskTemplates.forEach((tpl) => {
-                if (taskCount >= 30) return; // cap per subject
+                if (taskCount >= 30) return;
                 backlog.push({
                     subjectName: subj.name,
                     topic,
-                    title: tpl.title(topic),
+                    title: tpl.title(topic, subj.name),
                     taskType: tpl.taskType,
+                    instruction: tpl.instruction(topic, subj.name),
                     durationMinutes: tpl.durationMinutes,
                     durationHours: Math.round((tpl.durationMinutes / 60) * 100) / 100,
                     technique: tpl.technique,
                     resources: [],
-                    instruction: '',
                     priority: subj.difficulty === 'hard' ? 'critical' : subj.difficulty === 'medium' ? 'high' : 'medium',
                     offsetDays: tpl.offsetDays || 0,
                     difficultyWeight: difficultyWeight[subj.difficulty] || 2,
@@ -138,10 +228,6 @@ const buildTaskBacklog = (subjects) => {
     return backlog;
 };
 
-/**
- * Generates a weighted daily study schedule using task backlog, respecting
- * available hours per day and optional spaced offsets.
- */
 const generateStudySessions = (subjects, examStartDate, examEndDate, hoursPerDay) => {
     const start = new Date(examStartDate);
     const end = new Date(examEndDate);
@@ -168,18 +254,18 @@ const generateStudySessions = (subjects, examStartDate, examEndDate, hoursPerDay
             const task = availableTasks.shift();
             if (!task) break;
             const durationHours = task.durationHours || (task.durationMinutes ? task.durationMinutes / 60 : 1);
-            if (durationHours > dayHoursLeft + 0.01) continue; // skip too large tasks for today
+            if (durationHours > dayHoursLeft + 0.01) continue;
 
             daySubjects.push({
                 subjectName: task.subjectName,
                 topic: task.topic,
                 title: task.title,
                 taskType: task.taskType,
+                instruction: task.instruction,
                 durationHours: Math.round(durationHours * 100) / 100,
                 durationMinutes: task.durationMinutes,
                 technique: task.technique,
                 resources: task.resources,
-                instruction: task.instruction,
                 priority: task.priority,
             });
 
@@ -187,11 +273,18 @@ const generateStudySessions = (subjects, examStartDate, examEndDate, hoursPerDay
             task.scheduled = true;
         }
 
+        // Generate a day theme based on subjects covered
+        const uniqueSubjects = [...new Set(daySubjects.map(s => s.subjectName))];
+        const dayTheme = uniqueSubjects.length > 0
+            ? `Focus: ${uniqueSubjects.join(' & ')}`
+            : 'Rest day';
+
         sessions.push({
             day: day + 1,
             date: new Date(currentDate),
             subjects: daySubjects,
             totalStudyHours: Math.round((hoursPerDay - dayHoursLeft) * 100) / 100,
+            notes: dayTheme,
         });
 
         currentDate.setDate(currentDate.getDate() + 1);
@@ -218,7 +311,7 @@ const generateAISummary = (subjects, hoursPerDay, totalDays) => {
 
 /**
  * POST /api/study-plans
- * Student — generate a new AI-based study plan
+ * Student — generate a new AI-based study plan (no documents)
  */
 exports.createStudyPlan = async (req, res, next) => {
     try {
@@ -259,11 +352,11 @@ exports.createStudyPlan = async (req, res, next) => {
 
 /**
  * POST /api/study-plans/with-docs
- * Student — generate a new study plan using uploaded documents + AI topics
+ * Student — generate a study plan by analyzing uploaded documents with AI
  */
 exports.createStudyPlanWithDocs = async (req, res, next) => {
     try {
-        const { title, examStartDate, examEndDate, aiKey, internshipStartTime, internshipEndTime } = req.body;
+        const { title, examStartDate, examEndDate, internshipStartTime, internshipEndTime } = req.body;
         const subjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : req.body.subjects;
         const availableHoursPerDay = typeof req.body.availableHoursPerDay === 'string'
             ? parseFloat(req.body.availableHoursPerDay)
@@ -277,20 +370,66 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
         const end = new Date(examEndDate);
         const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
-        // Read docs and fetch topics via AI (best effort)
+        // Read docs and generate AI-powered study plan
         const docsText = readDocumentsToText(req.files || []);
-        const aiTopics = await fetchTopicsFromDocs({ subjects, docsText, aiKey: aiKey || resolveAiKey(req) });
 
-        const enrichedSubjects = subjects.map((s) => {
-            const found = aiTopics?.find((t) => t.name?.toLowerCase() === s.name?.toLowerCase());
-            if (found?.topics?.length) {
-                return { ...s, syllabusTopics: found.topics.slice(0, 8) };
-            }
-            return s;
+        // Try AI-powered generation first
+        const aiResult = await generateAIStudyPlan({
+            subjects,
+            docsText,
+            hoursPerDay,
+            totalDays,
+            examStartDate,
+            examEndDate,
+            internshipStartTime,
+            internshipEndTime,
         });
 
-        const sessions = generateStudySessions(enrichedSubjects, examStartDate, examEndDate, hoursPerDay);
-        const aiSummary = generateAISummary(enrichedSubjects, hoursPerDay, totalDays);
+        let sessions, aiSummary, enrichedSubjects;
+
+        if (aiResult && aiResult.sessions && aiResult.sessions.length > 0) {
+            logger.info('[StudyPlan] Using AI-generated study plan');
+
+            // Process AI sessions — ensure dates are valid
+            sessions = aiResult.sessions.map((session, idx) => ({
+                day: session.day || idx + 1,
+                date: session.date ? new Date(session.date) : new Date(new Date(examStartDate).getTime() + idx * 86400000),
+                subjects: (session.subjects || []).map(subj => ({
+                    subjectName: subj.subjectName || 'Unknown',
+                    title: subj.title || subj.topic || 'Study session',
+                    topic: subj.topic || '',
+                    taskType: ['reading', 'summarizing', 'practice', 'revision', 'self-test'].includes(subj.taskType) ? subj.taskType : 'reading',
+                    instruction: subj.instruction || '',
+                    durationHours: subj.durationHours || (subj.durationMinutes ? subj.durationMinutes / 60 : 1),
+                    durationMinutes: subj.durationMinutes || Math.round((subj.durationHours || 1) * 60),
+                    technique: ['pomodoro', 'spaced', 'mixed'].includes(subj.technique) ? subj.technique : 'pomodoro',
+                    resources: subj.resources || [],
+                    priority: ['low', 'medium', 'high', 'critical'].includes(subj.priority) ? subj.priority : 'medium',
+                })),
+                totalStudyHours: session.totalStudyHours || hoursPerDay,
+                notes: session.dayTheme || session.notes || '',
+            }));
+
+            aiSummary = aiResult.aiSummary || generateAISummary(subjects, hoursPerDay, totalDays);
+
+            // Enrich subjects with extracted topics from AI
+            if (aiResult.extractedTopics) {
+                enrichedSubjects = subjects.map((s) => {
+                    const found = aiResult.extractedTopics.find((t) => t.subjectName?.toLowerCase() === s.name?.toLowerCase());
+                    if (found?.topics?.length) {
+                        return { ...s, syllabusTopics: found.topics.slice(0, 10) };
+                    }
+                    return s;
+                });
+            } else {
+                enrichedSubjects = subjects;
+            }
+        } else {
+            logger.info('[StudyPlan] AI generation failed, using fallback local generation');
+            sessions = generateStudySessions(subjects, examStartDate, examEndDate, hoursPerDay);
+            aiSummary = generateAISummary(subjects, hoursPerDay, totalDays);
+            enrichedSubjects = subjects;
+        }
 
         const plan = await StudyPlan.create({
             student: req.user._id,
@@ -342,7 +481,7 @@ exports.getStudyPlanById = async (req, res, next) => {
 
 /**
  * PATCH /api/study-plans/:id/sessions/:sessionId/:subjectIdx/complete
- * Student — mark a study session subject as completed
+ * Student — mark a study session subject as completed (legacy)
  */
 exports.markSubjectComplete = async (req, res, next) => {
     try {
@@ -356,11 +495,51 @@ exports.markSubjectComplete = async (req, res, next) => {
         if (!session.subjects[subjectIdx]) return next(new AppError('Subject not found in session.', 404));
 
         session.subjects[subjectIdx].isCompleted = true;
+        session.subjects[subjectIdx].status = 'completed';
 
         // Recalculate overall progress
         const total = plan.sessions.reduce((s, sess) => s + sess.subjects.length, 0);
-        const done = plan.sessions.reduce((s, sess) => s + sess.subjects.filter((sub) => sub.isCompleted).length, 0);
-        plan.overallProgress = total > 0 ? Math.round((done / total) * 100) : 0;
+        const done = plan.sessions.reduce((s, sess) => s + sess.subjects.filter((sub) => sub.isCompleted || sub.status === 'completed').length, 0);
+        const inProgress = plan.sessions.reduce((s, sess) => s + sess.subjects.filter((sub) => sub.status === 'in-progress').length, 0);
+        plan.overallProgress = total > 0 ? Math.round(((done + inProgress * 0.5) / total) * 100) : 0;
+
+        await plan.save();
+        res.status(200).json({ status: 'success', data: { plan } });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * PATCH /api/study-plans/:id/sessions/:sessionId/:subjectIdx/status
+ * Student — update task status: pending | in-progress | completed
+ */
+exports.updateSubjectStatus = async (req, res, next) => {
+    try {
+        const { status } = req.body;
+        if (!['pending', 'in-progress', 'completed'].includes(status)) {
+            return next(new AppError('Status must be: pending, in-progress, or completed', 400));
+        }
+
+        const plan = await StudyPlan.findOne({ _id: req.params.id, student: req.user._id });
+        if (!plan) return next(new AppError('Study plan not found.', 404));
+
+        const session = plan.sessions.id(req.params.sessionId);
+        if (!session) return next(new AppError('Session not found.', 404));
+
+        const subjectIdx = parseInt(req.params.subjectIdx, 10);
+        if (!session.subjects[subjectIdx]) return next(new AppError('Subject not found in session.', 404));
+
+        session.subjects[subjectIdx].status = status;
+        session.subjects[subjectIdx].isCompleted = status === 'completed';
+
+        // Recalculate overall progress (completed = 100%, in-progress = 50%)
+        const total = plan.sessions.reduce((s, sess) => s + sess.subjects.length, 0);
+        const completed = plan.sessions.reduce((s, sess) =>
+            s + sess.subjects.filter((sub) => sub.status === 'completed' || sub.isCompleted).length, 0);
+        const inProgress = plan.sessions.reduce((s, sess) =>
+            s + sess.subjects.filter((sub) => sub.status === 'in-progress' && !sub.isCompleted).length, 0);
+        plan.overallProgress = total > 0 ? Math.round(((completed + inProgress * 0.5) / total) * 100) : 0;
 
         await plan.save();
         res.status(200).json({ status: 'success', data: { plan } });

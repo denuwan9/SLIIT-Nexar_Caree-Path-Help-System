@@ -1,5 +1,5 @@
 import api from '../api/axios';
-import type { CreateStudyPlanInput, StudyPlan } from '../types/studyPlan';
+import type { CreateStudyPlanInput, StudyPlan, StudyTaskStatus } from '../types/studyPlan';
 
 export const createStudyPlan = async (payload: CreateStudyPlanInput): Promise<StudyPlan> => {
     const res = await api.post('/study-plans', payload);
@@ -29,6 +29,16 @@ export const markStudySubjectComplete = async (
     subjectIdx: number
 ): Promise<StudyPlan> => {
     const res = await api.patch(`/study-plans/${planId}/sessions/${sessionId}/${subjectIdx}/complete`);
+    return res.data.data.plan as StudyPlan;
+};
+
+export const updateSubjectStatus = async (
+    planId: string,
+    sessionId: string,
+    subjectIdx: number,
+    status: StudyTaskStatus
+): Promise<StudyPlan> => {
+    const res = await api.patch(`/study-plans/${planId}/sessions/${sessionId}/${subjectIdx}/status`, { status });
     return res.data.data.plan as StudyPlan;
 };
 

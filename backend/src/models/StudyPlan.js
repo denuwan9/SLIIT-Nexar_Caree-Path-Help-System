@@ -30,6 +30,11 @@ const studySessionSchema = new mongoose.Schema(
                     default: 'medium',
                 },
                 isCompleted: { type: Boolean, default: false },
+                status: {
+                    type: String,
+                    enum: ['pending', 'in-progress', 'completed'],
+                    default: 'pending',
+                },
             },
         ],
         totalStudyHours: { type: Number, default: 0 },

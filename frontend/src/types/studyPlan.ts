@@ -1,5 +1,6 @@
 export type StudyDifficulty = 'easy' | 'medium' | 'hard';
 export type StudyPriority = 'low' | 'medium' | 'high' | 'critical';
+export type StudyTaskStatus = 'pending' | 'in-progress' | 'completed';
 
 export interface StudySubject {
     name: string;
@@ -22,6 +23,7 @@ export interface StudySessionSubject {
     resources?: string[];
     priority: StudyPriority;
     isCompleted?: boolean;
+    status?: StudyTaskStatus;
 }
 
 export interface StudySession {

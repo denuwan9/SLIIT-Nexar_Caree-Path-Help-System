@@ -5,6 +5,7 @@ import {
     ArrowLeft,
     BookOpen,
     Calendar,
+    CalendarClock,
     CheckCircle2,
     Clock,
     FileText,
@@ -14,13 +15,14 @@ import {
     Upload,
     Wand2,
 } from 'lucide-react';
-import { createStudyPlan, createStudyPlanWithDocs, fetchStudyPlans, markStudySubjectComplete } from '../services/studyPlanService';
+import { createStudyPlan, createStudyPlanWithDocs, fetchStudyPlans, markStudySubjectComplete, updateSubjectStatus } from '../services/studyPlanService';
 import type {
     CreateStudyPlanInput,
     StudyPlan,
     StudySubject,
     StudySessionSubject,
     StudyPriority,
+    StudyTaskStatus,
 } from '../types/studyPlan';
 
 const PRIORITY_META: Record<StudyPriority, { label: string; accent: string; tip: string }> = {
@@ -72,12 +74,13 @@ const StudyPlanPage: React.FC = () => {
     const navigate = useNavigate();
     const [apiKey, setApiKey] = useState('');
     const [documents, setDocuments] = useState<File[]>([]);
+    const [timetableFiles, setTimetableFiles] = useState<File[]>([]);
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
     const [isCreating, setIsCreating] = useState(false);
     const [isLoadingPlans, setIsLoadingPlans] = useState(false);
     const [plans, setPlans] = useState<StudyPlan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'builder' | 'schedule'>('builder');
+    const [viewMode, setViewMode] = useState<'builder' | 'plans' | 'schedule'>('builder');
     const [justGenerated, setJustGenerated] = useState(false);
 
     const computeStudyHoursFromInternship = (start?: string, end?: string, fallback?: number) => {
@@ -211,10 +214,31 @@ const StudyPlanPage: React.FC = () => {
         });
     };
 
+    const handleTimetableSelect = (files: FileList | File[] | null) => {
+        if (!files) return;
+        const newFiles = Array.isArray(files) ? files : Array.from(files);
+        setTimetableFiles((prev) => {
+            const names = new Set(prev.map((f) => f.name));
+            const merged = [...prev];
+            newFiles.forEach((f) => {
+                if (!names.has(f.name)) merged.push(f);
+            });
+            return merged;
+        });
+    };
+
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             handleFileSelect(e.dataTransfer.files);
+            e.dataTransfer.clearData();
+        }
+    };
+
+    const handleTimetableDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleTimetableSelect(e.dataTransfer.files);
             e.dataTransfer.clearData();
         }
     };
@@ -275,8 +299,9 @@ const StudyPlanPage: React.FC = () => {
                 availableHoursPerDay: derivedHours,
             };
 
+            const allFiles = [...documents, ...timetableFiles];
             let created: StudyPlan;
-            if (documents.length > 0) {
+            if (allFiles.length > 0) {
                 const formData = new FormData();
                 formData.append('title', payload.title);
                 formData.append('examStartDate', payload.examStartDate);
@@ -286,7 +311,7 @@ const StudyPlanPage: React.FC = () => {
                 if (payload.internshipEndTime) formData.append('internshipEndTime', payload.internshipEndTime);
                 formData.append('subjects', JSON.stringify(payload.subjects));
                 if (apiKey.trim()) formData.append('aiKey', apiKey.trim());
-                documents.forEach((file) => formData.append('studyDocs', file));
+                allFiles.forEach((file) => formData.append('studyDocs', file));
 
                 created = await createStudyPlanWithDocs(formData);
             } else {
@@ -319,6 +344,18 @@ const StudyPlanPage: React.FC = () => {
         }
     };
 
+    const handleStatusChange = async (sessionId: string, subjectIdx: number, status: StudyTaskStatus) => {
+        if (!selectedPlan) return;
+        try {
+            const updated = await updateSubjectStatus(selectedPlan._id, sessionId, subjectIdx, status);
+            setPlans((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+            const labels: Record<StudyTaskStatus, string> = { pending: 'Set to pending', 'in-progress': 'Started', completed: 'Completed!' };
+            toast.success(labels[status]);
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Could not update status');
+        }
+    };
+
     const totalHours = selectedPlan?.sessions?.reduce((sum, s) => sum + (s.totalStudyHours || 0), 0) || 0;
 
     return (
@@ -335,6 +372,18 @@ const StudyPlanPage: React.FC = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {plans.length > 0 && (
+                        <button
+                            onClick={() => setViewMode('plans')}
+                            className="btn-primary inline-flex items-center gap-2 text-sm"
+                        >
+                            <BookOpen size={16} />
+                            My Plans
+                            <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-bold">
+                                {plans.length}
+                            </span>
+                        </button>
+                    )}
                     <button
                         onClick={prefillDemoPlan}
                         className="btn-secondary text-sm"
@@ -378,45 +427,104 @@ const StudyPlanPage: React.FC = () => {
 
                     {/* Steps */}
                     {currentStep === 1 && (
-                        <div className="card p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <Upload className="text-blue-600" size={20} />
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-900">Upload study materials</p>
-                                    <p className="text-xs text-slate-500">Lecture slides, module outlines, exam timetables. Drag & drop or click to add.</p>
+                        <div className="space-y-5">
+                            {/* Study Materials Upload */}
+                            <div className="card p-6 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <Upload className="text-blue-600" size={20} />
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-900">Upload study materials</p>
+                                        <p className="text-xs text-slate-500">Lecture slides, module outlines, past papers. Drag & drop or click to add.</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={handleDrop}
-                                className="rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/70 p-6 text-center"
-                            >
-                                <p className="text-sm font-semibold text-slate-800">Drop files here or click to upload</p>
-                                <p className="text-xs text-slate-500">We keep it private; used only for topic extraction.</p>
-                                <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm">
-                                    <input
-                                        type="file"
-                                        className="hidden"
-                                        multiple
-                                        accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.md,.json"
-                                        onChange={(e) => handleFileSelect(e.target.files)}
-                                    />
-                                    Upload Files
-                                </label>
-                            </div>
-                            {documents.length > 0 && (
-                                <div className="grid gap-2 sm:grid-cols-2">
-                                    {documents.map((file) => (
-                                        <div key={file.name} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm">
-                                            <FileText size={16} className="text-slate-500" />
-                                            <div className="truncate text-sm font-semibold text-slate-800">{file.name}</div>
-                                            <span className="text-[11px] text-slate-500">{Math.round(file.size / 1024)} KB</span>
-                                        </div>
-                                    ))}
+                                <div
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={handleDrop}
+                                    className="rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/70 p-6 text-center"
+                                >
+                                    <p className="text-sm font-semibold text-slate-800">Drop files here or click to upload</p>
+                                    <p className="text-xs text-slate-500">We keep it private; used only for topic extraction.</p>
+                                    <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-50 transition">
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            multiple
+                                            accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.md,.json"
+                                            onChange={(e) => handleFileSelect(e.target.files)}
+                                        />
+                                        Upload Files
+                                    </label>
                                 </div>
-                            )}
-                            <div className="flex items-center justify-between pt-2">
-                                <div className="text-xs text-slate-500">Tip: Add exam timetable first so we can prioritise dates.</div>
+                                {documents.length > 0 && (
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {documents.map((file) => (
+                                            <div key={file.name} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm">
+                                                <FileText size={16} className="text-slate-500" />
+                                                <div className="truncate text-sm font-semibold text-slate-800">{file.name}</div>
+                                                <span className="ml-auto text-[11px] text-slate-500">{Math.round(file.size / 1024)} KB</span>
+                                                <button
+                                                    onClick={() => setDocuments((prev) => prev.filter((f) => f.name !== file.name))}
+                                                    className="rounded-full px-1.5 py-0.5 text-xs font-bold text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                                                    aria-label="Remove file"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Timetable Upload */}
+                            <div className="card p-6 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <CalendarClock className="text-purple-600" size={20} />
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-900">Upload exam timetable</p>
+                                        <p className="text-xs text-slate-500">Upload your exam schedule so we can auto-prioritise subjects by date.</p>
+                                    </div>
+                                </div>
+                                <div
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={handleTimetableDrop}
+                                    className="rounded-2xl border-2 border-dashed border-purple-200 bg-purple-50/70 p-6 text-center"
+                                >
+                                    <p className="text-sm font-semibold text-slate-800">Drop timetable here or click to upload</p>
+                                    <p className="text-xs text-slate-500">Supports PDF, images, CSV, Excel — we'll extract the dates for you.</p>
+                                    <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-purple-700 shadow-sm hover:bg-purple-50 transition">
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            multiple
+                                            accept=".pdf,.png,.jpg,.jpeg,.csv,.xls,.xlsx,.txt,.md,.json,.doc,.docx"
+                                            onChange={(e) => handleTimetableSelect(e.target.files)}
+                                        />
+                                        Upload Timetable
+                                    </label>
+                                </div>
+                                {timetableFiles.length > 0 && (
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {timetableFiles.map((file) => (
+                                            <div key={file.name} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm">
+                                                <Calendar size={16} className="text-purple-500" />
+                                                <div className="truncate text-sm font-semibold text-slate-800">{file.name}</div>
+                                                <span className="ml-auto text-[11px] text-slate-500">{Math.round(file.size / 1024)} KB</span>
+                                                <button
+                                                    onClick={() => setTimetableFiles((prev) => prev.filter((f) => f.name !== file.name))}
+                                                    className="rounded-full px-1.5 py-0.5 text-xs font-bold text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                                                    aria-label="Remove timetable"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Navigation */}
+                            <div className="flex items-center justify-between">
+                                <div className="text-xs text-slate-500">Tip: Upload your timetable so we can auto-set exam dates and prioritise subjects.</div>
                                 <button
                                     onClick={() => setCurrentStep(2)}
                                     className="btn-primary text-sm"
@@ -802,127 +910,319 @@ const StudyPlanPage: React.FC = () => {
                 </div>
             )}
 
-            {viewMode === 'schedule' && selectedPlan && (
-                <div className="space-y-4 animate-slide-in">
+            {/* ── My Plans List View ── */}
+            {viewMode === 'plans' && (
+                <div className="space-y-5 animate-slide-in">
                     <div className="card p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <p className="text-xs font-semibold text-blue-700">{selectedPlan.title}</p>
-                            <h2 className="text-2xl font-black text-slate-900">Daily schedule & focus</h2>
-                            <p className="text-sm text-slate-500">Mark tasks done to keep your internship + campus work balanced.</p>
+                            <h2 className="text-2xl font-black text-slate-900">My Study Plans</h2>
+                            <p className="text-sm text-slate-500">You have {plans.length} saved plan{plans.length !== 1 ? 's' : ''}. Tap any plan to view its schedule.</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="rounded-2xl bg-blue-50 px-4 py-3 text-center">
-                                <p className="text-xs text-slate-500">Overall</p>
-                                <p className="text-lg font-bold text-blue-700">{selectedPlan.overallProgress}%</p>
+                            <button onClick={() => { setViewMode('builder'); setCurrentStep(1); }} className="btn-primary inline-flex items-center gap-2 text-sm">
+                                <Plus size={16} />
+                                Create New Plan
+                            </button>
+                        </div>
+                    </div>
+
+                    {isLoadingPlans && (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 size={28} className="animate-spin text-blue-500" />
+                        </div>
+                    )}
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {plans.map((plan) => {
+                            const planHours = plan.sessions?.reduce((s, sess) => s + (sess.totalStudyHours || 0), 0) || 0;
+                            const totalTasks = plan.sessions?.reduce((s, sess) => s + sess.subjects.length, 0) || 0;
+                            const completedTasks = plan.sessions?.reduce((s, sess) => s + sess.subjects.filter(sub => sub.isCompleted).length, 0) || 0;
+                            return (
+                                <button
+                                    key={plan._id}
+                                    onClick={() => {
+                                        setSelectedPlanId(plan._id);
+                                        setViewMode('schedule');
+                                    }}
+                                    className="card p-5 text-left transition-all hover:shadow-lg hover:border-blue-200 hover:-translate-y-0.5 space-y-4"
+                                >
+                                    {/* Header */}
+                                    <div className="space-y-1">
+                                        <p className="text-base font-bold text-slate-900 truncate">{plan.title}</p>
+                                        <p className="text-[11px] text-slate-500">
+                                            Created {new Date(plan.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </p>
+                                    </div>
+
+                                    {/* Stats row */}
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="rounded-xl bg-blue-50 p-2">
+                                            <p className="text-[10px] text-slate-500">Days</p>
+                                            <p className="text-sm font-bold text-slate-900">{plan.totalStudyDays}</p>
+                                        </div>
+                                        <div className="rounded-xl bg-emerald-50 p-2">
+                                            <p className="text-[10px] text-slate-500">Hours</p>
+                                            <p className="text-sm font-bold text-slate-900">{planHours.toFixed(1)}</p>
+                                        </div>
+                                        <div className="rounded-xl bg-amber-50 p-2">
+                                            <p className="text-[10px] text-slate-500">Subjects</p>
+                                            <p className="text-sm font-bold text-slate-900">{plan.subjects.length}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Subjects pills */}
+                                    <div className="flex flex-wrap gap-1">
+                                        {plan.subjects.slice(0, 4).map((subj, i) => (
+                                            <span key={i} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 truncate max-w-[120px]">
+                                                {subj.name}
+                                            </span>
+                                        ))}
+                                        {plan.subjects.length > 4 && (
+                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                                                +{plan.subjects.length - 4} more
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Progress */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between text-[11px]">
+                                            <span className="font-semibold text-slate-600">{completedTasks}/{totalTasks} tasks</span>
+                                            <span className="font-bold text-blue-700">{plan.overallProgress}%</span>
+                                        </div>
+                                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                            <div
+                                                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
+                                                style={{ width: `${plan.overallProgress}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {viewMode === 'schedule' && selectedPlan && (
+                <div className="space-y-5 animate-slide-in">
+                    {/* Schedule Header */}
+                    <div className="card p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <button onClick={() => setViewMode('plans')} className="btn-ghost inline-flex items-center gap-1 text-xs text-blue-700 hover:text-blue-800 px-0">
+                                    <ArrowLeft size={14} />
+                                    All plans
+                                </button>
                             </div>
-                            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center">
-                                <p className="text-xs text-slate-500">Total hours</p>
-                                <p className="text-lg font-bold text-slate-900">{totalHours.toFixed(1)}</p>
+                            <p className="text-xs font-semibold text-blue-700">{selectedPlan.title}</p>
+                            <h2 className="text-2xl font-black text-slate-900">Your Study Schedule</h2>
+                            <p className="text-sm text-slate-500">Update task status as you progress through your plan.</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 px-5 py-3 text-center">
+                                <p className="text-[10px] uppercase tracking-wider text-blue-600 font-semibold">Progress</p>
+                                <p className="text-2xl font-black text-blue-700">{selectedPlan.overallProgress}%</p>
+                            </div>
+                            <div className="rounded-2xl bg-slate-50 px-5 py-3 text-center">
+                                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Hours</p>
+                                <p className="text-2xl font-black text-slate-900">{totalHours.toFixed(1)}</p>
+                            </div>
+                            <div className="rounded-2xl bg-emerald-50 px-5 py-3 text-center">
+                                <p className="text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">Days</p>
+                                <p className="text-2xl font-black text-emerald-700">{selectedPlan.totalStudyDays}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="card p-5 space-y-3 bg-gradient-to-r from-blue-50 via-indigo-50 to-amber-50">
-                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                            <div>
-                                <p className="text-xs font-semibold text-slate-600">How to read this plan</p>
-                                <p className="text-sm text-slate-700">We start days at {formatMinutesToTime(DEFAULT_START_MINUTES)}. Finish around {formatMinutesToTime(DEFAULT_START_MINUTES + Math.round(totalHours * 60))} — move the blocks earlier or later to fit your rhythm.</p>
-                            </div>
-                            <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-700">
-                                {Object.entries(PRIORITY_META).map(([key, meta]) => (
-                                    <span key={key} className={`rounded-full border px-3 py-1 ${meta.accent}`}>
-                                        {meta.label}
-                                    </span>
-                                ))}
+                    {/* AI Summary */}
+                    {selectedPlan.aiSummary && (
+                        <div className="card p-4 bg-gradient-to-r from-indigo-50 via-blue-50 to-purple-50 border-indigo-100">
+                            <div className="flex items-start gap-3">
+                                <Wand2 size={18} className="text-indigo-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p className="text-xs font-semibold text-indigo-700 mb-1">AI Study Strategy</p>
+                                    <p className="text-sm text-slate-700 leading-relaxed">{selectedPlan.aiSummary}</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-3 text-xs text-slate-700">
-                            <div className="rounded-xl bg-white/70 p-3 shadow-sm">
-                                <p className="font-semibold text-slate-900">Prep & pacing</p>
-                                <p>Use 25-50 minute focus blocks, 5-10 minute breaks, and one 30-minute review at the end.</p>
-                            </div>
-                            <div className="rounded-xl bg-white/70 p-3 shadow-sm">
-                                <p className="font-semibold text-slate-900">Evidence of learning</p>
-                                <p>Close each block by writing 3 bullets: what you solved, what was fuzzy, what to re-check tomorrow.</p>
-                            </div>
-                            <div className="rounded-xl bg-white/70 p-3 shadow-sm">
-                                <p className="font-semibold text-slate-900">Swap rule</p>
-                                <p>Feeling stuck? Switch to a medium/low task, then return — keep momentum without losing priority.</p>
-                            </div>
+                    )}
+
+                    {/* Overall progress bar */}
+                    <div className="card p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-600">Overall completion</span>
+                            <span className="text-xs font-bold text-blue-700">{selectedPlan.overallProgress}%</span>
+                        </div>
+                        <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 transition-all duration-700"
+                                style={{ width: `${selectedPlan.overallProgress}%` }}
+                            />
                         </div>
                     </div>
 
-                    <div className="card p-5 space-y-4">
-                        <div className="flex items-center gap-2">
-                            <Calendar size={18} className="text-slate-700" />
-                            <p className="text-sm font-semibold text-slate-900">Daily sessions</p>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                                        <th className="px-3 py-2">Day</th>
-                                        <th className="px-3 py-2">Date</th>
-                                        <th className="px-3 py-2">Time</th>
-                                        <th className="px-3 py-2">Subject & topic</th>
-                                        <th className="px-3 py-2">Duration</th>
-                                        <th className="px-3 py-2">Priority</th>
-                                        <th className="px-3 py-2">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {selectedPlan.sessions.flatMap((session) => {
-                                        const timeline = buildTimeline(session.subjects);
-                                        return timeline.map(({ subject, idx, start, end }) => (
-                                            <tr key={`${session._id}-${idx}`} className="hover:bg-slate-50/80">
-                                                <td className="px-3 py-2 align-top text-xs font-semibold text-slate-700">Day {session.day}</td>
-                                                <td className="px-3 py-2 align-top text-xs text-slate-600">{new Date(session.date).toLocaleDateString()}</td>
-                                                <td className="px-3 py-2 align-top text-xs text-slate-600 whitespace-nowrap">{formatMinutesToTime(start)} – {formatMinutesToTime(end)}</td>
-                                                <td className="px-3 py-2">
-                                                    <div className="flex items-center gap-2">
-                                                        {subject.taskType && (
-                                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                                                                {subject.taskType}
+                    {/* Daily Session Cards */}
+                    {selectedPlan.sessions.map((session) => {
+                        const dayCompleted = session.subjects.filter(s => s.status === 'completed' || s.isCompleted).length;
+                        const dayInProgress = session.subjects.filter(s => s.status === 'in-progress').length;
+                        const dayTotal = session.subjects.length;
+                        const dayProgress = dayTotal > 0 ? Math.round(((dayCompleted + dayInProgress * 0.5) / dayTotal) * 100) : 0;
+
+                        return (
+                            <div key={session._id} className="card overflow-hidden">
+                                {/* Day Header */}
+                                <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-5 py-3 border-b border-slate-100">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white text-sm font-black">
+                                                {session.day}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-900">
+                                                    {new Date(session.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                                                </p>
+                                                {session.notes && (
+                                                    <p className="text-[11px] text-slate-500">{session.notes}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                                                <Clock size={12} />
+                                                <span className="font-semibold">{session.totalStudyHours}h</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[11px]">
+                                                <span className="font-semibold text-emerald-600">{dayCompleted}</span>
+                                                <span className="text-slate-400">/</span>
+                                                <span className="font-semibold text-slate-600">{dayTotal}</span>
+                                                <span className="text-slate-400">done</span>
+                                            </div>
+                                            <div className="h-2 w-20 overflow-hidden rounded-full bg-slate-200">
+                                                <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500" style={{ width: `${dayProgress}%` }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Task Cards */}
+                                <div className="p-4 space-y-3">
+                                    {session.subjects.map((subject, idx) => {
+                                        const currentStatus: StudyTaskStatus = subject.status || (subject.isCompleted ? 'completed' : 'pending');
+                                        const priorityMeta = PRIORITY_META[subject.priority] || PRIORITY_META.medium;
+                                        const isComplete = currentStatus === 'completed';
+                                        const isInProgress = currentStatus === 'in-progress';
+
+                                        const taskTypeBg: Record<string, string> = {
+                                            reading: 'bg-blue-100 text-blue-700',
+                                            summarizing: 'bg-purple-100 text-purple-700',
+                                            practice: 'bg-amber-100 text-amber-700',
+                                            revision: 'bg-emerald-100 text-emerald-700',
+                                            'self-test': 'bg-rose-100 text-rose-700',
+                                        };
+
+                                        return (
+                                            <div
+                                                key={`${session._id}-${idx}`}
+                                                className={`rounded-2xl border p-4 transition-all ${
+                                                    isComplete
+                                                        ? 'border-emerald-200 bg-emerald-50/50'
+                                                        : isInProgress
+                                                            ? 'border-amber-200 bg-amber-50/30'
+                                                            : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm'
+                                                }`}
+                                            >
+                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                    {/* Left: Task details */}
+                                                    <div className="flex-1 space-y-2 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            {subject.taskType && (
+                                                                <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${taskTypeBg[subject.taskType] || 'bg-slate-100 text-slate-600'}`}>
+                                                                    {subject.taskType}
+                                                                </span>
+                                                            )}
+                                                            <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${priorityMeta.accent}`}>
+                                                                {priorityMeta.label}
                                                             </span>
+                                                            {subject.technique && (
+                                                                <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500 border border-slate-100">
+                                                                    {subject.technique}
+                                                                </span>
+                                                            )}
+                                                            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                                                                <Clock size={11} />
+                                                                {subject.durationMinutes ? `${subject.durationMinutes}m` : `${subject.durationHours}h`}
+                                                            </span>
+                                                        </div>
+
+                                                        <h4 className={`text-sm font-bold ${
+                                                            isComplete ? 'text-slate-500 line-through' : 'text-slate-900'
+                                                        }`}>
+                                                            {subject.title || subject.topic || subject.subjectName}
+                                                        </h4>
+
+                                                        <p className="text-xs text-slate-500">
+                                                            {subject.subjectName}{subject.topic ? ` · ${subject.topic}` : ''}
+                                                        </p>
+
+                                                        {subject.instruction && (
+                                                            <div className="rounded-xl bg-slate-50 px-3 py-2 text-[12px] text-slate-600 leading-relaxed">
+                                                                {subject.instruction}
+                                                            </div>
                                                         )}
-                                                        <p className="text-sm font-semibold text-slate-900">{subject.title || subject.topic || subject.subjectName}</p>
+
+                                                        {subject.resources && subject.resources.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {subject.resources.map((res, i) => (
+                                                                    <span key={i} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+                                                                        📄 {res}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <p className="text-xs text-slate-500">{subject.subjectName}{subject.topic ? ` · ${subject.topic}` : ''}</p>
-                                                    {session.notes && (
-                                                        <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">{session.notes}</p>
-                                                    )}
-                                                    <p className="mt-1 rounded bg-white px-2 py-1 text-[11px] text-slate-600">How to approach: {PRIORITY_META[subject.priority]?.tip}</p>
-                                                </td>
-                                                <td className="px-3 py-2 align-top text-xs font-semibold text-slate-700">
-                                                    {subject.durationMinutes ? `${subject.durationMinutes}m` : `${subject.durationHours}h`}
-                                                </td>
-                                                <td className="px-3 py-2 align-top">
-                                                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold capitalize ${PRIORITY_META[subject.priority]?.accent}`}>
-                                                        {PRIORITY_META[subject.priority]?.label || subject.priority}
-                                                    </span>
-                                                </td>
-                                                <td className="px-3 py-2 align-top">
-                                                    {!subject.isCompleted ? (
+
+                                                    {/* Right: Status buttons */}
+                                                    <div className="flex sm:flex-col gap-1.5 flex-shrink-0">
                                                         <button
-                                                            onClick={() => handleMarkComplete(session._id, idx)}
-                                                            className="btn-ghost inline-flex items-center gap-1 text-[11px]"
+                                                            onClick={() => handleStatusChange(session._id, idx, 'pending')}
+                                                            className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                                                                currentStatus === 'pending'
+                                                                    ? 'bg-slate-200 text-slate-700 shadow-sm'
+                                                                    : 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                                                            }`}
                                                         >
-                                                            <CheckCircle2 size={14} />
-                                                            Mark done
+                                                            Pending
                                                         </button>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
-                                                            <CheckCircle2 size={14} /> Done
-                                                        </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ));
+                                                        <button
+                                                            onClick={() => handleStatusChange(session._id, idx, 'in-progress')}
+                                                            className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                                                                currentStatus === 'in-progress'
+                                                                    ? 'bg-amber-100 text-amber-700 shadow-sm ring-1 ring-amber-200'
+                                                                    : 'bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600'
+                                                            }`}
+                                                        >
+                                                            In Progress
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleStatusChange(session._id, idx, 'completed')}
+                                                            className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                                                                currentStatus === 'completed'
+                                                                    ? 'bg-emerald-100 text-emerald-700 shadow-sm ring-1 ring-emerald-200'
+                                                                    : 'bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'
+                                                            }`}
+                                                        >
+                                                            ✓ Done
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
                                     })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
