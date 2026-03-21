@@ -1,0 +1,932 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import {
+    ArrowLeft,
+    BookOpen,
+    Calendar,
+    CheckCircle2,
+    Clock,
+    FileText,
+    KeyRound,
+    Loader2,
+    Plus,
+    Upload,
+    Wand2,
+} from 'lucide-react';
+import { createStudyPlan, createStudyPlanWithDocs, fetchStudyPlans, markStudySubjectComplete } from '../services/studyPlanService';
+import type {
+    CreateStudyPlanInput,
+    StudyPlan,
+    StudySubject,
+    StudySessionSubject,
+    StudyPriority,
+} from '../types/studyPlan';
+
+const PRIORITY_META: Record<StudyPriority, { label: string; accent: string; tip: string }> = {
+    critical: {
+        label: 'Exam-crunch',
+        accent: 'bg-rose-50 text-rose-700 border-rose-200',
+        tip: 'Do first while fresh. Aim for deep focus and quick recall drills.',
+    },
+    high: {
+        label: 'High focus',
+        accent: 'bg-amber-50 text-amber-700 border-amber-200',
+        tip: 'Tackle early. Alternate problems and short summaries to lock concepts.',
+    },
+    medium: {
+        label: 'Steady',
+        accent: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        tip: 'Use spaced practice. Finish with one cheat-sheet bullet list.',
+    },
+    low: {
+        label: 'Light',
+        accent: 'bg-slate-50 text-slate-700 border-slate-200',
+        tip: 'Skim, annotate slides, and park doubts for later review.',
+    },
+};
+
+const DEFAULT_START_MINUTES = 9 * 60; // 9:00 AM baseline timeline for students
+
+const formatMinutesToTime = (totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const suffix = hours >= 12 ? 'PM' : 'AM';
+    const normalizedHour = ((hours + 11) % 12) + 1;
+    const paddedMinutes = minutes.toString().padStart(2, '0');
+    return `${normalizedHour}:${paddedMinutes} ${suffix}`;
+};
+
+const buildTimeline = (subjects: StudySessionSubject[]) => {
+    let cursorMinutes = DEFAULT_START_MINUTES;
+    return subjects.map((subject, idx) => {
+        const durationMinutes = subject.durationMinutes ?? Math.round((subject.durationHours || 0) * 60);
+        const start = cursorMinutes;
+        cursorMinutes += Math.max(15, durationMinutes);
+        const end = cursorMinutes;
+        return { subject, idx, start, end };
+    });
+};
+
+const StudyPlanPage: React.FC = () => {
+    const navigate = useNavigate();
+    const [apiKey, setApiKey] = useState('');
+    const [documents, setDocuments] = useState<File[]>([]);
+    const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+    const [isCreating, setIsCreating] = useState(false);
+    const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+    const [plans, setPlans] = useState<StudyPlan[]>([]);
+    const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'builder' | 'schedule'>('builder');
+    const [justGenerated, setJustGenerated] = useState(false);
+
+    const computeStudyHoursFromInternship = (start?: string, end?: string, fallback?: number) => {
+        if (!start || !end) return fallback;
+        const [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return fallback;
+        const startMinutes = sh * 60 + sm;
+        const endMinutes = eh * 60 + em;
+        if (endMinutes <= startMinutes) return fallback;
+        const internshipHours = (endMinutes - startMinutes) / 60;
+        const remaining = Math.max(1, Math.min(16, 24 - internshipHours));
+        return remaining;
+    };
+
+    const prefillDemoPlan = () => {
+        const today = new Date();
+        const start = new Date(today);
+        const end = new Date(today);
+        start.setDate(start.getDate() + 3);
+        end.setDate(end.getDate() + 21);
+
+        setPlanInput({
+            title: 'Internship + Finals Sprint',
+            examStartDate: start.toISOString().slice(0, 10),
+            examEndDate: end.toISOString().slice(0, 10),
+            availableHoursPerDay: computeStudyHoursFromInternship('09:00', '13:00', 4) || 4,
+            internshipStartTime: '09:00',
+            internshipEndTime: '13:00',
+            subjects: [
+                {
+                    name: 'Distributed Systems',
+                    creditHours: 3,
+                    difficulty: 'hard',
+                    examDate: end.toISOString().slice(0, 10),
+                    weight: 1.4,
+                    syllabusTopics: ['Consistency models', 'CAP', 'gRPC labs'],
+                },
+                {
+                    name: 'Data Structures & Algorithms',
+                    creditHours: 3,
+                    difficulty: 'medium',
+                    examDate: end.toISOString().slice(0, 10),
+                    weight: 1.1,
+                    syllabusTopics: ['DP practice', 'Graphs', 'Greedy vs brute force'],
+                },
+                {
+                    name: 'Internship Project',
+                    creditHours: 2,
+                    difficulty: 'medium',
+                    examDate: start.toISOString().slice(0, 10),
+                    weight: 1,
+                    syllabusTopics: ['Backend tasks', 'PR reviews', 'Demo prep'],
+                },
+            ],
+        });
+    };
+
+    const [planInput, setPlanInput] = useState<CreateStudyPlanInput>({
+        title: '',
+        examStartDate: '',
+        examEndDate: '',
+        availableHoursPerDay: 4,
+        internshipStartTime: '',
+        internshipEndTime: '',
+        subjects: [],
+    });
+
+    const handleInternshipTimeChange = (field: 'internshipStartTime' | 'internshipEndTime', value: string) => {
+        setPlanInput((prev) => {
+            const next = { ...prev, [field]: value };
+            const derived = computeStudyHoursFromInternship(next.internshipStartTime, next.internshipEndTime, next.availableHoursPerDay);
+            return derived ? { ...next, availableHoursPerDay: derived } : next;
+        });
+    };
+
+    const [subjectDraft, setSubjectDraft] = useState<StudySubject & { topicsInput?: string }>(
+        {
+            name: '',
+            creditHours: 3,
+            difficulty: 'medium',
+            examDate: '',
+            weight: 1,
+            syllabusTopics: [],
+            topicsInput: '',
+        }
+    );
+
+    useEffect(() => {
+        const loadPlans = async () => {
+            setIsLoadingPlans(true);
+            try {
+                const data = await fetchStudyPlans();
+                setPlans(data);
+                if (data.length > 0) setSelectedPlanId(data[0]._id);
+            } catch (error: any) {
+                toast.error(error?.response?.data?.message || 'Could not load study plans');
+            } finally {
+                setIsLoadingPlans(false);
+            }
+        };
+        loadPlans();
+    }, []);
+
+    const selectedPlan = useMemo(
+        () => plans.find((p) => p._id === selectedPlanId) || plans[0],
+        [plans, selectedPlanId]
+    );
+
+    const internshipHoursDerived = useMemo(() => {
+        if (!planInput.internshipStartTime || !planInput.internshipEndTime) return null;
+        const [sh, sm] = planInput.internshipStartTime.split(':').map(Number);
+        const [eh, em] = planInput.internshipEndTime.split(':').map(Number);
+        if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+        const start = sh * 60 + sm;
+        const end = eh * 60 + em;
+        if (end <= start) return null;
+        return Math.round(((end - start) / 60) * 10) / 10;
+    }, [planInput.internshipStartTime, planInput.internshipEndTime]);
+
+    const handleFileSelect = (files: FileList | File[] | null) => {
+        if (!files) return;
+        const newFiles = Array.isArray(files) ? files : Array.from(files);
+        setDocuments((prev) => {
+            const names = new Set(prev.map((f) => f.name));
+            const merged = [...prev];
+            newFiles.forEach((f) => {
+                if (!names.has(f.name)) merged.push(f);
+            });
+            return merged;
+        });
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFileSelect(e.dataTransfer.files);
+            e.dataTransfer.clearData();
+        }
+    };
+
+    const handleAddSubject = () => {
+        if (!subjectDraft.name.trim()) {
+            toast.error('Add a subject name first');
+            return;
+        }
+
+        const topics = subjectDraft.topicsInput
+            ? subjectDraft.topicsInput.split(',').map((t) => t.trim()).filter(Boolean)
+            : [];
+
+        const newSubject: StudySubject = {
+            name: subjectDraft.name.trim(),
+            creditHours: Number(subjectDraft.creditHours) || 3,
+            difficulty: subjectDraft.difficulty,
+            examDate: subjectDraft.examDate || undefined,
+            weight: Number(subjectDraft.weight) || 1,
+            syllabusTopics: topics,
+        };
+
+        setPlanInput((prev) => ({ ...prev, subjects: [...prev.subjects, newSubject] }));
+        setSubjectDraft({ name: '', creditHours: 3, difficulty: 'medium', examDate: '', weight: 1, syllabusTopics: [], topicsInput: '' });
+    };
+
+    const handleRemoveSubject = (idx: number) => {
+        setPlanInput((prev) => ({
+            ...prev,
+            subjects: prev.subjects.filter((_, i) => i !== idx),
+        }));
+    };
+
+    const handleCreatePlan = async () => {
+        if (!planInput.examStartDate || !planInput.examEndDate) {
+            toast.error('Exam start and end dates are required');
+            return;
+        }
+        if (planInput.subjects.length === 0) {
+            toast.error('Add at least one subject');
+            return;
+        }
+
+        setIsCreating(true);
+        try {
+            const safeTitle = planInput.title.trim() || `Study plan ${new Date().toISOString().slice(0, 10)}`;
+            const derivedHours = computeStudyHoursFromInternship(
+                planInput.internshipStartTime,
+                planInput.internshipEndTime,
+                Number(planInput.availableHoursPerDay) || 4
+            ) || Number(planInput.availableHoursPerDay) || 4;
+
+            const payload: CreateStudyPlanInput = {
+                ...planInput,
+                title: safeTitle,
+                subjects: planInput.subjects,
+                availableHoursPerDay: derivedHours,
+            };
+
+            let created: StudyPlan;
+            if (documents.length > 0) {
+                const formData = new FormData();
+                formData.append('title', payload.title);
+                formData.append('examStartDate', payload.examStartDate);
+                formData.append('examEndDate', payload.examEndDate);
+                formData.append('availableHoursPerDay', String(payload.availableHoursPerDay ?? 4));
+                if (payload.internshipStartTime) formData.append('internshipStartTime', payload.internshipStartTime);
+                if (payload.internshipEndTime) formData.append('internshipEndTime', payload.internshipEndTime);
+                formData.append('subjects', JSON.stringify(payload.subjects));
+                if (apiKey.trim()) formData.append('aiKey', apiKey.trim());
+                documents.forEach((file) => formData.append('studyDocs', file));
+
+                created = await createStudyPlanWithDocs(formData);
+            } else {
+                created = await createStudyPlan(payload);
+            }
+            if (!planInput.title.trim()) {
+                setPlanInput((prev) => ({ ...prev, title: safeTitle }));
+            }
+            toast.success('Study plan generated');
+            setPlans((prev) => [created, ...prev]);
+            setSelectedPlanId(created._id);
+            setViewMode('builder');
+            setCurrentStep(3);
+            setJustGenerated(true);
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Could not generate study plan');
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const handleMarkComplete = async (sessionId: string, subjectIdx: number) => {
+        if (!selectedPlan) return;
+        try {
+            const updated = await markStudySubjectComplete(selectedPlan._id, sessionId, subjectIdx);
+            setPlans((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+            toast.success('Marked as complete');
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Could not update progress');
+        }
+    };
+
+    const totalHours = selectedPlan?.sessions?.reduce((sum, s) => sum + (s.totalStudyHours || 0), 0) || 0;
+
+    return (
+        <div className="space-y-8">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-2">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/60 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
+                        <Wand2 size={14} />
+                        AI study planner
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900">Study Plan Generator</h1>
+                    <p className="max-w-3xl text-sm text-slate-500">
+                        Don’t worry, we’ll balance your workload automatically. Upload materials, set your time, and let the AI build a calm schedule.
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={prefillDemoPlan}
+                        className="btn-secondary text-sm"
+                    >
+                        Quick-fill sample
+                    </button>
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="btn-ghost inline-flex items-center gap-2 text-sm"
+                    >
+                        <ArrowLeft size={16} />
+                        Back to dashboard
+                    </button>
+                </div>
+            </div>
+
+            {viewMode === 'builder' && (
+                <div className="space-y-5 animate-slide-in">
+                    {/* Stepper */}
+                    <div className="card p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                                {[1, 2, 3].map((step) => (
+                                    <React.Fragment key={step}>
+                                        <div className={`flex h-9 w-9 items-center justify-center rounded-full border text-xs ${
+                                            currentStep === step
+                                                ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                                : step < currentStep
+                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                    : 'border-slate-200 text-slate-500'
+                                        }`}>
+                                            {step}
+                                        </div>
+                                        {step < 3 && <div className="h-[1px] w-12 bg-slate-200 md:w-20" />}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                            <div className="text-xs text-slate-500">Step {currentStep} of 3</div>
+                        </div>
+                    </div>
+
+                    {/* Steps */}
+                    {currentStep === 1 && (
+                        <div className="card p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <Upload className="text-blue-600" size={20} />
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-900">Upload study materials</p>
+                                    <p className="text-xs text-slate-500">Lecture slides, module outlines, exam timetables. Drag & drop or click to add.</p>
+                                </div>
+                            </div>
+                            <div
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={handleDrop}
+                                className="rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/70 p-6 text-center"
+                            >
+                                <p className="text-sm font-semibold text-slate-800">Drop files here or click to upload</p>
+                                <p className="text-xs text-slate-500">We keep it private; used only for topic extraction.</p>
+                                <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm">
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        multiple
+                                        accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.md,.json"
+                                        onChange={(e) => handleFileSelect(e.target.files)}
+                                    />
+                                    Upload Files
+                                </label>
+                            </div>
+                            {documents.length > 0 && (
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {documents.map((file) => (
+                                        <div key={file.name} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm">
+                                            <FileText size={16} className="text-slate-500" />
+                                            <div className="truncate text-sm font-semibold text-slate-800">{file.name}</div>
+                                            <span className="text-[11px] text-slate-500">{Math.round(file.size / 1024)} KB</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="flex items-center justify-between pt-2">
+                                <div className="text-xs text-slate-500">Tip: Add exam timetable first so we can prioritise dates.</div>
+                                <button
+                                    onClick={() => setCurrentStep(2)}
+                                    className="btn-primary text-sm"
+                                >
+                                    Next: Preferences
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 2 && (
+                        <div className="grid gap-6 lg:grid-cols-3">
+                            <div className="space-y-6 lg:col-span-2">
+                                <div className="card p-6 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <Calendar className="text-purple-600" size={20} />
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900">Study preferences</p>
+                                            <p className="text-xs text-slate-500">Keep it light — we’ll balance internship and study time.</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Plan title</label>
+                                            <input
+                                                className="input w-full"
+                                                placeholder="e.g., Semester 6 + Internship"
+                                                value={planInput.title}
+                                                onChange={(e) => setPlanInput({ ...planInput, title: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <label className="text-xs font-semibold text-slate-600">Internship time range</label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <span className="text-[11px] text-slate-500">Start</span>
+                                                    <input
+                                                        type="time"
+                                                        className="input w-full"
+                                                        value={planInput.internshipStartTime}
+                                                        onChange={(e) => handleInternshipTimeChange('internshipStartTime', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <span className="text-[11px] text-slate-500">End</span>
+                                                    <input
+                                                        type="time"
+                                                        className="input w-full"
+                                                        value={planInput.internshipEndTime}
+                                                        onChange={(e) => handleInternshipTimeChange('internshipEndTime', e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <p className="text-[11px] text-slate-500">We’ll keep study blocks outside this range.</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Available study hours</label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="range"
+                                                    min={1}
+                                                    max={12}
+                                                    step={0.5}
+                                                    value={planInput.availableHoursPerDay}
+                                                    onChange={(e) => setPlanInput({ ...planInput, availableHoursPerDay: Number(e.target.value) })}
+                                                    className="flex-1"
+                                                />
+                                                <span className="w-12 text-right text-sm font-semibold text-slate-900">{planInput.availableHoursPerDay}h</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-500">
+                                                {planInput.internshipStartTime && planInput.internshipEndTime
+                                                    ? `Derived from internship window: ${computeStudyHoursFromInternship(planInput.internshipStartTime, planInput.internshipEndTime, planInput.availableHoursPerDay) || planInput.availableHoursPerDay}h`
+                                                    : 'Slide to match the free hours you can study.'}
+                                            </p>
+                                        </div>
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                            <div>
+                                                <label className="text-xs font-semibold text-slate-600">Exam start date</label>
+                                                <input
+                                                    type="date"
+                                                    className="input w-full"
+                                                    value={planInput.examStartDate}
+                                                    onChange={(e) => setPlanInput({ ...planInput, examStartDate: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-semibold text-slate-600">Exam end date</label>
+                                                <input
+                                                    type="date"
+                                                    className="input w-full"
+                                                    value={planInput.examEndDate}
+                                                    onChange={(e) => setPlanInput({ ...planInput, examEndDate: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="card p-6 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <BookOpen className="text-emerald-600" size={20} />
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900">Subjects</p>
+                                            <p className="text-xs text-slate-500">Just the basics — AI fills in the details.</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Name</label>
+                                            <input
+                                                className="input w-full"
+                                                placeholder="Distributed Systems"
+                                                value={subjectDraft.name}
+                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, name: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Difficulty</label>
+                                            <div className="flex gap-2">
+                                                {['easy', 'medium', 'hard'].map((level) => (
+                                                    <button
+                                                        key={level}
+                                                        type="button"
+                                                        className={`flex-1 rounded-full border px-3 py-1 text-xs font-semibold capitalize transition ${
+                                                            subjectDraft.difficulty === level
+                                                                ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                                                : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                                        }`}
+                                                        onClick={() => setSubjectDraft({ ...subjectDraft, difficulty: level as any })}
+                                                    >
+                                                        {level}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Credit hours</label>
+                                            <input
+                                                type="number"
+                                                className="input w-full"
+                                                min={1}
+                                                max={6}
+                                                value={subjectDraft.creditHours}
+                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, creditHours: Number(e.target.value) })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Weight</label>
+                                            <input
+                                                type="number"
+                                                className="input w-full"
+                                                min={1}
+                                                max={5}
+                                                step={0.5}
+                                                value={subjectDraft.weight}
+                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, weight: Number(e.target.value) })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Exam date (optional)</label>
+                                            <input
+                                                type="date"
+                                                className="input w-full"
+                                                value={subjectDraft.examDate}
+                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, examDate: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={handleAddSubject}
+                                                className="btn-primary inline-flex items-center justify-center gap-2 text-sm"
+                                            >
+                                                <Plus size={16} />
+                                                Add subject
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {planInput.subjects.length > 0 && (
+                                        <div className="mt-2 space-y-3">
+                                            <p className="text-xs font-semibold text-slate-600">Subjects added</p>
+                                            <div className="grid gap-3 md:grid-cols-2">
+                                                {planInput.subjects.map((subject, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                                                        <div className="space-y-1">
+                                                            <p className="text-sm font-semibold text-slate-900">{subject.name}</p>
+                                                            <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-500">
+                                                                <span className="glass-pill">{subject.creditHours} credits</span>
+                                                                <span className="glass-pill capitalize">{subject.difficulty}</span>
+                                                                {subject.examDate && <span className="glass-pill">Exam {subject.examDate}</span>}
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleRemoveSubject(idx)}
+                                                            className="rounded-full px-2 py-1 text-xs font-bold text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                                                            aria-label="Remove subject"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="card p-5 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <KeyRound className="text-blue-600" size={18} />
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900">AI key (optional)</p>
+                                            <p className="text-xs text-slate-500">Kept on this device; used for topic extraction from your files.</p>
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        className="input w-full"
+                                        placeholder="Paste your AI provider key"
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="card p-5 space-y-3">
+                                    <p className="text-sm font-semibold text-slate-900">Need a break?</p>
+                                    <p className="text-xs text-slate-500">You can go back and edit before generating.</p>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setCurrentStep(1)} className="btn-secondary text-sm">Back</button>
+                                        <button onClick={() => setCurrentStep(3)} className="btn-primary text-sm">Next: Review</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 3 && (
+                        <div className="grid gap-6 lg:grid-cols-3">
+                            <div className="card p-6 space-y-4 lg:col-span-2">
+                                <div className="flex items-center gap-3">
+                                    <Clock className="text-indigo-600" size={20} />
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-900">Review & generate</p>
+                                        <p className="text-xs text-slate-500">One click to create a calm schedule.</p>
+                                    </div>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-3 text-center">
+                                    <div className="rounded-xl bg-blue-50 p-3">
+                                        <p className="text-xs text-slate-500">Study days</p>
+                                        <p className="text-lg font-bold text-slate-900">{planInput.examStartDate && planInput.examEndDate ? Math.max(1, Math.ceil((new Date(planInput.examEndDate).getTime() - new Date(planInput.examStartDate).getTime()) / (1000 * 60 * 60 * 24))) : '-'}</p>
+                                    </div>
+                                    <div className="rounded-xl bg-emerald-50 p-3">
+                                        <p className="text-xs text-slate-500">Daily study hours</p>
+                                        <p className="text-lg font-bold text-slate-900">{planInput.availableHoursPerDay}h</p>
+                                    </div>
+                                    <div className="rounded-xl bg-amber-50 p-3">
+                                        <p className="text-xs text-slate-500">Subjects added</p>
+                                        <p className="text-lg font-bold text-slate-900">{planInput.subjects.length}</p>
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-4 text-sm text-slate-700">
+                                    Your personalized study plan is ready! We’ll balance internship {internshipHoursDerived ? `${internshipHoursDerived}h/day` : 'hours'} and study blocks so you can stay calm and focused.
+                                </div>
+                                {justGenerated && selectedPlan && (
+                                    <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                                        Plan generated successfully. You can adjust inputs or jump to the schedule.
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setCurrentStep(2)} className="btn-secondary text-sm">Back to edit</button>
+                                    <button
+                                        onClick={handleCreatePlan}
+                                        disabled={isCreating}
+                                        className="btn-primary inline-flex items-center gap-2 text-sm"
+                                    >
+                                        {isCreating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+                                        Generate Study Plan
+                                    </button>
+                                    {justGenerated && selectedPlan && (
+                                        <button
+                                            onClick={() => setViewMode('schedule')}
+                                            className="btn-secondary inline-flex items-center gap-2 text-sm"
+                                        >
+                                            <CheckCircle2 size={14} />
+                                            View schedule
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="card p-5 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900">Active plans</p>
+                                            <p className="text-xs text-slate-500">Tap to view schedule</p>
+                                        </div>
+                                        {isLoadingPlans && <Loader2 size={16} className="animate-spin text-slate-400" />}
+                                    </div>
+                                    <div className="space-y-3">
+                                        {plans.length === 0 && (
+                                            <p className="text-sm text-slate-500">No plans yet. Generate to see the schedule.</p>
+                                        )}
+                                        {plans.map((plan) => (
+                                            <button
+                                                key={plan._id}
+                                                onClick={() => {
+                                                    setSelectedPlanId(plan._id);
+                                                    setViewMode('schedule');
+                                                }}
+                                                className={`w-full rounded-2xl border px-4 py-3 text-left transition hover:border-blue-200 hover:bg-blue-50/50 ${
+                                                    selectedPlan?._id === plan._id ? 'border-blue-300 bg-blue-50' : 'border-slate-100'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-900">{plan.title}</p>
+                                                        <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                                                            {plan.subjects.length} subjects · {plan.totalStudyDays} days
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs font-semibold text-blue-700">{plan.overallProgress}%</p>
+                                                        <div className="mt-1 h-2 w-20 overflow-hidden rounded-full bg-slate-200">
+                                                            <div
+                                                                className="h-full bg-blue-600"
+                                                                style={{ width: `${plan.overallProgress}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {selectedPlan && (
+                                    <div className="card p-5 space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <Clock size={16} className="text-indigo-600" />
+                                            <p className="text-sm font-semibold text-slate-900">Plan snapshot</p>
+                                        </div>
+                                        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                                            {selectedPlan.aiSummary || 'AI tips will appear here after generation.'}
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3 text-center">
+                                            <div className="rounded-xl bg-blue-50 p-3">
+                                                <p className="text-xs text-slate-500">Study days</p>
+                                                <p className="text-lg font-bold text-slate-900">{selectedPlan.totalStudyDays || '-'}</p>
+                                            </div>
+                                            <div className="rounded-xl bg-emerald-50 p-3">
+                                                <p className="text-xs text-slate-500">Total hours</p>
+                                                <p className="text-lg font-bold text-slate-900">{totalHours.toFixed(1)}</p>
+                                            </div>
+                                            <div className="rounded-xl bg-amber-50 p-3">
+                                                <p className="text-xs text-slate-500">Daily cap</p>
+                                                <p className="text-lg font-bold text-slate-900">{selectedPlan.availableHoursPerDay}h</p>
+                                            </div>
+                                        </div>
+                                        {documents.length > 0 && (
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-600">Attached files (local)</p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {documents.map((file) => (
+                                                        <span key={file.name} className="glass-pill text-[11px] font-semibold text-slate-700">
+                                                            {file.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {viewMode === 'schedule' && selectedPlan && (
+                <div className="space-y-4 animate-slide-in">
+                    <div className="card p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-blue-700">{selectedPlan.title}</p>
+                            <h2 className="text-2xl font-black text-slate-900">Daily schedule & focus</h2>
+                            <p className="text-sm text-slate-500">Mark tasks done to keep your internship + campus work balanced.</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="rounded-2xl bg-blue-50 px-4 py-3 text-center">
+                                <p className="text-xs text-slate-500">Overall</p>
+                                <p className="text-lg font-bold text-blue-700">{selectedPlan.overallProgress}%</p>
+                            </div>
+                            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center">
+                                <p className="text-xs text-slate-500">Total hours</p>
+                                <p className="text-lg font-bold text-slate-900">{totalHours.toFixed(1)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card p-5 space-y-3 bg-gradient-to-r from-blue-50 via-indigo-50 to-amber-50">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p className="text-xs font-semibold text-slate-600">How to read this plan</p>
+                                <p className="text-sm text-slate-700">We start days at {formatMinutesToTime(DEFAULT_START_MINUTES)}. Finish around {formatMinutesToTime(DEFAULT_START_MINUTES + Math.round(totalHours * 60))} — move the blocks earlier or later to fit your rhythm.</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-700">
+                                {Object.entries(PRIORITY_META).map(([key, meta]) => (
+                                    <span key={key} className={`rounded-full border px-3 py-1 ${meta.accent}`}>
+                                        {meta.label}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-3 text-xs text-slate-700">
+                            <div className="rounded-xl bg-white/70 p-3 shadow-sm">
+                                <p className="font-semibold text-slate-900">Prep & pacing</p>
+                                <p>Use 25-50 minute focus blocks, 5-10 minute breaks, and one 30-minute review at the end.</p>
+                            </div>
+                            <div className="rounded-xl bg-white/70 p-3 shadow-sm">
+                                <p className="font-semibold text-slate-900">Evidence of learning</p>
+                                <p>Close each block by writing 3 bullets: what you solved, what was fuzzy, what to re-check tomorrow.</p>
+                            </div>
+                            <div className="rounded-xl bg-white/70 p-3 shadow-sm">
+                                <p className="font-semibold text-slate-900">Swap rule</p>
+                                <p>Feeling stuck? Switch to a medium/low task, then return — keep momentum without losing priority.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card p-5 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Calendar size={18} className="text-slate-700" />
+                            <p className="text-sm font-semibold text-slate-900">Daily sessions</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                                        <th className="px-3 py-2">Day</th>
+                                        <th className="px-3 py-2">Date</th>
+                                        <th className="px-3 py-2">Time</th>
+                                        <th className="px-3 py-2">Subject & topic</th>
+                                        <th className="px-3 py-2">Duration</th>
+                                        <th className="px-3 py-2">Priority</th>
+                                        <th className="px-3 py-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {selectedPlan.sessions.flatMap((session) => {
+                                        const timeline = buildTimeline(session.subjects);
+                                        return timeline.map(({ subject, idx, start, end }) => (
+                                            <tr key={`${session._id}-${idx}`} className="hover:bg-slate-50/80">
+                                                <td className="px-3 py-2 align-top text-xs font-semibold text-slate-700">Day {session.day}</td>
+                                                <td className="px-3 py-2 align-top text-xs text-slate-600">{new Date(session.date).toLocaleDateString()}</td>
+                                                <td className="px-3 py-2 align-top text-xs text-slate-600 whitespace-nowrap">{formatMinutesToTime(start)} – {formatMinutesToTime(end)}</td>
+                                                <td className="px-3 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        {subject.taskType && (
+                                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                                                                {subject.taskType}
+                                                            </span>
+                                                        )}
+                                                        <p className="text-sm font-semibold text-slate-900">{subject.title || subject.topic || subject.subjectName}</p>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500">{subject.subjectName}{subject.topic ? ` · ${subject.topic}` : ''}</p>
+                                                    {session.notes && (
+                                                        <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">{session.notes}</p>
+                                                    )}
+                                                    <p className="mt-1 rounded bg-white px-2 py-1 text-[11px] text-slate-600">How to approach: {PRIORITY_META[subject.priority]?.tip}</p>
+                                                </td>
+                                                <td className="px-3 py-2 align-top text-xs font-semibold text-slate-700">
+                                                    {subject.durationMinutes ? `${subject.durationMinutes}m` : `${subject.durationHours}h`}
+                                                </td>
+                                                <td className="px-3 py-2 align-top">
+                                                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold capitalize ${PRIORITY_META[subject.priority]?.accent}`}>
+                                                        {PRIORITY_META[subject.priority]?.label || subject.priority}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2 align-top">
+                                                    {!subject.isCompleted ? (
+                                                        <button
+                                                            onClick={() => handleMarkComplete(session._id, idx)}
+                                                            className="btn-ghost inline-flex items-center gap-1 text-[11px]"
+                                                        >
+                                                            <CheckCircle2 size={14} />
+                                                            Mark done
+                                                        </button>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                                                            <CheckCircle2 size={14} /> Done
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ));
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default StudyPlanPage;
