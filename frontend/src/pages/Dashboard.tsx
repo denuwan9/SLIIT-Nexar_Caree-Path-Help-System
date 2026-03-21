@@ -5,9 +5,7 @@ import { DashboardSkeleton } from '../components/ui/DashboardSkeleton';
 import { 
     LayoutDashboard, 
     User, 
-    Settings, 
     ArrowUpRight,
-    Search,
     UserCircle2,
     Calendar,
     BookOpen
@@ -65,25 +63,7 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-6">
-                    <div className="relative group hidden md:block">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input 
-                            placeholder="SEARCH CORE..." 
-                            className="bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2 text-[10px] font-bold uppercase tracking-widest focus:outline-none focus:border-cobalt-sliit transition-all w-64"
-                        />
-                    </div>
-                    {/* Settings icon — shows user avatar */}
-                    <button
-                        onClick={() => navigate('/settings')}
-                        title="Account Settings"
-                        className="relative w-11 h-11 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 hover:border-cobalt-sliit hover:shadow-lg transition-all group"
-                    >
-                        {user?.avatarUrl ? (
-                            <img src={user.avatarUrl} alt="Settings" className="w-full h-full object-cover" />
-                        ) : (
-                            <Settings size={20} className="absolute inset-0 m-auto text-slate-400 group-hover:text-cobalt-sliit transition-colors" />
-                        )}
-                    </button>
+
                     <div className="flex items-center gap-3 soft-glass p-1 pr-4 rounded-full border border-slate-200 bg-white">
                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                             {user?.avatarUrl ? <img src={user.avatarUrl} alt="Avatar" /> : <User size={20} className="text-slate-400" />}
