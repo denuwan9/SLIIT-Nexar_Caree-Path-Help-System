@@ -22,7 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const login = async (email: string, password: string) => {
         const response = await api.post('/auth/login', { email, password });
-        const { accessToken, user } = response.data.data;
+        const { accessToken } = response.data;
+        const { user } = response.data.data;
         localStorage.setItem('accessToken', accessToken);
         setState({
             user,
@@ -40,7 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             targetRole: "Student"
         };
         const response = await api.post('/auth/register', payload);
-        const { accessToken, user } = response.data.data;
+        const { accessToken } = response.data;
+        const { user } = response.data.data;
         localStorage.setItem('accessToken', accessToken);
         setState({
             user,
