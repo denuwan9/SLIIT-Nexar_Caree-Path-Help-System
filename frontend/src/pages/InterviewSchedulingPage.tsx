@@ -9,7 +9,7 @@ import {
 import { toast } from 'react-hot-toast';
 import {
   getEvents, getMyBookings, getEventStats, createCareerDayEvent,
-  createNormalDayEvent, publishEvent, cancelEvent, bookSlot, cancelBooking
+  createNormalDayEvent, publishEvent, cancelEvent, deleteEvent, bookSlot, cancelBooking
 } from '../services/interviewService';
 import type { IInterviewEvent, IMyBooking, IEventStats, ICompany, ISlot } from '../services/interviewService';
 
@@ -30,8 +30,16 @@ export default function InterviewSchedulingPage() {
               <span className="text-[10px] font-black text-cobalt-sliit uppercase tracking-[0.3em]">Module Active</span>
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-success animate-pulse" />
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">
-              Interview <span className="text-cobalt-sliit">Command</span>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 mt-2 flex items-center gap-3">
+            {isAdmin ? (
+              <>
+                Admin <span className="text-cobalt-sliit">Command Center</span>
+              </>
+            ) : (
+              <>
+                Interview <span className="text-cobalt-sliit">Scheduling</span>
+              </>
+            )}
             </h1>
           </div>
 
@@ -45,8 +53,7 @@ export default function InterviewSchedulingPage() {
             ) : (
               <>
                 <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={BarChart3} label="Dashboard" />
-                <TabButton active={activeTab === 'create-career'} onClick={() => setActiveTab('create-career')} icon={Plus} label="Career Day" />
-                <TabButton active={activeTab === 'create-normal'} onClick={() => setActiveTab('create-normal')} icon={Plus} label="Urgent Hire" />
+                <TabButton active={activeTab === 'create-event'} onClick={() => setActiveTab('create-event')} icon={Plus} label="Create Event" />
                 <TabButton active={activeTab === 'manage'} onClick={() => setActiveTab('manage')} icon={Settings2} label="Manage Events" />
               </>
             )}
@@ -61,8 +68,7 @@ export default function InterviewSchedulingPage() {
           {!isAdmin && activeTab === 'my-bookings' && <StudentMyBookings key="student-bookings" />}
 
           {isAdmin && activeTab === 'dashboard' && <AdminDashboard key="admin-dashboard" />}
-          {isAdmin && activeTab === 'create-career' && <AdminCreateCareerDay key="admin-create-career" onCreated={() => setActiveTab('manage')} />}
-          {isAdmin && activeTab === 'create-normal' && <AdminCreateNormalDay key="admin-create-normal" onCreated={() => setActiveTab('manage')} />}
+          {isAdmin && activeTab === 'create-event' && <AdminCreateEvent key="admin-create" onCreated={() => setActiveTab('manage')} />}
           {isAdmin && activeTab === 'manage' && <AdminManageEvents key="admin-manage" />}
         </AnimatePresence>
       </main>
@@ -424,23 +430,60 @@ const StatCard = ({ title, value, icon: Icon, color }: any) => (
   </div>
 );
 
-function AdminCreateCareerDay({ onCreated }: { onCreated: () => void }) {
+function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
   const [loading, setLoading] = useState(false);
+  const [eventType, setEventType] = useState<'career' | 'normal'>('career');
+  
   const [formData, setFormData] = useState({
     title: '', eventDate: '', startTime: '09:00', endTime: '17:00',
-    slotDurationMinutes: 30, maxBookingsPerStudent: 2, requireDifferentCompanies: true
+    slotDurationMinutes: 30, maxBookingsPerStudent: 2, 
+    requireDifferentCompanies: true,
+    companyName: '', maxCandidates: 50 // For normal day
   });
-  const [companies, setCompanies] = useState([{ name: '', description: '' }, { name: '', description: '' }]);
+  
+  const [companies, setCompanies] = useState([{ name: '', description: '', interviewers: [{name: '', expertise: ''}] }]);
+
+  const addInterviewer = (companyIndex: number) => {
+    const updated = [...companies];
+    updated[companyIndex].interviewers.push({name: '', expertise: ''});
+    setCompanies(updated);
+  };
+
+  const updateInterviewer = (cIdx: number, iIdx: number, field: 'name' | 'expertise', value: string) => {
+    const updated = [...companies];
+    updated[cIdx].interviewers[iIdx][field] = value;
+    setCompanies(updated);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (companies.length < 2) return toast.error('At least 2 companies required');
-    if (companies.some(c => !c.name.trim())) return toast.error('All companies must have names');
-
     setLoading(true);
+
     try {
-      await createCareerDayEvent({ ...formData, companies });
-      toast.success('Career Day event created (Draft)');
+      if (eventType === 'career') {
+        if (companies.length < 2) return toast.error('At least 2 companies required');
+        if (companies.some(c => !c.name.trim())) return toast.error('All companies must have names');
+
+        const payloadCompanies = companies.map(c => ({
+          name: c.name,
+          description: c.description,
+          interviewers: c.interviewers.filter(i => i.name.trim()).map(i => `${i.name} (${i.expertise})`)
+        }));
+
+        await createCareerDayEvent({ ...formData, companies: payloadCompanies });
+        toast.success('Career Day event created (Draft)');
+      } else {
+        await createNormalDayEvent({
+          title: formData.title,
+          companyName: formData.companyName,
+          eventDate: formData.eventDate,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          slotDurationMinutes: formData.slotDurationMinutes,
+          maxCandidates: formData.maxCandidates
+        });
+        toast.success('Event created (Draft)');
+      }
       onCreated();
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to create event');
@@ -450,150 +493,160 @@ function AdminCreateCareerDay({ onCreated }: { onCreated: () => void }) {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm max-w-4xl mx-auto">
-      <div className="bg-slate-900 p-6 text-white border-b-4 border-cobalt-sliit">
-        <h2 className="text-xl font-black uppercase tracking-tight">Create Career Day</h2>
-        <p className="text-slate-400 text-xs mt-1">Configure multi-company interview sessions. Slots will be auto-generated.</p>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-slate-200 rounded-2xl shadow-sm max-w-4xl mx-auto overflow-hidden">
+      
+      {/* Header aligned with UI screenshot */}
+      <div className="p-8 border-b border-slate-100">
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Create New Event</h2>
+        <p className="text-slate-500 text-sm mt-1">Fill in all required fields. Time slots are auto-generated after creation.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="p-8 space-y-8">
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-4">
+        
+        {/* Top Grid */}
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
+           
+           {/* Event Type */}
+           <div className="md:col-span-2">
+             <label className="block text-xs font-black text-slate-900 mb-2">Event Type *</label>
+             <select 
+               value={eventType} onChange={(e) => setEventType(e.target.value as any)}
+               className="w-full md:w-1/2 appearance-none bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cobalt-sliit focus:ring-1 focus:ring-cobalt-sliit"
+             >
+               <option value="career">🏢 Career Day (Multi-Company)</option>
+               <option value="normal">⚡ Normal Day (Single Company)</option>
+             </select>
+           </div>
+
+           <div>
+             <label className="block text-xs font-black text-slate-900 mb-2">Event Title *</label>
+             <input required type="text" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g., Spring Tech Hiring Drive 2026" />
+           </div>
+
+           <div>
+             <label className="block text-xs font-black text-slate-900 mb-2">Event Date *</label>
+             <input required type="date" min={new Date().toISOString().split('T')[0]} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.eventDate} onChange={e => setFormData({...formData, eventDate: e.target.value})} />
+           </div>
+
+           <div>
+             <label className="block text-xs font-black text-slate-900 mb-2">Start Time *</label>
+             <div className="relative">
+               <input required type="time" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
+             </div>
+           </div>
+
+           {eventType === 'normal' ? (
              <div>
-               <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Event Title</label>
-               <input required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-cobalt-sliit" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. SE Career Fair 2026" />
+               <label className="block text-xs font-black text-slate-900 mb-2">Company Name *</label>
+               <input required type="text" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="e.g., Amazon, Meta" />
              </div>
+           ) : (
              <div>
-               <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Event Date</label>
-               <input required type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-cobalt-sliit" value={formData.eventDate} onChange={e => setFormData({...formData, eventDate: e.target.value})} />
-             </div>
-             <div className="grid grid-cols-2 gap-4">
-               <div>
-                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Start Time</label>
-                 <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
-               </div>
-               <div>
-                 <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">End Time</label>
-                 <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} />
+               <label className="block text-xs font-black text-slate-900 mb-2">End Time *</label>
+               <div className="relative">
+                 <input required type="time" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} />
                </div>
              </div>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-               <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Slot Duration (Mins)</label>
-               <input type="number" min="10" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.slotDurationMinutes} onChange={e => setFormData({...formData, slotDurationMinutes: parseInt(e.target.value)})} />
-            </div>
-            <div>
-               <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Max Bookings Per Student</label>
-               <input type="number" min="1" max="5" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.maxBookingsPerStudent} onChange={e => setFormData({...formData, maxBookingsPerStudent: parseInt(e.target.value)})} />
-            </div>
-            <div className="flex items-center gap-2 pt-4">
-              <input type="checkbox" id="diffComp" checked={formData.requireDifferentCompanies} onChange={e => setFormData({...formData, requireDifferentCompanies: e.target.checked})} className="w-4 h-4 text-cobalt-sliit" />
-              <label htmlFor="diffComp" className="text-xs font-bold text-slate-700">Require students to select different companies</label>
-            </div>
-          </div>
+           )}
+
+           <div>
+             <label className="block text-xs font-black text-slate-900 mb-2">Slot Duration (minutes) *</label>
+             <select className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.slotDurationMinutes} onChange={e => setFormData({...formData, slotDurationMinutes: parseInt(e.target.value)})}>
+                <option value={15}>15 min — Quick</option>
+                <option value={30}>30 min — Standard</option>
+                <option value={45}>45 min — Extended</option>
+                <option value={60}>60 min — Deep Dive</option>
+             </select>
+           </div>
+
+           {eventType === 'career' ? (
+             <div className="md:col-span-1">
+               <label className="block text-xs font-black text-slate-900 mb-2">Max Interview Attempts Per Student *</label>
+               <input required type="number" min="1" max="5" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.maxBookingsPerStudent} onChange={e => setFormData({...formData, maxBookingsPerStudent: parseInt(e.target.value)})} />
+               <p className="text-[10px] text-slate-400 mt-2">How many different companies a student can book (1-5)</p>
+             </div>
+           ) : (
+             <div className="md:col-span-1">
+               <label className="block text-xs font-black text-slate-900 mb-2">Max Candidates (Cap) *</label>
+               <input required type="number" min="1" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.maxCandidates} onChange={e => setFormData({...formData, maxCandidates: parseInt(e.target.value)})} />
+               <p className="text-[10px] text-slate-400 mt-2">Maximum students allowed to book</p>
+             </div>
+           )}
         </div>
 
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Participating Companies</h3>
-            <button type="button" onClick={() => setCompanies([...companies, { name: '', description: '' }])} className="text-[10px] font-bold uppercase text-cobalt-sliit hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1">
-              <Plus size={12} /> Add Company
-            </button>
-          </div>
-          <div className="space-y-3">
-            {companies.map((c, i) => (
-              <div key={i} className="flex gap-4 items-start bg-slate-50 p-4 border border-slate-200 rounded-xl">
-                <div className="flex-1 space-y-3">
-                  <input required placeholder="Company Name" type="text" className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" value={c.name} onChange={e => { const updated = [...companies]; updated[i].name = e.target.value; setCompanies(updated); }} />
-                  <input placeholder="Short Description (Optional)" type="text" className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-500" value={c.description} onChange={e => { const updated = [...companies]; updated[i].description = e.target.value; setCompanies(updated); }} />
-                </div>
-                {companies.length > 2 && (
-                  <button type="button" onClick={() => setCompanies(companies.filter((_, idx) => idx !== i))} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg mt-1">
-                    <Trash2 size={16} />
-                  </button>
-                )}
+        {/* Company Array for Career Day */}
+        {eventType === 'career' && (
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mt-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">Companies & Interviewers</h3>
+                <p className="text-xs text-slate-500">Minimum 2, Maximum 20 companies</p>
               </div>
-            ))}
+              <span className="px-3 py-1 bg-rose-50 text-rose-500 font-bold text-xs rounded-full">
+                {companies.length} / 20
+              </span>
+            </div>
+
+            <div className="space-y-6">
+              {companies.map((c, i) => (
+                <div key={i} className="bg-white border border-slate-200 p-6 rounded-xl relative group hover:border-cobalt-sliit/50 transition-colors">
+                  {companies.length > 2 && (
+                    <button type="button" onClick={() => setCompanies(companies.filter((_, idx) => idx !== i))} className="absolute top-4 right-4 text-slate-300 hover:text-rose-500 transition-colors">
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                  
+                  <h4 className="text-xs font-black text-slate-900 mb-4">Company {i + 1}</h4>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 mb-1">Company Name *</label>
+                      <input required placeholder="e.g., Google, Amazon, Meta" type="text" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-cobalt-sliit" value={c.name} onChange={e => { const updated = [...companies]; updated[i].name = e.target.value; setCompanies(updated); }} />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 mb-2 mt-4">Interviewers</label>
+                      <div className="space-y-3">
+                        {c.interviewers.map((inv, iIdx) => (
+                          <div key={iIdx} className="grid grid-cols-2 gap-3">
+                            <input 
+                              required
+                              placeholder="Interviewer Name *" type="text" 
+                              className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-cobalt-sliit" 
+                              value={inv.name} onChange={e => updateInterviewer(i, iIdx, 'name', e.target.value)} 
+                            />
+                            <input 
+                              required
+                              placeholder="Expertise (e.g., React) *" type="text" 
+                              className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-cobalt-sliit" 
+                              value={inv.expertise} onChange={e => updateInterviewer(i, iIdx, 'expertise', e.target.value)} 
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => addInterviewer(i)} className="text-xs font-bold text-cobalt-sliit mt-3 bg-blue-50 px-3 py-1.5 rounded-lg border border-dashed border-cobalt-sliit/30 hover:bg-blue-100 transition-colors">
+                        + Add Interviewer
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {companies.length < 20 && (
+              <button type="button" onClick={() => setCompanies([...companies, { name: '', description: '', interviewers: [{name: '', expertise: ''}] }])} className="w-full py-3 mt-6 border-2 border-dashed border-slate-200 rounded-xl text-sm font-bold text-slate-500 hover:border-cobalt-sliit hover:text-cobalt-sliit transition-colors">
+                + Add Another Company
+              </button>
+            )}
           </div>
+        )}
+
+        {/* Submit */}
+        <div className="pt-6 border-t border-slate-100 flex justify-end">
+          <button type="submit" disabled={loading} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm tracking-wider hover:bg-indigo-700 transition-colors shadow-md disabled:opacity-50 min-w-[200px]">
+            {loading ? 'Processing...' : 'Create Event'}
+          </button>
         </div>
-
-        <button type="submit" disabled={loading} className="w-full py-4 bg-cobalt-sliit text-white rounded-xl font-black uppercase tracking-widest text-sm hover:bg-blue-700 transition-colors shadow-lg disabled:opacity-50">
-          {loading ? 'Processing...' : 'Generate Career Day Event'}
-        </button>
-      </form>
-    </motion.div>
-  );
-}
-
-function AdminCreateNormalDay({ onCreated }: { onCreated: () => void }) {
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '', companyName: '', eventDate: '', startTime: '09:00', endTime: '17:00',
-    slotDurationMinutes: 30, maxCandidates: 50
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await createNormalDayEvent(formData);
-      toast.success('Urgent Hire event created (Draft)');
-      onCreated();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to create event');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm max-w-2xl mx-auto">
-      <div className="bg-emerald-800 p-6 text-white border-b-4 border-emerald-500">
-        <h2 className="text-xl font-black uppercase tracking-tight">Create Urgent Hire (Normal Day)</h2>
-        <p className="text-emerald-200 text-xs mt-1">Quick setup for a single company immediate hiring event.</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="p-8 space-y-6">
-        <div>
-           <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Event Title</label>
-           <input required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-emerald-500" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. WSO2 Urgent Software Eng Intake" />
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-           <div>
-             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Company Name</label>
-             <input required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} />
-           </div>
-           <div>
-             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Event Date</label>
-             <input required type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.eventDate} onChange={e => setFormData({...formData, eventDate: e.target.value})} />
-           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-           <div>
-             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Start Time</label>
-             <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
-           </div>
-           <div>
-             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">End Time</label>
-             <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} />
-           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-           <div>
-             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Slot Duration (Mins)</label>
-             <input type="number" min="10" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.slotDurationMinutes} onChange={e => setFormData({...formData, slotDurationMinutes: parseInt(e.target.value)})} />
-           </div>
-           <div>
-             <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Max Candidates (Cap)</label>
-             <input type="number" min="1" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm" value={formData.maxCandidates} onChange={e => setFormData({...formData, maxCandidates: parseInt(e.target.value)})} />
-           </div>
-        </div>
-
-        <button type="submit" disabled={loading} className="w-full py-4 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-sm hover:bg-emerald-700 transition-colors shadow-lg disabled:opacity-50 mt-4">
-          {loading ? 'Processing...' : 'Generate Single-Company Event'}
-        </button>
       </form>
     </motion.div>
   );
@@ -631,6 +684,15 @@ function AdminManageEvents() {
     } catch { toast.error('Failed to cancel'); }
   };
 
+  const handleDelete = async (id: string, title: string) => {
+    if (!confirm(`Permanently delete the event "${title}"? This cannot be undone.`)) return;
+    try {
+      await deleteEvent(id);
+      toast.success('Event permanently deleted.');
+      fetchEvents();
+    } catch { toast.error('Failed to delete event'); }
+  };
+
   if (loading) return <div className="text-center p-12 text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">Scanning Nexus...</div>;
 
   return (
@@ -657,8 +719,11 @@ function AdminManageEvents() {
               <button onClick={() => handlePublish(ev._id)} className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-emerald-700">Publish</button>
             )}
             {ev.status !== 'cancelled' && (
-              <button onClick={() => handleCancel(ev._id)} className="flex-1 md:flex-none px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-rose-500 hover:text-white">Cancel</button>
+              <button onClick={() => handleCancel(ev._id)} className="flex-1 md:flex-none px-4 py-2 bg-amber-50 text-amber-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-amber-500 hover:text-white transition-colors">Cancel</button>
             )}
+            <button onClick={() => handleDelete(ev._id, ev.title)} className="p-2 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Delete Permanently">
+              <Trash2 size={18} />
+            </button>
           </div>
         </div>
       ))}

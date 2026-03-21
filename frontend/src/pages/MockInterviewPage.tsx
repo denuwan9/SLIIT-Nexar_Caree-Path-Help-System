@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Calendar, Zap, CheckCircle2, ChevronRight, RefreshCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -135,12 +135,14 @@ export default function MockInterviewPage() {
   // Interview Session State
   const [isInterviewing, setIsInterviewing] = useState(false);
   const [questions, setQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<string[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
 
   const handleStartInterview = () => {
     const generated = generateQuestions(targetRole, focus, numQuestions);
     setQuestions(generated);
+    setAnswers(new Array(generated.length).fill(''));
     setCurrentQIndex(0);
     setIsFinished(false);
     setIsInterviewing(true);
@@ -158,6 +160,7 @@ export default function MockInterviewPage() {
     setIsInterviewing(false);
     setIsFinished(false);
     setQuestions([]);
+    setAnswers([]);
     setCurrentQIndex(0);
   };
 
@@ -307,13 +310,30 @@ export default function MockInterviewPage() {
               </div>
 
               {/* Question Body */}
-              <div className="flex-1 p-8 sm:p-12 flex flex-col justify-center items-center text-center relative">
+              <div className="flex-1 p-8 sm:p-12 flex flex-col relative max-w-5xl mx-auto w-full">
                 <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] pointer-events-none" />
-                <motion.div key={currentQIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="z-10 max-w-2xl">
-                   <p className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] mb-4">Prompt</p>
-                   <h3 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
-                     {questions[currentQIndex]}
-                   </h3>
+                <motion.div key={currentQIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="z-10 w-full flex flex-col flex-grow items-center">
+                   <div className="max-w-3xl mb-8 text-center">
+                     <p className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] mb-4">Prompt</p>
+                     <h3 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
+                       {questions[currentQIndex]}
+                     </h3>
+                   </div>
+                   
+                   <div className="w-full max-w-3xl flex-grow flex flex-col">
+                     <label className="text-left text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1">Your Answer</label>
+                     <textarea
+                       autoFocus
+                       value={answers[currentQIndex] || ''}
+                       onChange={(e) => {
+                         const newAnswers = [...answers];
+                         newAnswers[currentQIndex] = e.target.value;
+                         setAnswers(newAnswers);
+                       }}
+                       placeholder="Type your answer here..."
+                       className="w-full flex-grow min-h-[160px] p-5 text-sm md:text-base border-2 border-slate-200 rounded-xl resize-none focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 bg-white/80 backdrop-blur-sm transition-all text-slate-800 placeholder:text-slate-400 font-medium"
+                     />
+                   </div>
                 </motion.div>
               </div>
 

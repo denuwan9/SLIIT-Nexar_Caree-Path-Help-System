@@ -26,6 +26,7 @@ router.get('/events/:id', interviewController.getEventById);
 router.patch('/events/:id/publish', restrictTo('admin'), interviewController.publishEvent);
 router.patch('/events/:id', restrictTo('admin'), interviewController.updateEvent);
 router.delete('/events/:id', restrictTo('admin'), interviewController.cancelEvent);
+router.delete('/events/:id/delete', restrictTo('admin'), interviewController.deleteEvent);
 
 // ── Student: booking actions ──────────────────────────────────────
 router.post('/events/:id/book/:slotId', restrictTo('student'), interviewController.bookSlot);

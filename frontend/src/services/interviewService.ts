@@ -141,6 +141,12 @@ export const cancelEvent = async (id: string) => {
   return res.data;
 };
 
+/** Admin: hard delete an event */
+export const deleteEvent = async (id: string) => {
+  const res = await api.delete(`/interviews/events/${id}/delete`);
+  return res.data;
+};
+
 /** Student: book a slot (career-day needs companyId) */
 export const bookSlot = async (eventId: string, slotId: string, companyId?: string) => {
   const res = await api.post(

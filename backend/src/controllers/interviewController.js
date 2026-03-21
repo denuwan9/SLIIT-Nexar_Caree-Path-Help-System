@@ -457,3 +457,18 @@ exports.cancelBooking = async (req, res, next) => {
         next(error);
     }
 };
+
+// ─────────────────────────────────────────────────────────────────
+// ADMIN: Hard delete event
+// DELETE /api/v1/interviews/events/:id/delete
+// ─────────────────────────────────────────────────────────────────
+exports.deleteEvent = async (req, res, next) => {
+    try {
+        const event = await InterviewEvent.findByIdAndDelete(req.params.id);
+        if (!event) return next(new AppError('Event not found.', 404));
+
+        res.status(200).json({ status: 'success', message: 'Event permanently deleted.' });
+    } catch (error) {
+        next(error);
+    }
+};
