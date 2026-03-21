@@ -72,121 +72,125 @@ const SettingsTab: React.FC<Props> = ({ profile, setProfile }) => {
     };
 
     return (
-        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {error && (
-                <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 text-red-600 border border-red-100 text-sm font-bold">
-                    <AlertCircle size={16} /> {error}
+                <div className="flex items-center gap-3 p-5 rounded-3xl bg-rose-50 text-rose-600 border border-rose-100 text-[13px] font-bold">
+                    <AlertCircle size={18} /> {error}
                 </div>
             )}
 
             {/* Career Goals */}
-            <section>
-                <div className="mb-6">
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-                        <Target size={20} className="text-blue-500" /> Career Goals & Aspirations
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
+                <div className="mb-8">
+                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3 uppercase tracking-widest text-[14px]">
+                        <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white">
+                            <Target size={20} />
+                        </div> 
+                        North Star Metrics
                     </h2>
-                    <p className="text-sm font-bold text-slate-500 mt-1">Tell the AI what roles you are aiming for.</p>
+                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">Define the heights you want to reach in your career.</p>
                 </div>
 
-                <form onSubmit={goalsForm.handleSubmit(onSaveGoals)} className="space-y-5 p-6 rounded-3xl border border-slate-200 bg-slate-50/50">
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Target Roles (Comma separated)</label>
-                        <input 
-                            type="text" 
-                            {...goalsForm.register('targetRoles')} 
-                            placeholder="e.g. Frontend Developer, Full Stack Engineer" 
-                            className="input-field bg-white py-2" 
-                        />
+                <form onSubmit={goalsForm.handleSubmit(onSaveGoals)} className="space-y-6 p-8 rounded-[2rem] bg-slate-50 border border-slate-100/50 shadow-inner">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Target Roles</label>
+                            <input 
+                                type="text" 
+                                {...goalsForm.register('targetRoles')} 
+                                placeholder="e.g. Frontend Developer, Full Stack Engineer" 
+                                className="input-field h-12 bg-white text-[13px]" 
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Preferred Industries</label>
+                            <input 
+                                type="text" 
+                                {...goalsForm.register('preferredIndustries')} 
+                                placeholder="e.g. Fintech, Healthcare, EdTech" 
+                                className="input-field h-12 bg-white text-[13px]" 
+                            />
+                        </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Preferred Industries (Comma separated)</label>
-                        <input 
-                            type="text" 
-                            {...goalsForm.register('preferredIndustries')} 
-                            placeholder="e.g. Fintech, Healthcare, EdTech" 
-                            className="input-field bg-white py-2" 
-                        />
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Career Objective Summary</label>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Career Objective Summary</label>
                         <textarea 
                             {...goalsForm.register('careerObjective')} 
                             placeholder="What are you ultimately looking to achieve in your career?" 
-                            className={`input-field bg-white min-h-[100px] resize-y py-2 ${goalsForm.formState.errors.careerObjective ? 'border-red-500' : ''}`} 
+                            className={`input-field bg-white min-h-[120px] resize-none py-4 text-[13px] ${goalsForm.formState.errors.careerObjective ? 'border-rose-500' : ''}`} 
                         />
-                        {goalsForm.formState.errors.careerObjective && <p className="text-[10px] font-bold text-red-500">{goalsForm.formState.errors.careerObjective.message}</p>}
+                        {goalsForm.formState.errors.careerObjective && <p className="text-[10px] font-bold text-rose-500">{goalsForm.formState.errors.careerObjective.message}</p>}
                     </div>
 
-                    <div className="flex justify-end pt-2">
-                        <button type="submit" disabled={loadingGoals} className="btn-primary py-2 px-6 shadow-sm flex items-center gap-2">
-                            {loadingGoals ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Goals
+                    <div className="flex justify-end pt-4">
+                        <button type="submit" disabled={loadingGoals} className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
+                            {loadingGoals ? <Loader2 size={16} className="animate-spin" /> : <Save size={18} />} Update Goals
                         </button>
                     </div>
                 </form>
-            </section>
+            </div>
 
             {/* Social Links */}
-            <section>
-                <div className="mb-6">
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-                        <LinkIcon size={20} className="text-slate-700" /> Social & Portfolios
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
+                <div className="mb-8">
+                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3 uppercase tracking-widest text-[14px]">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-800 flex items-center justify-center text-white">
+                            <LinkIcon size={20} />
+                        </div> 
+                        Digital Identity
                     </h2>
-                    <p className="text-sm font-bold text-slate-500 mt-1">Links to your professional presence.</p>
+                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">Sync your professional footprints across the web.</p>
                 </div>
 
-                <form onSubmit={socialForm.handleSubmit(onSaveSocial)} className="space-y-5 p-6 rounded-3xl border border-slate-200 bg-slate-50/50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">LinkedIn URL</label>
+                <form onSubmit={socialForm.handleSubmit(onSaveSocial)} className="space-y-6 p-8 rounded-[2rem] bg-slate-50 border border-slate-100/50 shadow-inner">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">LinkedIn Profile</label>
                             <input 
                                 type="url" 
                                 {...socialForm.register('linkedin')} 
                                 placeholder="https://linkedin.com/in/..." 
-                                className={`input-field bg-white py-2 ${socialForm.formState.errors.linkedin ? 'border-red-500' : ''}`} 
+                                className={`input-field h-12 bg-white text-[13px] ${socialForm.formState.errors.linkedin ? 'border-rose-500' : ''}`} 
                             />
-                            {socialForm.formState.errors.linkedin && <p className="text-[10px] font-bold text-red-500">{socialForm.formState.errors.linkedin.message}</p>}
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">GitHub Profile</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">GitHub Presence</label>
                             <input 
                                 type="url" 
                                 {...socialForm.register('github')} 
                                 placeholder="https://github.com/..." 
-                                className={`input-field bg-white py-2 ${socialForm.formState.errors.github ? 'border-red-500' : ''}`} 
+                                className={`input-field h-12 bg-white text-[13px] ${socialForm.formState.errors.github ? 'border-rose-500' : ''}`} 
                             />
-                            {socialForm.formState.errors.github && <p className="text-[10px] font-bold text-red-500">{socialForm.formState.errors.github.message}</p>}
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Personal Portfolio</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Personal Portfolio</label>
                             <input 
                                 type="url" 
                                 {...socialForm.register('portfolio')} 
                                 placeholder="https://yourname.com" 
-                                className={`input-field bg-white py-2 ${socialForm.formState.errors.portfolio ? 'border-red-500' : ''}`} 
+                                className={`input-field h-12 bg-white text-[13px] ${socialForm.formState.errors.portfolio ? 'border-rose-500' : ''}`} 
                             />
-                            {socialForm.formState.errors.portfolio && <p className="text-[10px] font-bold text-red-500">{socialForm.formState.errors.portfolio.message}</p>}
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">StackOverflow</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">StackOverflow</label>
                             <input 
                                 type="url" 
                                 {...socialForm.register('stackoverflow')} 
-                                placeholder="https://stackoverflow.com/users/..." 
-                                className={`input-field bg-white py-2 ${socialForm.formState.errors.stackoverflow ? 'border-red-500' : ''}`} 
+                                placeholder="https://stackoverflow.com/..." 
+                                className={`input-field h-12 bg-white text-[13px] ${socialForm.formState.errors.stackoverflow ? 'border-rose-500' : ''}`} 
                             />
-                            {socialForm.formState.errors.stackoverflow && <p className="text-[10px] font-bold text-red-500">{socialForm.formState.errors.stackoverflow.message}</p>}
                         </div>
                     </div>
 
-                    <div className="flex justify-end pt-2">
-                        <button type="submit" disabled={loadingSocial} className="btn-primary flex py-2 px-6 shadow-sm items-center gap-2 bg-slate-800 hover:bg-slate-900 ring-slate-800">
-                            {loadingSocial ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Links
+                    <div className="flex justify-end pt-4">
+                        <button type="submit" disabled={loadingSocial} className="px-8 py-3.5 bg-slate-800 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-slate-200 hover:bg-black transition-all flex items-center gap-2">
+                            {loadingSocial ? <Loader2 size={16} className="animate-spin" /> : <Save size={18} />} Sync Identity
                         </button>
                     </div>
                 </form>
-            </section>
+            </div>
         </div>
     );
 };

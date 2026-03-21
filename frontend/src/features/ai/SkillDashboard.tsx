@@ -2,7 +2,7 @@
  * SkillDashboard.tsx
  * ─────────────────────────────────────────────────────────────────────────
  * Visualises the student's technical and soft skills using Recharts.
- *   - RadarChart: skill category distribution (technical)
+ *   - RadarChart/BarChart: skill category distribution (technical)
  *   - BarChart: top technical skills by proficiency
  *   - Soft skills listed as pill badges
  * ─────────────────────────────────────────────────────────────────────────
@@ -12,37 +12,34 @@ import {
     RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { BarChart2, Activity, Brain, Loader2 } from 'lucide-react';
+import { Loader2, Activity, Brain, BarChart2, Sparkles } from 'lucide-react';
 import profileService from '../../services/profileService';
 import type { TechnicalSkill, SoftSkill } from '../../types/profile.ts';
 
 // Level → numeric score
 const LEVEL_SCORE: Record<string, number> = {
-    beginner: 25, developing: 25,
-    intermediate: 50, proficient: 50,
-    advanced: 75,
+    beginner: 30,
+    intermediate: 50,
+    proficient: 75,
+    advanced: 90,
     expert: 100,
 };
 
-// Category display labels
+// Category display labels - expanded for better mapping
 const CATEGORY_LABELS: Record<string, string> = {
-    'programming-language': 'Languages',
-    'framework': 'Frameworks',
+    'frontend': 'Frontend',
+    'backend': 'Backend',
+    'cloud': 'Cloud / DevOps',
     'database': 'Databases',
-    'cloud': 'Cloud',
-    'devops': 'DevOps',
-    'mobile': 'Mobile',
-    'design': 'Design',
-    'data-science': 'Data Sci',
-    'testing': 'Testing',
-    'other': 'Other',
+    'mobile': 'Mobile Apps',
+    'data-science': 'Data Science',
+    'security': 'Security',
+    'testing': 'Testing/QA',
+    'ux-ui': 'UX/UI Design',
+    'tools': 'Tooling',
+    'management': 'Management',
+    'other': 'Other Assets',
 };
-
-// Gradient colours for bar chart
-const BAR_COLORS = [
-    '#8b5cf6', '#6366f1', '#3b82f6', '#06b6d4', '#10b981',
-    '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316',
-];
 
 // ── Main Component ────────────────────────────────────────────────────────
 const SkillDashboard: React.FC = () => {
@@ -57,15 +54,18 @@ const SkillDashboard: React.FC = () => {
                 setTechSkills(profile.technicalSkills ?? []);
                 setSoftSkills(profile.softSkills ?? []);
             })
-            .catch(() => setError('Failed to load profile. Please refresh.'))
+            .catch(() => setError('Failed to load profile intelligence.'))
             .finally(() => setIsLoading(false));
     }, []);
 
-    // Radar data: average proficiency per category
     const radarData = useMemo(() => {
         const groups: Record<string, number[]> = {};
         techSkills.forEach(skill => {
-            const cat = CATEGORY_LABELS[skill.category] ?? 'Other';
+            // Use manual mapping or auto-capitalize the raw category
+            const rawCat = skill.category?.toLowerCase() || 'other';
+            const cat = CATEGORY_LABELS[rawCat] || 
+                        (rawCat.charAt(0).toUpperCase() + rawCat.slice(1));
+            
             if (!groups[cat]) groups[cat] = [];
             groups[cat].push(LEVEL_SCORE[skill.level] ?? 50);
         });
@@ -76,7 +76,6 @@ const SkillDashboard: React.FC = () => {
         }));
     }, [techSkills]);
 
-    // Bar data: top 10 technical skills sorted by proficiency
     const barData = useMemo(() => {
         return [...techSkills]
             .sort((a, b) => (LEVEL_SCORE[b.level] ?? 0) - (LEVEL_SCORE[a.level] ?? 0))
@@ -89,37 +88,40 @@ const SkillDashboard: React.FC = () => {
     }, [techSkills]);
 
     const softLevelColors: Record<string, string> = {
-        expert: 'bg-purple-100 text-purple-700 border-purple-200',
-        advanced: 'bg-blue-100 text-blue-700 border-blue-200',
-        proficient: 'bg-teal-100 text-teal-700 border-teal-200',
-        developing: 'bg-slate-100 text-slate-600 border-slate-200',
+        expert: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+        advanced: 'bg-blue-50 text-blue-700 border-blue-100',
+        proficient: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        developing: 'bg-slate-50 text-slate-600 border-slate-100',
     };
 
     if (isLoading) {
         return (
-            <div className="card flex items-center justify-center py-20 gap-3">
-                <Loader2 size={24} className="text-purple-500 animate-spin" />
-                <p className="font-bold text-slate-500">Loading your skills…</p>
+            <div className="bg-white rounded-[2.5rem] flex flex-col items-center justify-center py-32 gap-4 border border-slate-100 shadow-sm">
+                <div className="relative">
+                    <Loader2 size={32} className="text-[#0F172A] animate-spin" />
+                    <Sparkles size={14} className="absolute -top-1 -right-1 text-blue-500" />
+                </div>
+                <p className="font-black text-[#64748B] uppercase tracking-widest text-[11px]">Syncing Skill Dataset...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="card text-center py-12 text-red-500">{error}</div>
+            <div className="bg-white rounded-[2.5rem] text-center py-20 text-rose-500 font-bold border border-rose-100">{error}</div>
         );
     }
 
     if (techSkills.length === 0 && softSkills.length === 0) {
         return (
-            <div className="card flex flex-col items-center justify-center py-20 gap-4 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
+            <div className="bg-white rounded-[2.5rem] flex flex-col items-center justify-center py-24 gap-6 text-center border border-slate-100 shadow-sm animate-in fade-in zoom-in-95 duration-700">
+                <div className="w-20 h-20 rounded-[2rem] bg-slate-50 flex items-center justify-center border border-slate-100 shadow-inner">
                     <BarChart2 size={32} className="text-slate-300" />
                 </div>
                 <div>
-                    <p className="font-black text-slate-500">No Skills Data Yet</p>
-                    <p className="text-sm text-slate-400 mt-1">
-                        Add technical and soft skills to your profile to see your skill visualisation dashboard.
+                    <h3 className="font-black text-[#0F172A] text-xl tracking-tight">Analytical Void Detected</h3>
+                    <p className="text-sm text-[#64748B] mt-2 max-w-sm font-medium leading-relaxed">
+                        Your skill matrix is currently unpopulated. Enrich your profile with technical competencies to initialise deep analysis.
                     </p>
                 </div>
             </div>
@@ -127,97 +129,150 @@ const SkillDashboard: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Stat Pills */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="space-y-8 animate-in fade-in duration-700">
+            {/* ─── High-Impact Stat Matrix ─── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Technical Skills', value: techSkills.length, color: 'from-purple-500 to-indigo-500' },
-                    { label: 'Soft Skills', value: softSkills.length, color: 'from-cyan-500 to-blue-500' },
-                    { label: 'Expert Level', value: techSkills.filter(s => s.level === 'expert').length, color: 'from-amber-500 to-orange-500' },
-                    { label: 'Categories', value: radarData.length, color: 'from-emerald-500 to-teal-500' },
+                    { label: 'Core Competencies', value: techSkills.length, icon: Brain, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                    { label: 'Strategic Soft Skills', value: softSkills.length, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Expert Domains', value: techSkills.filter(s => s.level === 'expert').length, icon: Sparkles, color: 'text-amber-600', bg: 'bg-amber-50' },
+                    { label: 'Asset Categories', value: radarData.length, icon: BarChart2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                 ].map(stat => (
-                    <div key={stat.label} className="card text-center py-4">
-                        <p className={`text-2xl font-black bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>{stat.value}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{stat.label}</p>
+                    <div key={stat.label} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100/50 hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-500 group">
+                        <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                            <stat.icon size={18} className={stat.color} />
+                        </div>
+                        <p className={`text-3xl font-black text-[#0F172A]`}>{stat.value}</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#64748B] mt-2 group-hover:text-indigo-600 transition-colors">{stat.label}</p>
                     </div>
                 ))}
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-2">
-                {/* Radar Chart */}
-                {radarData.length >= 3 && (
-                    <div className="card">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Activity size={16} className="text-purple-500" />
-                            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Skill Category Distribution</p>
+            <div className="grid gap-8 lg:grid-cols-2">
+                {/* ─── Proficiency Distribution ─── */}
+                <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50 hover:border-indigo-100 transition-colors group">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Activity size={16} className="text-indigo-600" />
                         </div>
-                        <ResponsiveContainer width="100%" height={260}>
-                            <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-                                <PolarGrid stroke="#e2e8f0" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#64748b', fontWeight: 700 }} />
-                                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                <Radar
-                                    name="Proficiency"
-                                    dataKey="score"
-                                    stroke="#8b5cf6"
-                                    fill="#8b5cf6"
-                                    fillOpacity={0.25}
-                                    strokeWidth={2}
-                                />
-                                <Tooltip
-                                    formatter={(value: unknown) => [`${value}%`, 'Avg. Proficiency']}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '11px' }}
-                                />
-                            </RadarChart>
-                        </ResponsiveContainer>
+                        <div>
+                            <p className="text-[13px] font-black uppercase tracking-widest text-[#0F172A]">Competency Distribution</p>
+                            <p className="text-[10px] font-bold text-[#94A3B8]">Metric: Proficiency Average Per Tier</p>
+                        </div>
                     </div>
-                )}
+                    {radarData.length >= 3 ? (
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+                                    <PolarGrid stroke="#E2E8F0" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#64748B', fontWeight: 900 }} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                    <Radar
+                                        name="Proficiency"
+                                        dataKey="score"
+                                        stroke="#6366f1"
+                                        fill="#6366f1"
+                                        fillOpacity={0.2}
+                                        strokeWidth={3}
+                                        animationBegin={200}
+                                        animationDuration={1500}
+                                    />
+                                    <Tooltip
+                                        cursor={{ stroke: '#6366f1', strokeWidth: 1 }}
+                                        formatter={(value: unknown) => [`${value}%`, 'Strategic Mastery']}
+                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(99, 102, 241, 0.1)', fontSize: '11px', fontWeight: 'bold' }}
+                                    />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : radarData.length > 0 ? (
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={radarData} margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#F8FAFC" vertical={false} />
+                                    <XAxis dataKey="subject" tick={{ fontSize: 10, fill: '#64748B', fontWeight: 900 }} axisLine={false} tickLine={false} />
+                                    <YAxis domain={[0, 100]} hide />
+                                    <Tooltip
+                                        formatter={(value: unknown) => [`${value}%`, 'Average Proficiency']}
+                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontSize: '11px', fontWeight: 'bold' }}
+                                    />
+                                    <Bar dataKey="score" fill="#6366f1" radius={[10, 10, 10, 10]} barSize={40} animationDuration={1000}>
+                                        {radarData.map((_entry, index) => (
+                                            <Cell key={index} fill={index % 2 === 0 ? '#6366f1' : '#8b5cf6'} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-[300px] flex items-center justify-center text-center px-6">
+                            <p className="text-xs text-[#94A3B8] font-medium leading-relaxed italic">Minimum 3 competency categories required for advanced distribution mapping.</p>
+                        </div>
+                    )}
+                </div>
 
-                {/* Bar Chart — top skills */}
-                {barData.length > 0 && (
-                    <div className="card">
-                        <div className="flex items-center gap-2 mb-4">
-                            <BarChart2 size={16} className="text-blue-500" />
-                            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Top Skills by Proficiency</p>
+                {/* ─── Top Performance Assets ─── */}
+                <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50 hover:border-blue-100 transition-colors group">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <BarChart2 size={16} className="text-blue-600" />
                         </div>
-                        <ResponsiveContainer width="100%" height={260}>
-                            <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 10 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
-                                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} width={90} />
-                                <Tooltip
-                                    formatter={(value: unknown, _name: unknown, props: { payload?: { level?: string } }) => [
-                                        `${value}% (${props.payload?.level ?? ''})`,
-                                        'Proficiency'
-                                    ]}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '11px' }}
-                                />
-                                <Bar dataKey="proficiency" radius={[0, 6, 6, 0]}>
-                                    {barData.map((_entry, index) => (
-                                        <Cell key={index} fill={BAR_COLORS[index % BAR_COLORS.length]} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <div>
+                            <p className="text-[13px] font-black uppercase tracking-widest text-[#0F172A]">Dominant Tier Assets</p>
+                            <p className="text-[10px] font-bold text-[#94A3B8]">Metric: Proficiency Performance Index</p>
+                        </div>
                     </div>
-                )}
+                    {barData.length > 0 ? (
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#F8FAFC" horizontal={false} />
+                                    <XAxis type="number" domain={[0, 100]} hide />
+                                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#0F172A', fontWeight: 800 }} axisLine={false} tickLine={false} width={100} />
+                                    <Tooltip
+                                        cursor={{ fill: '#F8FAFC' }}
+                                        formatter={(value: unknown, _name: unknown, props: { payload?: { level?: string } }) => [
+                                            `${value}% Mastery (${props.payload?.level?.toUpperCase()})`,
+                                            'Strategic Index'
+                                        ]}
+                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(59, 130, 246, 0.1)', fontSize: '11px', fontWeight: 'bold' }}
+                                    />
+                                    <Bar dataKey="proficiency" radius={[0, 12, 12, 0]} barSize={20} animationDuration={1500}>
+                                        {barData.map((_entry, index) => (
+                                            <Cell key={index} fill={['#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b'][index % 5]} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-[300px] flex items-center justify-center text-center px-6">
+                            <p className="text-xs text-[#94A3B8] font-medium leading-relaxed italic">Initialise skill assessment to unlock performance indexing.</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Soft Skills */}
+            {/* ─── Strategic Soft Assets ─── */}
             {softSkills.length > 0 && (
-                <div className="card">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Brain size={16} className="text-cyan-500" />
-                        <p className="text-xs font-black uppercase tracking-widest text-slate-500">Soft Skills</p>
+                <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                            <Brain size={16} className="text-emerald-600" />
+                        </div>
+                        <div>
+                            <p className="text-[13px] font-black uppercase tracking-widest text-[#0F172A]">Strategic Soft Value Matrix</p>
+                            <p className="text-[10px] font-bold text-[#94A3B8]">Attribute Sync: Professional Presence Assets</p>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-3">
                         {softSkills.map((skill, i) => (
                             <span
                                 key={i}
-                                className={`text-xs font-bold px-3 py-1.5 rounded-full border ${softLevelColors[skill.level] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}
+                                className={`text-[12px] font-black px-6 py-3 rounded-2xl border transition-all duration-300 hover:scale-105 cursor-default ${softLevelColors[skill.level] ?? 'bg-slate-50 text-slate-600 border-slate-100'}`}
                             >
                                 {skill.name}
-                                <span className="ml-1.5 opacity-60 text-[10px] capitalize">· {skill.level}</span>
+                                <span className="ml-2.5 opacity-40 text-[10px] uppercase font-black tracking-tighter">/ {skill.level}</span>
                             </span>
                         ))}
                     </div>

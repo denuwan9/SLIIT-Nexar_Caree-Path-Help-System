@@ -11,11 +11,10 @@
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Send, Sparkles, User, RotateCcw } from 'lucide-react';
+import { Send, Sparkles, User, RotateCcw, ArrowRight, ShieldCheck } from 'lucide-react';
 import type { ChatMessage } from '../../types/ai';
 import { sendChatMessage } from '../../services/aiService';
 import profileService from '../../services/profileService';
-import type { StudentProfile } from '../../types/profile';
 
 // ── Default starters ───────────────────────────────────────────────────────
 const DEFAULT_STARTERS = [
@@ -27,30 +26,30 @@ const DEFAULT_STARTERS = [
 
 // ── Typing Indicator Sub-Component ────────────────────────────────────────
 const TypingIndicator: React.FC<{ statusText: string }> = ({ statusText }) => (
-    <div className="flex items-end gap-3 mb-4">
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-md">
-            <Sparkles size={13} className="text-white" />
+    <div className="flex items-end gap-3 mb-6 animate-in fade-in slide-in-from-left-2 duration-300">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F172A] to-slate-700 flex items-center justify-center flex-shrink-0 shadow-lg">
+            <Sparkles size={14} className="text-white" />
         </div>
-        <div className="glass px-4 py-3 rounded-2xl rounded-bl-md flex flex-col gap-2">
+        <div className="bg-white border border-slate-100 px-5 py-4 rounded-[2rem] rounded-bl-md shadow-sm flex flex-col gap-2">
             <div className="flex gap-1.5 items-center h-4">
                 {[0, 1, 2].map((i) => (
                     <span
                         key={i}
-                        className="w-2 h-2 rounded-full bg-purple-400"
+                        className="w-2 h-2 rounded-full bg-[#0F172A]"
                         style={{
                             animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
                         }}
                     />
                 ))}
             </div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-purple-600/80 animate-pulse">{statusText}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#64748B] animate-pulse">{statusText}</p>
         </div>
     </div>
 );
 
 // ── Message Content Parser for [ACTION_CARD] ──────────────────────────────
 const renderMessageContent = (content: string, isUser: boolean, onActionClick?: (title: string) => void) => {
-    if (isUser) return <p>{content}</p>;
+    if (isUser) return <p className="font-medium leading-relaxed">{content}</p>;
 
     const cardRegex = /\[ACTION_CARD:\s*([^|]+)\s*\|\s*([^\]]+)\]/g;
     const parts = [];
@@ -72,26 +71,26 @@ const renderMessageContent = (content: string, isUser: boolean, onActionClick?: 
     return parts.map((part, idx) => {
         if (part.type === 'text') {
             return (
-                <div key={idx} className="prose prose-sm prose-slate max-w-none prose-p:my-1 prose-li:my-0.5 prose-headings:text-slate-800 prose-strong:text-slate-900">
+                <div key={idx} className="prose prose-sm prose-slate max-w-none prose-p:my-2 prose-li:my-1 prose-headings:text-[#0F172A] prose-strong:text-[#0F172A] prose-p:leading-relaxed">
                     <ReactMarkdown>{part.text}</ReactMarkdown>
                 </div>
             );
         } else {
             return (
-                <div key={idx} className="my-3 bg-white/80 border border-purple-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 group">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-100 to-cyan-100 flex items-center justify-center">
-                            <Sparkles size={12} className="text-purple-600" />
+                <div key={idx} className="my-5 bg-slate-50 border border-slate-200/60 rounded-[1.5rem] p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 group">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+                            <Sparkles size={14} className="text-[#0F172A]" />
                         </div>
-                        <h4 className="font-black text-slate-800 text-sm group-hover:text-purple-700 transition-colors">{part.title}</h4>
+                        <h4 className="font-black text-[#0F172A] text-[13px] uppercase tracking-wider group-hover:text-blue-700 transition-colors">{part.title}</h4>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed font-medium mb-3">
+                    <p className="text-xs text-[#64748B] leading-relaxed font-bold mb-4">
                         {part.content}
                     </p>
                     <button 
-                        onClick={() => onActionClick?.(part.title)}
-                        className="text-[10px] cursor-pointer uppercase font-black tracking-widest text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg hover:bg-purple-100 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 w-full sm:w-auto">
-                        Execute Action
+                        onClick={() => part.title && onActionClick?.(part.title)}
+                        className="text-[10px] cursor-pointer uppercase font-black tracking-widest text-white bg-[#0F172A] px-5 py-2.5 rounded-xl hover:bg-slate-800 hover:scale-[1.02] active:scale-[0.95] transition-all duration-300 w-full sm:w-auto shadow-lg shadow-slate-200">
+                        Execute Strategy
                     </button>
                 </div>
             );
@@ -103,25 +102,25 @@ const renderMessageContent = (content: string, isUser: boolean, onActionClick?: 
 const MessageBubble: React.FC<{ msg: ChatMessage, onActionClick?: (title: string) => void }> = ({ msg, onActionClick }) => {
     const isUser = msg.role === 'user';
     return (
-        <div className={`flex items-end gap-3 mb-4 ${isUser ? 'flex-row-reverse' : ''}`}>
+        <div className={`flex items-end gap-3 mb-6 ${isUser ? 'flex-row-reverse' : ''} animate-in fade-in slide-in-from-bottom-2 duration-500`}>
             {/* Avatar */}
             <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 shadow-md ${isUser
-                    ? 'bg-gradient-to-br from-slate-600 to-slate-800'
-                    : 'bg-gradient-to-br from-purple-500 to-cyan-500'
+                className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ${isUser
+                    ? 'bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-600'
+                    : 'bg-gradient-to-br from-[#0F172A] to-[#1E293B] border border-slate-800'
                     }`}
             >
                 {isUser
-                    ? <User size={13} className="text-white" />
-                    : <Sparkles size={13} className="text-white" />
+                    ? <User size={15} className="text-white" />
+                    : <Sparkles size={15} className="text-white" />
                 }
             </div>
 
             {/* Bubble */}
             <div
-                className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${isUser
-                    ? 'bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-br-md shadow-lg shadow-purple-500/20'
-                    : 'glass text-slate-800 rounded-bl-md'
+                className={`max-w-[85%] px-6 py-4 rounded-[2rem] text-[14px] leading-relaxed shadow-sm ${isUser
+                    ? 'bg-[#0F172A] text-white rounded-br-md shadow-xl shadow-slate-200'
+                    : 'bg-white text-[#334155] border border-slate-100 rounded-bl-md'
                     }`}
             >
                 {renderMessageContent(msg.content, isUser, onActionClick)}
@@ -134,16 +133,15 @@ const AiAdvisorChat: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             role: 'assistant',
-            content: `👋 **Ayubowan! I'm NEXAR, your personal AI Career Mentor.**\n\nI've loaded your complete student profile and I'm ready to give you brutally honest, ultra-personalised career guidance.\n\n*What would you like to explore today?*`,
+            content: `👋 **Ayubowan! I'm NEXAR, your enterprise AI Career Strategist.**\n\nI've integrated your full analytical student profile. We're ready to execute high-impact career planning based on real-time market data.\n\n*What strategic objective shall we address today?*`,
             timestamp: new Date(),
         },
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [thinkingState, setThinkingState] = useState('Analyzing Profile...');
+    const [thinkingState, setThinkingState] = useState('Syncing Profile...');
     
-    // Dynamic Starters Profile Fetching
     const [starters, setStarters] = useState<string[]>(DEFAULT_STARTERS);
 
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -155,7 +153,7 @@ const AiAdvisorChat: React.FC = () => {
                 const profile = await profileService.getMe();
                 if (profile.profileCompleteness < 50) {
                     setStarters([
-                        '🚨 Help me complete my profile to unlock advanced analysis.',
+                        '🚨 Strategic Alert: Profile Incomplete. Initialise Optimisation.',
                         ...DEFAULT_STARTERS.slice(0, 3)
                     ]);
                 } else {
@@ -168,15 +166,14 @@ const AiAdvisorChat: React.FC = () => {
         fetchProfile();
     }, []);
 
-    // Simulated Thinking State Cycler
     useEffect(() => {
         if (!isLoading) return;
         const states = [
-            'Analyzing Profile Data...',
-            'Cross-referencing SLIIT Curriculum...',
-            'Evaluating Tech Stack...',
-            'Checking Sri Lankan Tech Market...',
-            'Formulating Brutal Honesty...'
+            'Analyzing Professional Trajectory...',
+            'Cross-referencing Global Standards...',
+            'Evaluating Skill Dominance...',
+            'Assessing Market Competitiveness...',
+            'Synthesizing Strategy...'
         ];
         let i = 0;
         setThinkingState(states[0]);
@@ -187,7 +184,6 @@ const AiAdvisorChat: React.FC = () => {
         return () => clearInterval(interval);
     }, [isLoading]);
 
-    // Auto-scroll to bottom on new message
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isLoading, thinkingState]);
@@ -206,7 +202,7 @@ const AiAdvisorChat: React.FC = () => {
             const reply = await sendChatMessage(payload, messages);
             setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+            const message = err instanceof Error ? err.message : 'Strategic sync failed. Retry required.';
             setError(message);
         } finally {
             setIsLoading(false);
@@ -223,112 +219,131 @@ const AiAdvisorChat: React.FC = () => {
     const handleClear = () => {
         setMessages([{
             role: 'assistant',
-            content: `Chat cleared! I still remember your profile. What can I help you with?`,
+            content: `Session Reset. Profile context maintained. Awaiting next command.`,
             timestamp: new Date(),
         }]);
         setError(null);
     };
 
     return (
-        <div className="card flex flex-col h-[70vh] min-h-[500px] p-0 overflow-hidden">
+        <div className="bg-white rounded-[2.5rem] flex flex-col h-[75vh] min-h-[600px] p-0 overflow-hidden shadow-sm border border-slate-100/50">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/50 bg-white/30 backdrop-blur-sm flex-shrink-0">
-                <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-50 bg-[#F8FAFC]/50 backdrop-blur-md flex-shrink-0">
+                <div className="flex items-center gap-4">
                     <div className="relative">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg">
-                            <Sparkles size={18} className="text-white" />
+                        <div className="w-12 h-12 rounded-2xl bg-[#0F172A] flex items-center justify-center shadow-lg shadow-slate-200 border border-slate-800">
+                            <Sparkles size={20} className="text-white" />
                         </div>
-                        <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white animate-pulse" />
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-4 border-white animate-pulse" />
                     </div>
                     <div>
-                        <p className="text-sm font-black text-slate-900 tracking-tight">NEXAR AI Mentor</p>
-                        <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">● Online — Profile Loaded</p>
+                        <p className="text-[15px] font-black text-[#0F172A] tracking-wider uppercase">NEXAR Intelligence</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em]">Live — Deep Context Active</span>
+                        </div>
                     </div>
                 </div>
                 <button
                     onClick={handleClear}
-                    title="Clear chat"
-                    className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-all duration-200"
+                    title="Reset Session"
+                    className="w-10 h-10 rounded-xl text-slate-400 hover:text-[#0F172A] hover:bg-slate-100 flex items-center justify-center transition-all duration-300"
                 >
-                    <RotateCcw size={15} />
+                    <RotateCcw size={18} />
                 </button>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 scrollbar-hide">
-                {/* Starter prompts — only shown before user sends anything */}
+            <div className="flex-1 overflow-y-auto px-8 py-6 scrollbar-hide bg-[#FDFDFD]">
+                {/* Starter prompts */}
                 {messages.length === 1 && (
-                    <div className="mb-6">
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Quick Starters</p>
-                        <div className="flex flex-wrap gap-2">
+                    <div className="mb-8 p-6 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
+                        <p className="text-[11px] text-[#94A3B8] font-black uppercase tracking-[0.3em] mb-4">Strategic Entry Points</p>
+                        <div className="flex flex-wrap gap-2.5">
                             {starters.map((s) => (
                                 <button
                                     key={s}
                                     onClick={() => handleSend(s)}
-                                    className={`text-xs px-3 py-2 rounded-xl glass hover:bg-white/90 transition-all duration-200 font-medium border border-white/60 hover:shadow-sm ${
+                                    className={`text-[12px] px-5 py-3 rounded-2xl bg-white border border-slate-100 hover:border-[#0F172A] hover:bg-[#0F172A] hover:text-white transition-all duration-400 font-black shadow-sm group ${
                                         s.includes('🚨') 
-                                        ? 'text-rose-700 hover:border-rose-200 hover:text-rose-800'
-                                        : 'text-slate-700 hover:border-purple-200 hover:text-purple-700'
+                                        ? 'border-rose-100 text-rose-700 hover:bg-rose-600 hover:border-rose-600'
+                                        : 'text-[#475569]'
                                     }`}
                                 >
-                                    {s}
+                                    <span className="flex items-center gap-2">
+                                        {s}
+                                        <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                                    </span>
                                 </button>
                             ))}
                         </div>
                     </div>
                 )}
 
-                {messages.map((msg, i) => (
-                    <MessageBubble 
-                        key={i} 
-                        msg={msg} 
-                        onActionClick={(title) => handleSend(`Tell me more about: ${title}. How can I get started?`)} 
-                    />
-                ))}
+                <div className="space-y-2">
+                    {messages.map((msg, i) => (
+                        <MessageBubble 
+                            key={i} 
+                            msg={msg} 
+                            onActionClick={(title) => handleSend(`Initialise Deep-Dive: ${title}. Provide implementation roadmap.`)} 
+                        />
+                    ))}
+                </div>
 
                 {isLoading && <TypingIndicator statusText={thinkingState} />}
 
                 {error && (
-                    <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
-                        ⚠️ {error}
+                    <div className="mb-6 px-6 py-4 rounded-[1.5rem] bg-rose-50 border border-rose-100 text-rose-600 text-[13px] font-bold shadow-sm animate-in shake duration-500">
+                        ⚠️ Strategic Exception: {error}
                     </div>
                 )}
                 <div ref={bottomRef} />
             </div>
 
             {/* Input Bar */}
-            <div className="px-4 py-4 border-t border-white/50 bg-white/20 backdrop-blur-sm flex-shrink-0">
-                <div className="flex gap-3 items-end">
-                    <textarea
-                        ref={inputRef}
-                        value={input}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Ask anything about your career… (Enter to send, Shift+Enter for new line)"
-                        rows={1}
-                        disabled={isLoading}
-                        className="flex-1 resize-none rounded-xl px-4 py-3 text-sm bg-white/70 border border-slate-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 outline-none text-slate-800 placeholder-slate-400 transition-all duration-200 max-h-32 overflow-y-auto scrollbar-hide disabled:opacity-50"
-                        style={{ lineHeight: '1.6' }}
-                    />
+            <div className="px-8 py-6 border-t border-slate-50 bg-[#F8FAFC]/30 backdrop-blur-md flex-shrink-0">
+                <div className="flex gap-4 items-end max-w-5xl mx-auto w-full">
+                    <div className="flex-1 relative group">
+                        <textarea
+                            ref={inputRef}
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Input command or query student dataset..."
+                            rows={1}
+                            disabled={isLoading}
+                            className="w-full resize-none rounded-2xl px-6 py-4 text-[14px] bg-white border border-slate-100 focus:border-[#0F172A] focus:ring-4 focus:ring-slate-100 outline-none text-[#1E293B] font-bold placeholder-[#94A3B8] transition-all duration-400 max-h-40 overflow-y-auto scrollbar-hide disabled:opacity-50 shadow-sm"
+                            style={{ lineHeight: '1.6' }}
+                        />
+                    </div>
                     <button
                         onClick={() => handleSend()}
                         disabled={isLoading || !input.trim()}
-                        className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-40 disabled:scale-100 disabled:shadow-none flex-shrink-0"
+                        className="w-14 h-14 rounded-2xl bg-[#0F172A] flex items-center justify-center text-white shadow-xl shadow-slate-200 hover:shadow-slate-300 hover:scale-110 active:scale-90 transition-all duration-500 disabled:opacity-20 disabled:scale-100 disabled:shadow-none flex-shrink-0"
                     >
-                        <Send size={16} />
+                        <Send size={20} className={isLoading ? 'animate-pulse' : ''} />
                     </button>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-2 text-center">
-                    AI advice is for guidance only. Always verify with career professionals.
-                </p>
+                <div className="flex items-center justify-center gap-4 mt-4">
+                    <p className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+                        <ShieldCheck size={12} className="text-emerald-500" /> Professional-Grade Advisory
+                    </p>
+                </div>
             </div>
 
-            {/* Bounce animation style */}
             <style>{`
                 @keyframes bounce {
                     0%, 60%, 100% { transform: translateY(0); }
-                    30% { transform: translateY(-6px); }
+                    30% { transform: translateY(-8px); }
+                }
+                .shake {
+                    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+                }
+                @keyframes shake {
+                    10%, 90% { transform: translate3d(-1px, 0, 0); }
+                    20%, 80% { transform: translate3d(2px, 0, 0); }
+                    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+                    40%, 60% { transform: translate3d(4px, 0, 0); }
                 }
             `}</style>
         </div>

@@ -15,12 +15,11 @@ import {
     Upload,
     Wand2,
 } from 'lucide-react';
-import { createStudyPlan, createStudyPlanWithDocs, fetchStudyPlans, markStudySubjectComplete, updateSubjectStatus } from '../services/studyPlanService';
+import { createStudyPlan, createStudyPlanWithDocs, fetchStudyPlans, updateSubjectStatus } from '../services/studyPlanService';
 import type {
     CreateStudyPlanInput,
     StudyPlan,
     StudySubject,
-    StudySessionSubject,
     StudyPriority,
     StudyTaskStatus,
 } from '../types/studyPlan';
@@ -46,28 +45,6 @@ const PRIORITY_META: Record<StudyPriority, { label: string; accent: string; tip:
         accent: 'bg-slate-50 text-slate-700 border-slate-200',
         tip: 'Skim, annotate slides, and park doubts for later review.',
     },
-};
-
-const DEFAULT_START_MINUTES = 9 * 60; // 9:00 AM baseline timeline for students
-
-const formatMinutesToTime = (totalMinutes: number) => {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    const suffix = hours >= 12 ? 'PM' : 'AM';
-    const normalizedHour = ((hours + 11) % 12) + 1;
-    const paddedMinutes = minutes.toString().padStart(2, '0');
-    return `${normalizedHour}:${paddedMinutes} ${suffix}`;
-};
-
-const buildTimeline = (subjects: StudySessionSubject[]) => {
-    let cursorMinutes = DEFAULT_START_MINUTES;
-    return subjects.map((subject, idx) => {
-        const durationMinutes = subject.durationMinutes ?? Math.round((subject.durationHours || 0) * 60);
-        const start = cursorMinutes;
-        cursorMinutes += Math.max(15, durationMinutes);
-        const end = cursorMinutes;
-        return { subject, idx, start, end };
-    });
 };
 
 const StudyPlanPage: React.FC = () => {
@@ -330,17 +307,6 @@ const StudyPlanPage: React.FC = () => {
             toast.error(error?.response?.data?.message || 'Could not generate study plan');
         } finally {
             setIsCreating(false);
-        }
-    };
-
-    const handleMarkComplete = async (sessionId: string, subjectIdx: number) => {
-        if (!selectedPlan) return;
-        try {
-            const updated = await markStudySubjectComplete(selectedPlan._id, sessionId, subjectIdx);
-            setPlans((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
-            toast.success('Marked as complete');
-        } catch (error: any) {
-            toast.error(error?.response?.data?.message || 'Could not update progress');
         }
     };
 
