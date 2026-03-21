@@ -16,6 +16,7 @@ const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const AdminCareerProfiles = React.lazy(() => import('./pages/AdminCareerProfiles'));
 const AdminStudentPreview = React.lazy(() => import('./pages/AdminStudentPreview'));
+const StudyPlanPage = React.lazy(() => import('./pages/StudyPlanPage'));
 
 const RootRedirect: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -66,10 +67,7 @@ const App: React.FC = () => {
                   path="/interviews"
                   element={<ComingSoon title="Interview Scheduling" description="Prepare for your dream role with our upcoming AI-powered interview simulators and scheduling system." />}
                 />
-                <Route
-                  path="/study"
-                  element={<ComingSoon title="Study Plan Generator" description="Master any skill with personalized, AI-curated study paths and resource tracking coming soon." />}
-                />
+                <Route path="/study" element={<StudyPlanPage />} />
                 <Route
                   path="/careers"
                   element={<ComingSoon title="Career Explored" description="Discover your ideal career path with our advanced matching engine and job market analysis tools." />}
