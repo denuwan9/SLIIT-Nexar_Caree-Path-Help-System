@@ -20,7 +20,7 @@ const baseNavItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/profile', icon: User, label: 'Profile' },
     { to: '/advisor', icon: Sparkles, label: 'AI Advisor' },
-    { to: '/job-posting', icon: Briefcase, label: 'Jobs' },
+    { to: '/job-posting', icon: Briefcase, label: 'Post a Job' },
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
     { to: '/study', icon: BookOpen, label: 'Study' },
     { to: '/careers', icon: Briefcase, label: 'Careers' },

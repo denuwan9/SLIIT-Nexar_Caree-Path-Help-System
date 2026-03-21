@@ -211,7 +211,7 @@ export const JobPostingDashboard: React.FC = () => {
       <div className="max-w-screen-xl mx-auto space-y-6">
         <div className="flex flex-wrap gap-3 justify-between items-center">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black">Job Postings Manager</h1>
+            <h1 className="text-2xl md:text-3xl font-black">Job Posting Manager</h1>
             <p className="text-slate-500 text-sm mt-1">Create, manage and share professional job posts powered by your profile data.</p>
           </div>
           <button
