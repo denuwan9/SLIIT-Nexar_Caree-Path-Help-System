@@ -10,7 +10,8 @@ import {
     ShieldCheck, 
     ArrowUpRight,
     Search,
-    UserCircle2
+    UserCircle2,
+    Calendar
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -186,6 +187,34 @@ const Dashboard: React.FC = () => {
                             <span className="text-[9px] font-black uppercase text-slate-500">Data Crypt</span>
                         </div>
                     </div>
+                </motion.div>
+
+                {/* Interview Bookings Snapshot */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                    onClick={() => navigate('/interviews')}
+                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer group"
+                >
+                    <div className="flex justify-between items-start mb-8">
+                        <div className="p-3 bg-indigo-500/5 rounded-2xl text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                            <Calendar size={24} />
+                        </div>
+                        <ArrowUpRight size={16} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">
+                        {UserPermissions.isAdmin ? 'System Bookings' : 'My Interviews'}
+                    </h3>
+                    <div className="flex items-end gap-2 mb-4">
+                        <span className="text-4xl font-black text-slate-900 leading-none">
+                            {DashboardState.interviewBookings || 0}
+                        </span>
+                        <span className="text-[10px] font-black text-slate-300 uppercase mb-1">Active</span>
+                    </div>
+                    <p className="text-slate-soft text-[10px] font-bold uppercase tracking-widest">
+                        {UserPermissions.isAdmin ? 'Total scheduled slots' : 'Upcoming sessions'}
+                    </p>
                 </motion.div>
 
                 {/* System Settings & Configuration (Wide) */}

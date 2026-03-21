@@ -26,6 +26,7 @@ const navItems = [
 const adminNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: 'Command Center' },
     { to: '/admin/profiles', icon: Briefcase, label: 'Career Profiles' },
+    { to: '/interviews', icon: Calendar, label: 'Interviews' },
 ];
 
 const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
