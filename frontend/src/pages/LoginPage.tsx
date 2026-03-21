@@ -1,12 +1,12 @@
 import React from 'react';
-import { LightAuthLayout } from '../features/auth/LightAuthLayout';
+import { SplitAuthLayout } from '../features/auth/SplitAuthLayout';
 import AuthModule from '../features/auth/AuthModule';
 
 const LoginPage: React.FC = () => {
     return (
-        <LightAuthLayout>
+        <SplitAuthLayout>
             <AuthModule initialView="login" />
-        </LightAuthLayout>
+        </SplitAuthLayout>
     );
 };
 
