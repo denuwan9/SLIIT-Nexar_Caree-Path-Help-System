@@ -15,8 +15,14 @@ interface AuthModuleProps {
 const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
   const [view, setView] = useState<'login' | 'signup'>(initialView);
   const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const { login, signup } = useAuth();
+  const navigate = useNavigate();
 
-  const toggleView = () => setView(v => v === 'login' ? 'signup' : 'login');
+  const toggleView = () => {
+    setAuthError(null);
+    setView(v => v === 'login' ? 'signup' : 'login');
+  };
 
   return (
     <div className="relative w-full overflow-hidden min-h-[640px] flex items-center justify-center py-10">
@@ -27,6 +33,22 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
             onSwitch={toggleView} 
             showPassword={showPassword} 
             setShowPassword={setShowPassword}
+            onSubmit={async (data) => {
+              setAuthError(null);
+              try {
+                const user = await login(data.email, data.password);
+                toast.success('Authentication successful');
+                if (user?.role === 'admin') {
+                  navigate('/admin');
+                } else {
+                  navigate('/dashboard');
+                }
+              } catch (err: any) {
+                const msg = err.response?.data?.message || err.message || 'Invalid credentials or server error. Please try again.';
+                setAuthError(msg);
+                toast.error(msg);
+              }
+            }}
           />
         ) : (
           <SignupView 
@@ -34,6 +56,22 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
             onSwitch={toggleView} 
             showPassword={showPassword} 
             setShowPassword={setShowPassword}
+            onSubmit={async (data) => {
+              setAuthError(null);
+              try {
+                const user = await signup(data);
+                toast.success('Identity established successfully');
+                if (user?.role === 'admin') {
+                  navigate('/admin');
+                } else {
+                  navigate('/dashboard');
+                }
+              } catch (err: any) {
+                const msg = err.response?.data?.message || err.message || 'Registration failed. Please try again.';
+                setAuthError(msg);
+                toast.error(msg);
+              }
+            }}
           />
         )}
       </AnimatePresence>
@@ -46,40 +84,14 @@ interface ViewProps {
   onSwitch: () => void;
   showPassword: boolean;
   setShowPassword: (show: boolean) => void;
+  onSubmit: (data: any) => Promise<void>;
 }
 
-const LoginView = ({ onSwitch, showPassword, setShowPassword }: ViewProps) => {
-  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<LoginInput>({
+const LoginView = ({ onSwitch, showPassword, setShowPassword, onSubmit }: ViewProps) => {
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     mode: 'onBlur'
   });
-  const { login } = useAuth();
-  const navigate = useNavigate();
-
-  const handleFormSubmit = async (data: LoginInput) => {
-    try {
-      const user = await login(data.email, data.password);
-      toast.success('Authentication successful');
-      if (user?.role === 'admin') navigate('/admin');
-      else navigate('/dashboard');
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Authentication failed';
-      if (err.response?.status === 422) {
-        toast.error(
-          <div>
-            <strong className="block mb-1">Validation Error</strong>
-            {errorMessage.split(';').map((msg: string, i: number) => <span key={i} className="block text-xs">{msg.trim()}</span>)}
-          </div>
-        );
-      } else if (err.response?.status === 401) {
-        setError('email', { type: 'manual', message: 'Invalid email or password' });
-        setError('password', { type: 'manual', message: 'Invalid email or password' });
-        toast.error('Invalid email or password');
-      } else {
-        toast.error(errorMessage);
-      }
-    }
-  };
 
   return (
     <motion.div
@@ -93,23 +105,19 @@ const LoginView = ({ onSwitch, showPassword, setShowPassword }: ViewProps) => {
         <img src="/logo.png" alt="SLIIT Nexar Logo" className="w-full h-full object-contain" />
       </div>
 
-      <h2 className="text-2xl font-black uppercase tracking-[0.2em] mb-2">SLIIT <span className="font-black">Nexar</span></h2>
-      <p className="text-white/50 text-[10px] font-black uppercase tracking-widest mb-10">Access SLIIT Nexar System</p>
-
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="w-full space-y-7">
-        <div className="relative">
-          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 ml-1 block">Official ID</label>
-          <div className="relative">
-            <input 
-              {...register('email')}
-              placeholder="name@sliit.lk"
-              className="input-curated-dark"
-            />
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-          </div>
-          <div className="min-h-[20px] mt-1 ml-1 flex items-start">
-            {errors.email && <span className="text-[8px] font-black text-rose-400 uppercase tracking-tighter">{errors.email.message}</span>}
-          </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-5 text-left">
+        <div>
+          <label className="block text-[13px] font-semibold text-[#4B5563] mb-2">Official ID</label>
+          <input 
+            {...register('email')}
+            placeholder="student@sliit.lk"
+            className={`w-full px-5 py-3.5 bg-[#F9FAFB] border rounded-xl text-[14px] font-medium transition-all outline-none text-gray-900 placeholder-[#9CA3AF] ${
+               errors.email 
+                 ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
+                 : 'border-gray-200 hover:border-gray-300 focus:bg-white focus:border-[#F59E0B] focus:ring-4 focus:ring-[#F59E0B]/10'
+            }`}
+          />
+          {errors.email && <span className="text-[12px] font-bold text-red-500 mt-2 block">{errors.email.message}</span>}
         </div>
 
         <div className="relative">
@@ -130,13 +138,7 @@ const LoginView = ({ onSwitch, showPassword, setShowPassword }: ViewProps) => {
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          <div className="min-h-[20px] mt-1 ml-1 flex items-start">
-            {errors.password && <span className="text-[8px] font-black text-rose-400 uppercase tracking-tighter">{errors.password.message}</span>}
-          </div>
-        </div>
-
-        <div className="flex justify-end items-center px-1">
-          <a href="#" className="text-[9px] font-black uppercase text-white/30 hover:text-white transition-colors">Forgot Protocol?</a>
+          {errors.password && <span className="text-[12px] font-bold text-red-500 mt-1 block">{errors.password.message}</span>}
         </div>
 
         <button 
@@ -164,37 +166,11 @@ const LoginView = ({ onSwitch, showPassword, setShowPassword }: ViewProps) => {
 };
 
 /* --- Register (Signup) View --- */
-const SignupView = ({ onSwitch, showPassword, setShowPassword }: ViewProps) => {
-  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<SignupInput>({
+const SignupView = ({ onSwitch, showPassword, setShowPassword, onSubmit }: ViewProps) => {
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     mode: 'onBlur'
   });
-  const { signup } = useAuth();
-  const navigate = useNavigate();
-
-  const handleFormSubmit = async (data: SignupInput) => {
-    try {
-      const user = await signup(data);
-      toast.success('Identity established successfully');
-      if (user?.role === 'admin') navigate('/admin');
-      else navigate('/dashboard');
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Registration failed';
-      if (err.response?.status === 422) {
-        toast.error(
-          <div>
-            <strong className="block mb-1">Validation Error</strong>
-            {errorMessage.split(';').map((msg: string, i: number) => <span key={i} className="block text-xs">{msg.trim()}</span>)}
-          </div>
-        );
-      } else if (err.response?.status === 409) {
-        setError('email', { type: 'manual', message: 'An account with this email already exists' });
-        toast.error('An account with this email already exists');
-      } else {
-        toast.error(errorMessage);
-      }
-    }
-  };
 
   return (
     <motion.div
@@ -212,72 +188,85 @@ const SignupView = ({ onSwitch, showPassword, setShowPassword }: ViewProps) => {
         <p className="text-white/50 text-[10px] font-black uppercase tracking-widest text-center">Provision Institutional Access</p>
       </div>
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 ml-1 block">First Name</label>
-            <input {...register('firstName')} placeholder="John" className="input-curated-dark" />
-            <div className="min-h-[20px] mt-1 ml-1 flex items-start">
-              {errors.firstName && <span className="text-[8px] font-black text-rose-400 uppercase tracking-tighter">{errors.firstName.message}</span>}
-            </div>
-          </div>
-          <div className="relative">
-            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 ml-1 block">Last Name</label>
-            <input {...register('lastName')} placeholder="Doe" className="input-curated-dark" />
-            <div className="min-h-[20px] mt-1 ml-1 flex items-start">
-              {errors.lastName && <span className="text-[8px] font-black text-rose-400 uppercase tracking-tighter">{errors.lastName.message}</span>}
-            </div>
-          </div>
-        </div>
-
-        <div className="relative">
-          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 ml-1 block">Institutional Alias</label>
-          <div className="relative">
-            <input {...register('email')} placeholder="name@sliit.lk" className="input-curated-dark" />
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-          </div>
-          <div className="min-h-[20px] mt-1 ml-1 flex items-start">
-            {errors.email && <span className="text-[8px] font-black text-rose-400 uppercase tracking-tighter">{errors.email.message}</span>}
-          </div>
-        </div>
-
-        <div className="relative">
-          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 ml-1 block">Master Key</label>
-          <div className="relative">
+      <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-4 text-left">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[13px] font-semibold text-[#4B5563] mb-2">First Name</label>
             <input 
-              {...register('password')}
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              className="input-curated-dark"
+              {...register('firstName')} 
+              placeholder="Student" 
+              className={`w-full px-5 py-3.5 bg-[#F9FAFB] border rounded-xl text-[14px] font-medium transition-all outline-none text-gray-900 placeholder-[#9CA3AF] ${
+                 errors.firstName 
+                   ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
+                   : 'border-gray-200 hover:border-gray-300 focus:bg-white focus:border-[#F59E0B] focus:ring-4 focus:ring-[#F59E0B]/10'
+              }`} 
             />
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-            <button 
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+            {errors.firstName && <span className="text-[12px] font-bold text-red-500 mt-1 block">{errors.firstName.message}</span>}
           </div>
-          <div className="min-h-[20px] mt-1 ml-1 flex items-start">
-            {errors.password && <span className="text-[8px] font-black text-rose-400 uppercase tracking-tighter">{errors.password.message}</span>}
+          <div>
+            <label className="block text-[13px] font-semibold text-[#4B5563] mb-2">Last Name</label>
+            <input 
+              {...register('lastName')} 
+              placeholder="Demo" 
+              className={`w-full px-5 py-3.5 bg-[#F9FAFB] border rounded-xl text-[14px] font-medium transition-all outline-none text-gray-900 placeholder-[#9CA3AF] ${
+                 errors.lastName 
+                   ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
+                   : 'border-gray-200 hover:border-gray-300 focus:bg-white focus:border-[#F59E0B] focus:ring-4 focus:ring-[#F59E0B]/10'
+              }`} 
+            />
+            {errors.lastName && <span className="text-[12px] font-bold text-red-500 mt-1 block">{errors.lastName.message}</span>}
           </div>
         </div>
 
+        <div>
+           <label className="block text-[13px] font-semibold text-[#4B5563] mb-2">Institutional Alias (Email)</label>
+          <input 
+            {...register('email')} 
+            placeholder="student@sliit.lk" 
+            className={`w-full px-5 py-3.5 bg-[#F9FAFB] border rounded-xl text-[14px] font-medium transition-all outline-none text-gray-900 placeholder-[#9CA3AF] ${
+               errors.email 
+                 ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
+                 : 'border-gray-200 hover:border-gray-300 focus:bg-white focus:border-[#F59E0B] focus:ring-4 focus:ring-[#F59E0B]/10'
+            }`} 
+          />
+          {errors.email && <span className="text-[12px] font-bold text-red-500 mt-1 block">{errors.email.message}</span>}
+        </div>
+
         <div className="relative">
-          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 ml-1 block">Verify Key</label>
-          <div className="relative">
-            <input 
-              {...register('confirmPassword')}
-              type={showPassword ? 'text' : 'password'}
-              className="input-curated-dark"
-              placeholder="••••••••"
-            />
-            <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/50" size={16} />
-          </div>
-          <div className="min-h-[20px] mt-1 ml-1 flex items-start">
-            {errors.confirmPassword && <span className="text-[8px] font-black text-rose-400 uppercase tracking-tighter">{errors.confirmPassword.message}</span>}
-          </div>
+          <label className="block text-[13px] font-semibold text-[#4B5563] mb-2">Master Key (Password)</label>
+          <input 
+            {...register('password')}
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••"
+            className={`w-full px-5 pr-12 py-3.5 bg-[#F9FAFB] border rounded-xl text-[14px] font-medium transition-all outline-none text-gray-900 placeholder-[#9CA3AF] ${
+               errors.password 
+                 ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
+                 : 'border-gray-200 hover:border-gray-300 focus:bg-white focus:border-[#F59E0B] focus:ring-4 focus:ring-[#F59E0B]/10'
+            }`}
+          />
+          <button 
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-5 top-[38px] text-[#9CA3AF] hover:text-gray-700 transition-colors"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+          {errors.password && <span className="text-[12px] font-bold text-red-500 mt-1 block">{errors.password.message}</span>}
+        </div>
+
+        <div>
+          <label className="block text-[13px] font-semibold text-[#4B5563] mb-2">Verify Key</label>
+          <input 
+            {...register('confirmPassword')}
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••"
+            className={`w-full px-5 py-3.5 bg-[#F9FAFB] border rounded-xl text-[14px] font-medium transition-all outline-none text-gray-900 placeholder-[#9CA3AF] ${
+               errors.confirmPassword 
+                 ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
+                 : 'border-gray-200 hover:border-gray-300 focus:bg-white focus:border-[#F59E0B] focus:ring-4 focus:ring-[#F59E0B]/10'
+            }`}
+          />
+          {errors.confirmPassword && <span className="text-[12px] font-bold text-red-500 mt-1 block">{errors.confirmPassword.message}</span>}
         </div>
 
         <button 
