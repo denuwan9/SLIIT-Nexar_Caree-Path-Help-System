@@ -14,8 +14,9 @@
 
 const AppError = require('../utils/AppError');
 const StudentProfile = require('../models/StudentProfile');
+const { PDFParse } = require('pdf-parse');
 const groqService = require('../services/GroqService');
-const { extractTextFromPDF } = require('../utils/pdfExtractor');
+const logger = require('../utils/logger');
 
 // ── Helper: Load the requesting student's profile ─────────────────────────
 const getStudentProfile = async (userId) => {
@@ -141,40 +142,25 @@ exports.analyzeSkillGap = async (req, res, next) => {
 
 /**
  * POST /api/v1/ai/resume
- * Body: { resumeText?: string, jobDescription?: string, targetRole?: string }
- * File: { resume: PDF }
- * Returns atsScore, keywordsToAdd[], improvements[], etc.
+ * Body: { resumeText: string }
+ * Returns atsScore, keywordsToAdd[], improvements[]
  */
 exports.analyzeResume = async (req, res, next) => {
     try {
-        let { resumeText, jobDescription, targetRole } = req.body;
-
-        // If a file was uploaded, extract its text
-        if (req.file) {
-            try {
-                resumeText = await extractTextFromPDF(req.file.buffer);
-            } catch (err) {
-                return next(new AppError(`File Processing Error: ${err.message}`, 400));
-            }
-        }
+        const { resumeText, targetRole = 'General' } = req.body;
 
         if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 100) {
-            return next(new AppError('Please provide resume text or upload a valid PDF (at least 100 characters).', 400));
+            return next(new AppError('Please paste your resume text (at least 100 characters).', 400));
         }
-        if (resumeText.trim().length > 15000) {
-            return next(new AppError('Resume text is too long. Please limit to 15,000 characters.', 400));
+        if (resumeText.trim().length > 10000) {
+            return next(new AppError('Resume text cannot exceed 10000 characters.', 400));
         }
 
         const profile = await getStudentProfile(req.user._id);
 
         let report;
         try {
-            report = await groqService.analyzeResume(
-                profile,
-                resumeText.trim(),
-                jobDescription?.trim(),
-                targetRole?.trim()
-            );
+            report = await groqService.analyzeResume(profile, resumeText.trim(), targetRole);
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
@@ -184,4 +170,35 @@ exports.analyzeResume = async (req, res, next) => {
             data: { report },
         });
     } catch (error) { next(error); }
+};
+
+/**
+ * POST /api/v1/ai/extract-text
+ * Accepts a PDF file and returns extracted text.
+ */
+exports.extractText = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return next(new AppError('Please upload a PDF file.', 400));
+        }
+
+        // Check if it's a PDF
+        if (req.file.mimetype !== 'application/pdf') {
+            return next(new AppError('Only PDF files are supported for text extraction.', 400));
+        }
+
+        const dataBuffer = req.file.buffer;
+        const parser = new PDFParse({ data: dataBuffer });
+        const data = await parser.getText();
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                text: data.text,
+                pageCount: data.total
+            }
+        });
+    } catch (error) {
+        return next(new AppError(`Text extraction failed: ${error.message}`, 500));
+    }
 };

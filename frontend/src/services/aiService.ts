@@ -32,23 +32,19 @@ export const analyzeSkillGap = async (jobDescription: string): Promise<SkillGapR
 };
 
 // ── 4. Resume Analyzer ─────────────────────────────────────────────────────
-export const analyzeResume = async (
-    resume: string | File,
-    jobDescription?: string,
-    targetRole?: string
-): Promise<ResumeAnalysisResult> => {
-    if (resume instanceof File) {
-        const formData = new FormData();
-        formData.append('resume', resume);
-        if (jobDescription) formData.append('jobDescription', jobDescription);
-        if (targetRole) formData.append('targetRole', targetRole);
+export const analyzeResume = async (resumeText: string, targetRole: string): Promise<ResumeAnalysisResult> => {
+    const res = await api.post('/ai/resume', { resumeText, targetRole });
+    return res.data.data.report as ResumeAnalysisResult;
+};
 
-        const res = await api.post('/ai/resume', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        return res.data.data.report as ResumeAnalysisResult;
-    } else {
-        const res = await api.post('/ai/resume', { resumeText: resume, jobDescription, targetRole });
-        return res.data.data.report as ResumeAnalysisResult;
-    }
+export const extractTextFromFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('resume', file);
+    
+    const res = await api.post('/ai/extract-text', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return res.data.data.text as string;
 };

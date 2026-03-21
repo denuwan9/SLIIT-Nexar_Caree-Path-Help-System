@@ -288,59 +288,50 @@ Use exactly this structure:
 
     /**
      * TASK 03c — Resume / ATS Analyzer
-     * Compares resume vs. optional JD, Target Role, and profile data.
      */
-    async analyzeResume(studentProfile, resumeText, jobDescription = null, targetRole = null) {
+    async analyzeResume(studentProfile, resumeText, targetRole = 'General') {
         const profileJson = this._buildProfileContext(studentProfile);
 
-        const systemPrompt = `You are NEXAR, an expert ATS (Applicant Tracking System) & Resume Architect for SLIIT students.
-Your task is to perform an elite-level ATS audit on the provided resume text.
+        const systemPrompt = `You are NEXAR, an elite AI Career Strategy & ATS Specialist for SLIIT students.
+Your task is to provide a brutally honest, hyper-accurate ATS (Applicant Tracking System) analysis of a student's resume specifically for a target job role.
 
-CONTEXT:
-Student Profile (Ground Truth):
-${profileJson}
-
-${targetRole ? `TARGET JOB ROLE: ${targetRole}\n` : ''}${jobDescription ? `TARGET JOB DESCRIPTION:\n${jobDescription}` : !targetRole ? 'TARGET: General Optimization for the student\'s career path.' : ''}
-
-DIRECTIONS:
-1. Conduct a multi-point analysis: Keyword matching, Formatting (tables, fonts, layouts), Impact (quantified results), and Action Verbs.
-2. If a Target Job Role is provided, assess how well the resume matches standard requirements for that specific position.
-3. If a Job Description (JD) is provided, prioritize matching the resume against THAT specific JD.
-4. If neither is provided, optimize against the student's personal target role and general high-performing patterns.
+TARGET ROLE: ${targetRole}
 
 OUTPUT FORMAT: Respond with ONLY a valid JSON object.
+Analysis Logic:
+1. Compare Resume Text vs. Target Role requirements.
+2. Cross-reference with the Student Profile for consistency.
+3. Evaluate Keyword Density (Industry terms for ${targetRole}).
+4. Check Formatting (Standard ATS parseability).
+5. Verify Quantified Achievements (Numbers, percentages, $).
+6. Assess Action Verbs (Led, Developed, Optimized).
+
+Use exactly this structure:
 {
   "atsScore": <integer 0-100>,
   "scoreBreakdown": {
     "keywordDensity": <integer 0-100>,
     "formatting": <integer 0-100>,
     "quantifiedAchievements": <integer 0-100>,
-    "actionVerbs": <integer 0-100>,
-    "sectionScores": {
-      "contact": <integer 0-100>,
-      "experience": <integer 0-100>,
-      "education": <integer 0-100>,
-      "skills": <integer 0-100>
-    }
+    "actionVerbs": <integer 0-100>
   },
-  "keywordsToAdd": ["<critical keyword from JD or industry standard>"],
-  "strengths": ["<explicit bulleted strength>"],
-  "weaknesses": ["<explicit bulleted weakness regarding formatting or content>"],
-  "actionableTips": [
-    { "category": "Formatting|Content|Impact", "tip": "<specific actionable advice>", "priority": "high|medium|low" }
+  "keywordsToAdd": ["List specific missing keywords for ${targetRole}"],
+  "strengths": ["What the student did well"],
+  "improvements": [
+    { "section": "Section Name", "issue": "Problem", "fix": "Specific actionable fix" }
   ],
-  "overallFeedback": "<2-3 sentence brutally honest mentor summary>"
+  "overallFeedback": "2-3 sentence executive summary tailored to ${targetRole}"
 }`;
 
         const completion = await this.client.chat.completions.create({
             model: JSON_MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },
-                { role: 'user', content: `RESUME TEXT:\n${resumeText}` },
+                { role: 'user', content: `Target Role: ${targetRole}\n\nResume Text:\n${resumeText}` },
             ],
             response_format: { type: 'json_object' },
             temperature: 0.4,
-            max_tokens: 2200,
+            max_tokens: 1800,
         });
 
         const raw = completion.choices[0].message.content;
