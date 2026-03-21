@@ -246,27 +246,31 @@ Use exactly this structure:
      * TASK 03b — Skill Gap Analyzer
      * Compares student skills vs. a job description.
      */
-    async analyzeSkillGap(studentProfile, jobDescription) {
+    async analyzeSkillGap(studentProfile, targetRole) {
         const profileJson = this._buildProfileContext(studentProfile);
 
         const systemPrompt = `You are NEXAR, an elite AI Career Mentor for SLIIT students.
-Compare the student profile against the job description and produce a gap analysis.
+Compare the student profile against the specified target job role and produce a gap analysis.
 
 STUDENT PROFILE:
 ${profileJson}
 
+TARGET ROLE: ${targetRole}
+
 OUTPUT FORMAT: Respond with ONLY a valid JSON object — no explanation, no markdown, no code fences.
 Use exactly this structure:
 {
-  "matchScore": <integer 0-100>,
-  "strengths": ["<matching skill>"],
-  "missingSkills": [
-    { "skill": "<name>", "priority": "critical", "reason": "<why needed>" }
+  "readinessScore": <integer 0-100 indicating match>,
+  "strongSkills": ["<skill>", "<skill>"],
+  "needsImprovement": [
+    { "skill": "<name>", "reason": "<why it needs improvement>" }
   ],
-  "recommendedResources": [
+  "missingSkills": [
+    { "skill": "<name>", "priority": "critical" | "important" | "nice-to-have", "reason": "<why needed>" }
+  ],
+  "learningRecommendations": [
     { "skill": "<name>", "resource": "<platform/course>", "url": "<URL or empty string>", "estimatedHours": <integer> }
   ],
-  "urgencyScore": <integer 1-10>,
   "summary": "<2 sentences personalised to this student>"
 }`;
 
@@ -274,7 +278,7 @@ Use exactly this structure:
             model: JSON_MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },
-                { role: 'user', content: `Job Description:\n${jobDescription}` },
+                { role: 'user', content: `Target Role:\n${targetRole}` },
             ],
             response_format: { type: 'json_object' },
             temperature: 0.4,

@@ -111,20 +111,20 @@ exports.simulateCareer = async (req, res, next) => {
  */
 exports.analyzeSkillGap = async (req, res, next) => {
     try {
-        const { jobDescription } = req.body;
+        const { targetRole } = req.body;
 
-        if (!jobDescription || typeof jobDescription !== 'string' || jobDescription.trim().length < 50) {
-            return next(new AppError('Please provide a job description of at least 50 characters.', 400));
+        if (!targetRole || typeof targetRole !== 'string' || targetRole.trim().length < 2) {
+            return next(new AppError('Please provide a target role of at least 2 characters.', 400));
         }
-        if (jobDescription.trim().length > 5000) {
-            return next(new AppError('Job description cannot exceed 5000 characters.', 400));
+        if (targetRole.trim().length > 150) {
+            return next(new AppError('Target role cannot exceed 150 characters.', 400));
         }
 
         const profile = await getStudentProfile(req.user._id);
 
         let analysis;
         try {
-            analysis = await groqService.analyzeSkillGap(profile, jobDescription.trim());
+            analysis = await groqService.analyzeSkillGap(profile, targetRole.trim());
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }

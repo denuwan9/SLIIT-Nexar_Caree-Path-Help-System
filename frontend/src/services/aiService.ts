@@ -26,8 +26,8 @@ export const simulateCareer = async (targetRole: string, currentLevel: string): 
 };
 
 // ── 3. Skill Gap Analyzer ──────────────────────────────────────────────────
-export const analyzeSkillGap = async (jobDescription: string): Promise<SkillGapResult> => {
-    const res = await api.post('/ai/skill-gap', { jobDescription });
+export const analyzeSkillGap = async (targetRole: string): Promise<SkillGapResult> => {
+    const res = await api.post('/ai/skill-gap', { targetRole });
     return res.data.data.analysis as SkillGapResult;
 };
 

@@ -40,11 +40,11 @@ export interface RecommendedResource {
 }
 
 export interface SkillGapResult {
-    matchScore: number;
-    strengths: string[];
+    readinessScore: number;
+    strongSkills: string[];
+    needsImprovement: { skill: string; reason: string }[];
     missingSkills: MissingSkill[];
-    recommendedResources: RecommendedResource[];
-    urgencyScore: number;
+    learningRecommendations: RecommendedResource[];
     summary: string;
 }
 
