@@ -39,7 +39,7 @@ const App: React.FC = () => {
           }
         >
           <Toaster 
-            position="top-right" 
+            position="top-center" 
             toastOptions={{
               className: 'font-main text-sm shadow-xl',
               style: {

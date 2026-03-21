@@ -5,25 +5,21 @@ const registerValidator = [
     body('firstName')
         .trim()
         .notEmpty().withMessage('First name is required')
-        .isLength({ min: 2, max: 50 }).withMessage('First name must be 2–50 characters'),
+        .isLength({ min: 2, max: 50 }).withMessage('First name must be 2–50 characters')
+        .matches(/^[A-Za-z\s\-]+$/).withMessage('Only alphabets are allowed'),
     body('lastName')
         .trim()
         .notEmpty().withMessage('Last name is required')
-        .isLength({ min: 2, max: 50 }).withMessage('Last name must be 2–50 characters'),
+        .isLength({ min: 2, max: 50 }).withMessage('Last name must be 2–50 characters')
+        .matches(/^[A-Za-z\s\-]+$/).withMessage('Only alphabets are allowed'),
     body('email')
         .trim()
         .notEmpty().withMessage('Email is required')
         .matches(/^[a-zA-Z0-9._%+-]+@sliit\.lk$/).withMessage('Only @sliit.lk institutional emails are allowed')
         .normalizeEmail(),
-    body('currentMajor')
-        .trim()
-        .notEmpty().withMessage('Current major is required'),
     body('skillSet')
         .optional()
         .isArray().withMessage('Skill set must be an array'),
-    body('targetRole')
-        .trim()
-        .notEmpty().withMessage('Target role is required'),
     body('password')
         .notEmpty().withMessage('Password is required')
         .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')

@@ -11,8 +11,12 @@ export const loginSchema = z.object({
 });
 
 export const signupSchema = z.object({
-  firstName: z.string().min(2, 'First name is required'),
-  lastName: z.string().min(2, 'Last name is required'),
+  firstName: z.string()
+    .min(2, 'First name is required')
+    .regex(/^[A-Za-z\s\-]+$/, 'Only alphabets are allowed'),
+  lastName: z.string()
+    .min(2, 'Last name is required')
+    .regex(/^[A-Za-z\s\-]+$/, 'Only alphabets are allowed'),
   email: z.string()
     .min(1, 'Email is required')
     .email('Invalid email format')
