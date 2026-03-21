@@ -20,7 +20,6 @@ const baseNavItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/profile', icon: User, label: 'Profile' },
     { to: '/advisor', icon: Sparkles, label: 'AI Advisor' },
-    { to: '/job-posting', icon: Briefcase, label: 'Jobs' },
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
     { to: '/study', icon: BookOpen, label: 'Study' },
     { to: '/careers', icon: Briefcase, label: 'Careers' },
@@ -72,6 +71,7 @@ export const Sidebar: React.FC = () => {
 
     const navItems = [
         ...baseNavItems,
+        ...(user?.role === 'student' ? [{ to: '/job-posting', icon: Briefcase, label: 'Post a Job' }] : []),
         ...(user?.role === 'admin' ? [{ to: '/admin', icon: Form, label: 'Job Posts' }] : []),
     ];
 

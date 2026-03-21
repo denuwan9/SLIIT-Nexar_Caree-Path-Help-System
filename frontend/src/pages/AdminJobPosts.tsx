@@ -37,13 +37,20 @@ export const AdminJobPosts: React.FC = () => {
   const filteredPosts = useMemo(() => {
     const q = filters.query.trim().toLowerCase();
     return posts.filter(post => {
-      const matchedText = [post.title, post.careerField, post.summary, post.description, post.skills.join(' ')].some(value =>
-        value.toLowerCase().includes(q),
-      );
+      const matchedText = [
+        post.title,
+        post.careerField,
+        post.summary,
+        post.description,
+        post.skills.join(' '),
+      ].some(value => value.toLowerCase().includes(q));
+
       const matchField = filters.careerField === 'All' || post.careerField === filters.careerField;
       const matchVisibility =
         filters.visibility === 'All' || post.visibility === (filters.visibility.toLowerCase() as Visibility);
-      const matchStatus = filters.status === 'All' || post.status === (filters.status.toLowerCase() as PostingStatus);
+      const matchStatus =
+        filters.status === 'All' || post.status === (filters.status.toLowerCase() as PostingStatus);
+
       return matchedText && matchField && matchVisibility && matchStatus;
     });
   }, [posts, filters]);
@@ -63,20 +70,22 @@ export const AdminJobPosts: React.FC = () => {
       .catch(() => toast.error('Cannot copy shareable link.'));
   };
 
-  const stats = useMemo(() => ({
-    total: posts.length,
-    active: posts.filter(p => p.status === 'active').length,
-    public: posts.filter(p => p.visibility === 'public').length,
-    totalViews: posts.reduce((acc, cur) => acc + cur.views, 0),
-    totalApplications: posts.reduce((acc, cur) => acc + cur.applications, 0),
-  }), [posts]);
+  const stats = useMemo(
+    () => ({
+      total: posts.length,
+      active: posts.filter(p => p.status === 'active').length,
+      public: posts.filter(p => p.visibility === 'public').length,
+      totalApplications: posts.reduce((acc, cur) => acc + cur.applications, 0),
+    }),
+    [posts],
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-8">
       <div className="max-w-screen-xl mx-auto space-y-6">
         <div className="flex flex-wrap gap-3 justify-between items-center">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black">Student's Job Posts</h1>
+            <h1 className="text-2xl md:text-3xl font-black">Student&apos;s Job Posts</h1>
             <p className="text-slate-500 text-sm mt-1">Monitor and manage job posts created by students.</p>
           </div>
         </div>
@@ -85,20 +94,27 @@ export const AdminJobPosts: React.FC = () => {
           <div className="lg:col-span-3 space-y-4">
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
               <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">Filters</h3>
+
               <input
                 value={filters.query}
                 onChange={e => setFilters(prev => ({ ...prev, query: e.target.value }))}
                 placeholder="Search posts..."
                 className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
               />
+
               <select
                 value={filters.careerField}
                 onChange={e => setFilters(prev => ({ ...prev, careerField: e.target.value }))}
                 className="w-full border rounded-lg px-3 py-2 text-sm mb-3"
               >
                 <option value="All">All fields</option>
-                {availableCareerFields.map(field => <option key={field} value={field}>{field}</option>)}
+                {availableCareerFields.map(field => (
+                  <option key={field} value={field}>
+                    {field}
+                  </option>
+                ))}
               </select>
+
               <select
                 value={filters.visibility}
                 onChange={e => setFilters(prev => ({ ...prev, visibility: e.target.value }))}
@@ -108,6 +124,7 @@ export const AdminJobPosts: React.FC = () => {
                 <option value="public">Public</option>
                 <option value="private">Private</option>
               </select>
+
               <select
                 value={filters.status}
                 onChange={e => setFilters(prev => ({ ...prev, status: e.target.value }))}
@@ -128,8 +145,14 @@ export const AdminJobPosts: React.FC = () => {
                 <li>Total posts: <strong>{stats.total}</strong></li>
                 <li>Active: <strong>{stats.active}</strong></li>
                 <li>Public: <strong>{stats.public}</strong></li>
-                <li>Views: <strong>{stats.totalViews}</strong></li>
-                <li>Applications: <strong>{stats.totalApplications}</strong></li>
+                <li>
+                  <button
+                    onClick={() => navigate('/admin/applications')}
+                    className="text-left hover:text-purple-600 hover:underline transition"
+                  >
+                    Applications: <strong>{stats.totalApplications}</strong>
+                  </button>
+                </li>
               </ul>
             </div>
           </aside>
@@ -150,21 +173,37 @@ export const AdminJobPosts: React.FC = () => {
                   <div className="flex justify-between items-start gap-3 mb-2">
                     <div>
                       <h3 className="text-base font-black">{post.title}</h3>
-                      <p className="text-xs text-slate-400 font-black uppercase tracking-wide">{post.careerField} • {post.location || 'Remote/NA'}</p>
+                      <p className="text-xs text-slate-400 font-black uppercase tracking-wide">
+                        {post.careerField} • {post.location || 'Remote/NA'}
+                      </p>
                       <p className="text-sm text-slate-600 mt-2">{post.summary}</p>
-                      <p className="text-xs text-slate-500 mt-1">By: {post.authorName} ({post.authorEmail})</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        By: {post.authorName} ({post.authorEmail})
+                      </p>
                     </div>
-                    <span className="text-xs bg-slate-100 px-2 py-1 rounded-full uppercase font-black tracking-widest">{post.visibility}</span>
+                    <span className="text-xs bg-slate-100 px-2 py-1 rounded-full uppercase font-black tracking-widest">
+                      {post.visibility}
+                    </span>
                   </div>
+
                   <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-                    {post.skills.slice(0, 5).map(skill => (<span key={skill} className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg">{skill}</span>))}
-                    {post.languages.map(lang => (<span key={lang} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg">{lang}</span>))}
+                    {post.skills.slice(0, 5).map(skill => (
+                      <span key={skill} className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg">
+                        {skill}
+                      </span>
+                    ))}
+                    {post.languages.map(lang => (
+                      <span key={lang} className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg">
+                        {lang}
+                      </span>
+                    ))}
                   </div>
+
                   <div className="mt-3 flex flex-wrap justify-between items-center gap-2 text-xs text-slate-500">
                     <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                    <span>{post.views} views</span>
                     <span>{post.applications} applications</span>
                   </div>
+
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       onClick={() => viewPublic(post)}

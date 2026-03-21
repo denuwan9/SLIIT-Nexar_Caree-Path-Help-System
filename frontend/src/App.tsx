@@ -16,6 +16,7 @@ const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const JobPostingDashboard = React.lazy(() => import('./pages/jobPosting/JobPostingDashboard'));
 const PublicJobPost = React.lazy(() => import('./pages/jobPosting/PublicJobPost'));
 const AdminJobPosts = React.lazy(() => import('./pages/AdminJobPosts'));
+const AdminApplicationsPage = React.lazy(() => import('./pages/AdminApplicationsPage'));
 
 const App: React.FC = () => {
   return (
@@ -75,6 +76,14 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminJobPosts />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/applications"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminApplicationsPage />
                   </ProtectedRoute>
                 }
               />
