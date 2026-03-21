@@ -6,6 +6,13 @@ export const createStudyPlan = async (payload: CreateStudyPlanInput): Promise<St
     return res.data.data.plan as StudyPlan;
 };
 
+export const createStudyPlanWithDocs = async (formData: FormData): Promise<StudyPlan> => {
+    const res = await api.post('/study-plans/with-docs', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data.plan as StudyPlan;
+};
+
 export const fetchStudyPlans = async (): Promise<StudyPlan[]> => {
     const res = await api.get('/study-plans');
     return res.data.data.plans as StudyPlan[];

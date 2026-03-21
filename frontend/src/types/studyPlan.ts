@@ -11,9 +11,15 @@ export interface StudySubject {
 }
 
 export interface StudySessionSubject {
+    title?: string;
     subjectName: string;
     topic?: string;
+    taskType?: 'reading' | 'summarizing' | 'practice' | 'revision' | 'self-test';
+    instruction?: string;
     durationHours: number;
+    durationMinutes?: number;
+    technique?: 'pomodoro' | 'spaced' | 'mixed';
+    resources?: string[];
     priority: StudyPriority;
     isCompleted?: boolean;
 }
@@ -32,6 +38,9 @@ export interface StudyPlan {
     title: string;
     examStartDate: string;
     examEndDate: string;
+    internshipStartTime?: string;
+    internshipEndTime?: string;
+    internshipHoursPerDay?: number;
     subjects: StudySubject[];
     availableHoursPerDay: number;
     sessions: StudySession[];
@@ -48,4 +57,7 @@ export interface CreateStudyPlanInput {
     examEndDate: string;
     subjects: StudySubject[];
     availableHoursPerDay?: number;
+    internshipStartTime?: string;
+    internshipEndTime?: string;
+    internshipHoursPerDay?: number;
 }

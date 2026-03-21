@@ -251,7 +251,16 @@ const studyPlanValidator = [
         .optional()
         .isFloat({ min: 1, max: 16 }).withMessage('Must be between 1 and 16 hours'),
     body('subjects')
-        .isArray({ min: 1 }).withMessage('At least one subject is required'),
+        .custom((val) => {
+            if (Array.isArray(val)) return val.length > 0;
+            try {
+                const parsed = JSON.parse(val);
+                if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+                return true;
+            } catch {
+                throw new Error('Subjects must be a non-empty array');
+            }
+        }),
     body('subjects.*.name')
         .notEmpty().withMessage('Each subject must have a name'),
 ];

@@ -8,8 +8,22 @@ const studySessionSchema = new mongoose.Schema(
         subjects: [
             {
                 subjectName: { type: String, required: true },
+                title: { type: String, default: '' },
                 topic: { type: String, default: '' },
-                durationHours: { type: Number, required: true, min: 0.5 },
+                taskType: {
+                    type: String,
+                    enum: ['reading', 'summarizing', 'practice', 'revision', 'self-test', null],
+                    default: null,
+                },
+                instruction: { type: String, default: '' },
+                durationHours: { type: Number, required: true, min: 0.25 },
+                durationMinutes: { type: Number },
+                technique: {
+                    type: String,
+                    enum: ['pomodoro', 'spaced', 'mixed', null],
+                    default: null,
+                },
+                resources: [{ type: String }],
                 priority: {
                     type: String,
                     enum: ['low', 'medium', 'high', 'critical'],
@@ -59,6 +73,9 @@ const studyPlanSchema = new mongoose.Schema(
                 weight: { type: Number, default: 1 }, // relative weight for allocation
             },
         ],
+        internshipStartTime: { type: String }, // HH:MM (24h)
+        internshipEndTime: { type: String },   // HH:MM (24h)
+        internshipHoursPerDay: { type: Number },
         availableHoursPerDay: { type: Number, default: 4, min: 1, max: 16 },
         sessions: [studySessionSchema],  // AI-generated daily sessions
         aiSummary: { type: String, default: '' }, // AI-generated advice text
