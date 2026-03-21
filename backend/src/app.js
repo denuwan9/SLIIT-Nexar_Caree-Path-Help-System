@@ -21,6 +21,7 @@ const studyPlanRoutes = require('./routes/studyPlanRoutes');
 const jobPostRoutes = require('./routes/jobPostRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const systemRoutes = require('./routes/systemRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use('/api/v1/study-plans', studyPlanRoutes);
 app.use('/api/v1/jobs', jobPostRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/system', systemRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────
 app.all('*', (req, res, next) => {

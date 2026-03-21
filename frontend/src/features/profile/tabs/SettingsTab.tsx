@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { Target, Link as LinkIcon, Save, Loader2, AlertCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import profileService from '../../../services/profileService';
 import type { StudentProfile } from '../../../types/profile';
+import { 
+    careerGoalsSchema, 
+    socialLinksSchema, 
+    type CareerGoalsInput, 
+    type SocialLinksInput 
+} from '../profileSchemas';
+import toast from 'react-hot-toast';
 
 interface Props {
     profile: StudentProfile;
@@ -13,44 +22,52 @@ const SettingsTab: React.FC<Props> = ({ profile, setProfile }) => {
     const [loadingSocial, setLoadingSocial] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [goalsForm, setGoalsForm] = useState({
-        targetRoles: profile.careerGoals?.targetRoles?.join(', ') || '',
-        preferredIndustries: profile.careerGoals?.preferredIndustries?.join(', ') || '',
-        careerObjective: profile.careerGoals?.careerObjective || '',
+    const goalsForm = useForm<CareerGoalsInput>({
+        resolver: zodResolver(careerGoalsSchema),
+        defaultValues: {
+            targetRoles: profile.careerGoals?.targetRoles?.join(', ') || '',
+            preferredIndustries: profile.careerGoals?.preferredIndustries?.join(', ') || '',
+            careerObjective: profile.careerGoals?.careerObjective || '',
+        }
     });
 
-    const [socialForm, setSocialForm] = useState({
-        linkedin: profile.socialLinks?.linkedin || '',
-        github: profile.socialLinks?.github || '',
-        portfolio: profile.socialLinks?.portfolio || '',
-        twitter: profile.socialLinks?.twitter || '',
-        stackoverflow: profile.socialLinks?.stackoverflow || '',
+    const socialForm = useForm<SocialLinksInput>({
+        resolver: zodResolver(socialLinksSchema),
+        defaultValues: {
+            linkedin: profile.socialLinks?.linkedin || '',
+            github: profile.socialLinks?.github || '',
+            portfolio: profile.socialLinks?.portfolio || '',
+            twitter: profile.socialLinks?.twitter || '',
+            stackoverflow: profile.socialLinks?.stackoverflow || '',
+        }
     });
 
-    const handleSaveGoals = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onSaveGoals = async (data: CareerGoalsInput) => {
         try {
             setLoadingGoals(true); setError(null);
             const goals = {
-                targetRoles: goalsForm.targetRoles.split(',').map(s => s.trim()).filter(Boolean),
-                preferredIndustries: goalsForm.preferredIndustries.split(',').map(s => s.trim()).filter(Boolean),
-                careerObjective: goalsForm.careerObjective.trim()
+                targetRoles: data.targetRoles?.split(',').map(s => s.trim()).filter(Boolean) || [],
+                preferredIndustries: data.preferredIndustries?.split(',').map(s => s.trim()).filter(Boolean) || [],
+                careerObjective: data.careerObjective?.trim() || ''
             };
             const updated = await profileService.updateCareerGoals(goals);
             setProfile({ ...profile, careerGoals: updated });
+            toast.success('Career goals updated');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to save goals');
+            toast.error('Failed to update career goals');
         } finally { setLoadingGoals(false); }
     };
 
-    const handleSaveSocial = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onSaveSocial = async (data: SocialLinksInput) => {
         try {
             setLoadingSocial(true); setError(null);
-            const updated = await profileService.updateSocialLinks(socialForm);
+            const updated = await profileService.updateSocialLinks(data);
             setProfile({ ...profile, socialLinks: updated });
+            toast.success('Social links updated');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to save social links');
+            toast.error('Failed to update social links');
         } finally { setLoadingSocial(false); }
     };
 
@@ -71,20 +88,35 @@ const SettingsTab: React.FC<Props> = ({ profile, setProfile }) => {
                     <p className="text-sm font-bold text-slate-500 mt-1">Tell the AI what roles you are aiming for.</p>
                 </div>
 
-                <form onSubmit={handleSaveGoals} className="space-y-5 p-6 rounded-3xl border border-slate-200 bg-slate-50/50">
+                <form onSubmit={goalsForm.handleSubmit(onSaveGoals)} className="space-y-5 p-6 rounded-3xl border border-slate-200 bg-slate-50/50">
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Target Roles (Comma separated)</label>
-                        <input type="text" value={goalsForm.targetRoles} onChange={e => setGoalsForm({ ...goalsForm, targetRoles: e.target.value })} placeholder="e.g. Frontend Developer, Full Stack Engineer" className="input-field bg-white py-2" />
+                        <input 
+                            type="text" 
+                            {...goalsForm.register('targetRoles')} 
+                            placeholder="e.g. Frontend Developer, Full Stack Engineer" 
+                            className="input-field bg-white py-2" 
+                        />
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Preferred Industries (Comma separated)</label>
-                        <input type="text" value={goalsForm.preferredIndustries} onChange={e => setGoalsForm({ ...goalsForm, preferredIndustries: e.target.value })} placeholder="e.g. Fintech, Healthcare, EdTech" className="input-field bg-white py-2" />
+                        <input 
+                            type="text" 
+                            {...goalsForm.register('preferredIndustries')} 
+                            placeholder="e.g. Fintech, Healthcare, EdTech" 
+                            className="input-field bg-white py-2" 
+                        />
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Career Objective Summary</label>
-                        <textarea value={goalsForm.careerObjective} onChange={e => setGoalsForm({ ...goalsForm, careerObjective: e.target.value })} placeholder="What are you ultimately looking to achieve in your career?" className="input-field bg-white min-h-[100px] resize-y py-2" maxLength={600} />
+                        <textarea 
+                            {...goalsForm.register('careerObjective')} 
+                            placeholder="What are you ultimately looking to achieve in your career?" 
+                            className={`input-field bg-white min-h-[100px] resize-y py-2 ${goalsForm.formState.errors.careerObjective ? 'border-red-500' : ''}`} 
+                        />
+                        {goalsForm.formState.errors.careerObjective && <p className="text-[10px] font-bold text-red-500">{goalsForm.formState.errors.careerObjective.message}</p>}
                     </div>
 
                     <div className="flex justify-end pt-2">
@@ -104,23 +136,47 @@ const SettingsTab: React.FC<Props> = ({ profile, setProfile }) => {
                     <p className="text-sm font-bold text-slate-500 mt-1">Links to your professional presence.</p>
                 </div>
 
-                <form onSubmit={handleSaveSocial} className="space-y-5 p-6 rounded-3xl border border-slate-200 bg-slate-50/50">
+                <form onSubmit={socialForm.handleSubmit(onSaveSocial)} className="space-y-5 p-6 rounded-3xl border border-slate-200 bg-slate-50/50">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">LinkedIn URL</label>
-                            <input type="url" value={socialForm.linkedin} onChange={e => setSocialForm({ ...socialForm, linkedin: e.target.value })} placeholder="https://linkedin.com/in/..." className="input-field bg-white py-2" />
+                            <input 
+                                type="url" 
+                                {...socialForm.register('linkedin')} 
+                                placeholder="https://linkedin.com/in/..." 
+                                className={`input-field bg-white py-2 ${socialForm.formState.errors.linkedin ? 'border-red-500' : ''}`} 
+                            />
+                            {socialForm.formState.errors.linkedin && <p className="text-[10px] font-bold text-red-500">{socialForm.formState.errors.linkedin.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">GitHub Profile</label>
-                            <input type="url" value={socialForm.github} onChange={e => setSocialForm({ ...socialForm, github: e.target.value })} placeholder="https://github.com/..." className="input-field bg-white py-2" />
+                            <input 
+                                type="url" 
+                                {...socialForm.register('github')} 
+                                placeholder="https://github.com/..." 
+                                className={`input-field bg-white py-2 ${socialForm.formState.errors.github ? 'border-red-500' : ''}`} 
+                            />
+                            {socialForm.formState.errors.github && <p className="text-[10px] font-bold text-red-500">{socialForm.formState.errors.github.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Personal Portfolio</label>
-                            <input type="url" value={socialForm.portfolio} onChange={e => setSocialForm({ ...socialForm, portfolio: e.target.value })} placeholder="https://yourname.com" className="input-field bg-white py-2" />
+                            <input 
+                                type="url" 
+                                {...socialForm.register('portfolio')} 
+                                placeholder="https://yourname.com" 
+                                className={`input-field bg-white py-2 ${socialForm.formState.errors.portfolio ? 'border-red-500' : ''}`} 
+                            />
+                            {socialForm.formState.errors.portfolio && <p className="text-[10px] font-bold text-red-500">{socialForm.formState.errors.portfolio.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">StackOverflow</label>
-                            <input type="url" value={socialForm.stackoverflow} onChange={e => setSocialForm({ ...socialForm, stackoverflow: e.target.value })} placeholder="https://stackoverflow.com/users/..." className="input-field bg-white py-2" />
+                            <input 
+                                type="url" 
+                                {...socialForm.register('stackoverflow')} 
+                                placeholder="https://stackoverflow.com/users/..." 
+                                className={`input-field bg-white py-2 ${socialForm.formState.errors.stackoverflow ? 'border-red-500' : ''}`} 
+                            />
+                            {socialForm.formState.errors.stackoverflow && <p className="text-[10px] font-bold text-red-500">{socialForm.formState.errors.stackoverflow.message}</p>}
                         </div>
                     </div>
 

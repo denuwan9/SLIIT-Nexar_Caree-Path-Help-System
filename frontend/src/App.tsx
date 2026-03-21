@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './components/auth/AuthProvider';
+import { AuthProvider, useAuth } from './components/auth/AuthProvider';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Layout } from './components/layout/Layout';
 import { Toaster } from 'react-hot-toast';
@@ -15,8 +15,19 @@ const AiAdvisorPage = React.lazy(() => import('./pages/AiAdvisorPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const JobPostingDashboard = React.lazy(() => import('./pages/jobPosting/JobPostingDashboard'));
 const PublicJobPost = React.lazy(() => import('./pages/jobPosting/PublicJobPost'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const AdminCareerProfiles = React.lazy(() => import('./pages/AdminCareerProfiles'));
+const AdminStudentPreview = React.lazy(() => import('./pages/AdminStudentPreview'));
+const StudyPlanPage = React.lazy(() => import('./pages/StudyPlanPage'));
 const AdminJobPosts = React.lazy(() => import('./pages/AdminJobPosts'));
 const AdminApplicationsPage = React.lazy(() => import('./pages/AdminApplicationsPage'));
+
+const RootRedirect: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  return <Navigate to="/dashboard" replace />;
+};
 
 const App: React.FC = () => {
   return (
@@ -48,49 +59,42 @@ const App: React.FC = () => {
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/job-posting/public/:id" element={<PublicJobPost />} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/advisor" element={<AiAdvisorPage />} />
-              <Route
-                path="/interviews"
-                element={<ComingSoon title="Interview Scheduling" description="Prepare for your dream role with our upcoming AI-powered interview simulators and scheduling system." />}
-              />
-              <Route
-                path="/study"
-                element={<ComingSoon title="Study Plan Generator" description="Master any skill with personalized, AI-curated study paths and resource tracking coming soon." />}
-              />
-              <Route
-                path="/careers"
-                element={<ComingSoon title="Career Explored" description="Discover your ideal career path with our advanced matching engine and job market analysis tools." />}
-              />
-              <Route path="/job-posting" element={<JobPostingDashboard />} />
-              <Route path="/job-posting/public/:id" element={<PublicJobPost />} />
+              {/* Student Only */}
+              <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/advisor" element={<AiAdvisorPage />} />
+                <Route
+                  path="/interviews"
+                  element={<ComingSoon title="Interview Scheduling" description="Prepare for your dream role with our upcoming AI-powered interview simulators and scheduling system." />}
+                />
+                <Route path="/study" element={<StudyPlanPage />} />
+                <Route
+                  path="/careers"
+                  element={<ComingSoon title="Career Explored" description="Discover your ideal career path with our advanced matching engine and job market analysis tools." />}
+                />
+                <Route path="/job-posting" element={<JobPostingDashboard />} />
+              </Route>
+              
+              {/* Shared Routes */}
               <Route path="/settings" element={<SettingsPage />} />
 
               {/* Admin Only */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminJobPosts />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/applications"
-                element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminApplicationsPage />
-                  </ProtectedRoute>
-                }
-              />
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/profiles" element={<AdminCareerProfiles />} />
+                <Route path="/admin/profiles/:id" element={<AdminStudentPreview />} />
+                <Route path="/admin/job-posts" element={<AdminJobPosts />} />
+                <Route path="/admin/applications" element={<AdminApplicationsPage />} />
+              </Route>
             </Route>
 
             {/* Redirects */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<RootRedirect />} />
             <Route path="/unauthorized" element={<div className="flex h-screen items-center justify-center font-bold text-red-500 text-xl">403 - Unauthorized</div>} />
             <Route path="*" element={<div className="flex h-screen items-center justify-center font-bold text-slate-500 text-xl">404 - Not Found</div>} />
           </Routes>
