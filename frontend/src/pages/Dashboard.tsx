@@ -5,13 +5,10 @@ import { DashboardSkeleton } from '../components/ui/DashboardSkeleton';
 import { 
     LayoutDashboard, 
     User, 
-    Settings, 
-    Bell, 
-    ShieldCheck, 
     ArrowUpRight,
-    Search,
     UserCircle2,
-    Calendar
+    Calendar,
+    BookOpen
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -66,25 +63,7 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-6">
-                    <div className="relative group hidden md:block">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input 
-                            placeholder="SEARCH CORE..." 
-                            className="bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2 text-[10px] font-bold uppercase tracking-widest focus:outline-none focus:border-cobalt-sliit transition-all w-64"
-                        />
-                    </div>
-                    {/* Settings icon — shows user avatar */}
-                    <button
-                        onClick={() => navigate('/settings')}
-                        title="Account Settings"
-                        className="relative w-11 h-11 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 hover:border-cobalt-sliit hover:shadow-lg transition-all group"
-                    >
-                        {user?.avatarUrl ? (
-                            <img src={user.avatarUrl} alt="Settings" className="w-full h-full object-cover" />
-                        ) : (
-                            <Settings size={20} className="absolute inset-0 m-auto text-slate-400 group-hover:text-cobalt-sliit transition-colors" />
-                        )}
-                    </button>
+
                     <div className="flex items-center gap-3 soft-glass p-1 pr-4 rounded-full border border-slate-200 bg-white">
                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                             {user?.avatarUrl ? <img src={user.avatarUrl} alt="Avatar" /> : <User size={20} className="text-slate-400" />}
@@ -132,62 +111,7 @@ const Dashboard: React.FC = () => {
                     <div className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] bg-cobalt-sliit/5 rounded-full blur-[80px] pointer-events-none group-hover:bg-cobalt-sliit/10 transition-colors" />
                 </motion.div>
 
-                {/* Notifications Module */}
-                <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500"
-                >
-                    <div className="flex justify-between items-center mb-8">
-                        <div className="p-3 bg-rose-500/5 rounded-2xl text-rose-500">
-                            <Bell size={24} />
-                        </div>
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-rose-500 animate-ping rounded-full opacity-20" />
-                            <span className="relative w-6 h-6 flex items-center justify-center bg-rose-500 text-white text-[10px] font-black rounded-full">
-                                {DashboardState.unreadNotifications}
-                            </span>
-                        </div>
-                    </div>
-                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Protocol Alerts</h3>
-                    <p className="text-slate-soft text-[11px] font-medium leading-relaxed mb-6">
-                        Latest system updates and institutional requests pending your review.
-                    </p>
-                    <div className="space-y-2">
-                        {[1, 2].map(i => (
-                            <div key={i} className="h-2 bg-slate-50 rounded-full w-full" />
-                        ))}
-                        <div className="h-2 bg-slate-50 rounded-full w-3/4" />
-                    </div>
-                </motion.div>
 
-                {/* System Permissions */}
-                <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500"
-                >
-                    <div className="p-3 bg-emerald-success/5 rounded-2xl text-emerald-success inline-block mb-8">
-                        <ShieldCheck size={24} />
-                    </div>
-                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Security Level</h3>
-                    <div className="flex items-end gap-2 mb-6">
-                        <span className="text-4xl font-black text-slate-900 leading-none">{UserPermissions.accessLevel}</span>
-                        <span className="text-[10px] font-black text-slate-300 uppercase mb-1">Clearance</span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-success" />
-                            <span className="text-[9px] font-black uppercase text-slate-500">Neural Sync</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-success" />
-                            <span className="text-[9px] font-black uppercase text-slate-500">Data Crypt</span>
-                        </div>
-                    </div>
-                </motion.div>
 
                 {/* Interview Bookings Snapshot */}
                 <motion.div 
@@ -217,7 +141,7 @@ const Dashboard: React.FC = () => {
                     </p>
                 </motion.div>
 
-                {/* System Settings & Configuration (Wide) */}
+                {/* Active Study Plan (Wide) */}
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -226,35 +150,43 @@ const Dashboard: React.FC = () => {
                 >
                     <div className="flex justify-between items-center mb-10">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-slate-100 rounded-2xl text-slate-500">
-                                <Settings size={24} />
+                            <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-500">
+                                <BookOpen size={24} />
                             </div>
                             <div>
-                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">System Configuration</h3>
-                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Global Session Parameters</p>
+                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Active Study Plan</h3>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{ProfileData?.targetRole || 'Software Engineering'} Track</p>
                             </div>
                         </div>
                         <div className="h-px bg-slate-100 flex-grow mx-8" />
-                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">v2.5.0-STABLE</span>
+                        <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-widest">In Progress</span>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                         <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sync Node</p>
-                            <p className="text-sm font-bold text-slate-800">SLIIT-EAST-01</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Current Module</p>
+                            <p className="text-sm font-bold text-slate-800 line-clamp-1">Advanced Algorithms</p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Last Boot</p>
-                            <p className="text-sm font-bold text-slate-800">{new Date(DashboardState.lastSync).toLocaleTimeString()}</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Next Milestone</p>
+                            <p className="text-sm font-bold text-slate-800 line-clamp-1">System Design Mock</p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Auth Mode</p>
-                            <p className="text-sm font-bold text-slate-800">MULTI-LINK</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Est. Completion</p>
+                            <p className="text-sm font-bold text-slate-800">4 Weeks</p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Environment</p>
-                            <div className="flex items-center gap-2">
-                                <span className="text-emerald-success text-sm font-black italic">PROD</span>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Overall Progress</p>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: '65%' }}
+                                        transition={{ duration: 1, delay: 0.5 }}
+                                        className="h-full bg-indigo-500 rounded-full" 
+                                    />
+                                </div>
+                                <span className="text-indigo-600 text-sm font-black">65%</span>
                             </div>
                         </div>
                     </div>
@@ -326,23 +258,7 @@ const Dashboard: React.FC = () => {
                     </button>
                 </motion.div>
 
-                <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4 }}
-                    className="bg-cobalt-sliit rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center shadow-2xl shadow-cobalt-sliit/40 group relative overflow-hidden"
-                >
-                    <div className="relative z-10">
-                        <div className="w-20 h-20 rounded-full border-4 border-white/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                            <ArrowUpRight className="text-white" size={32} />
-                        </div>
-                        <button className="text-[11px] font-black text-white uppercase tracking-[0.3em] hover:tracking-[0.4em] transition-all">
-                            Initialize<br/>Link Discovery
-                        </button>
-                    </div>
-                    {/* Ring animation */}
-                    <div className="absolute inset-0 border-[20px] border-white/5 rounded-full scale-150 animate-float" />
-                </motion.div>
+
             </div>
 
             {/* Support links */}
