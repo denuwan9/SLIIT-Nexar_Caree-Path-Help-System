@@ -288,43 +288,59 @@ Use exactly this structure:
 
     /**
      * TASK 03c — Resume / ATS Analyzer
+     * Compares resume vs. optional JD, Target Role, and profile data.
      */
-    async analyzeResume(studentProfile, resumeText) {
+    async analyzeResume(studentProfile, resumeText, jobDescription = null, targetRole = null) {
         const profileJson = this._buildProfileContext(studentProfile);
 
-        const systemPrompt = `You are NEXAR, an expert ATS & Resume coach for SLIIT students.
-Analyse the resume text and produce an ATS optimisation report.
+        const systemPrompt = `You are NEXAR, an expert ATS (Applicant Tracking System) & Resume Architect for SLIIT students.
+Your task is to perform an elite-level ATS audit on the provided resume text.
 
-STUDENT PROFILE (for cross-reference):
+CONTEXT:
+Student Profile (Ground Truth):
 ${profileJson}
 
-OUTPUT FORMAT: Respond with ONLY a valid JSON object — no explanation, no markdown, no code fences.
-Use exactly this structure:
+${targetRole ? `TARGET JOB ROLE: ${targetRole}\n` : ''}${jobDescription ? `TARGET JOB DESCRIPTION:\n${jobDescription}` : !targetRole ? 'TARGET: General Optimization for the student\'s career path.' : ''}
+
+DIRECTIONS:
+1. Conduct a multi-point analysis: Keyword matching, Formatting (tables, fonts, layouts), Impact (quantified results), and Action Verbs.
+2. If a Target Job Role is provided, assess how well the resume matches standard requirements for that specific position.
+3. If a Job Description (JD) is provided, prioritize matching the resume against THAT specific JD.
+4. If neither is provided, optimize against the student's personal target role and general high-performing patterns.
+
+OUTPUT FORMAT: Respond with ONLY a valid JSON object.
 {
   "atsScore": <integer 0-100>,
   "scoreBreakdown": {
     "keywordDensity": <integer 0-100>,
     "formatting": <integer 0-100>,
     "quantifiedAchievements": <integer 0-100>,
-    "actionVerbs": <integer 0-100>
+    "actionVerbs": <integer 0-100>,
+    "sectionScores": {
+      "contact": <integer 0-100>,
+      "experience": <integer 0-100>,
+      "education": <integer 0-100>,
+      "skills": <integer 0-100>
+    }
   },
-  "keywordsToAdd": ["<keyword>"],
-  "strengths": ["<what is already good>"],
-  "improvements": [
-    { "section": "<section name>", "issue": "<problem>", "fix": "<specific fix>" }
+  "keywordsToAdd": ["<critical keyword from JD or industry standard>"],
+  "strengths": ["<explicit bulleted strength>"],
+  "weaknesses": ["<explicit bulleted weakness regarding formatting or content>"],
+  "actionableTips": [
+    { "category": "Formatting|Content|Impact", "tip": "<specific actionable advice>", "priority": "high|medium|low" }
   ],
-  "overallFeedback": "<2-3 sentence brutally honest summary>"
+  "overallFeedback": "<2-3 sentence brutally honest mentor summary>"
 }`;
 
         const completion = await this.client.chat.completions.create({
             model: JSON_MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },
-                { role: 'user', content: `Resume Text:\n${resumeText}` },
+                { role: 'user', content: `RESUME TEXT:\n${resumeText}` },
             ],
             response_format: { type: 'json_object' },
             temperature: 0.4,
-            max_tokens: 1800,
+            max_tokens: 2200,
         });
 
         const raw = completion.choices[0].message.content;

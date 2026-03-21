@@ -48,11 +48,10 @@ export interface SkillGapResult {
     summary: string;
 }
 
-// Resume Analysis
-export interface ResumeImprovement {
-    section: string;
-    issue: string;
-    fix: string;
+export interface ActionableTip {
+    category: 'Formatting' | 'Content' | 'Impact';
+    tip: string;
+    priority: 'high' | 'medium' | 'low';
 }
 
 export interface ResumeScoreBreakdown {
@@ -60,6 +59,12 @@ export interface ResumeScoreBreakdown {
     formatting: number;
     quantifiedAchievements: number;
     actionVerbs: number;
+    sectionScores: {
+        contact: number;
+        experience: number;
+        education: number;
+        skills: number;
+    };
 }
 
 export interface ResumeAnalysisResult {
@@ -67,6 +72,7 @@ export interface ResumeAnalysisResult {
     scoreBreakdown: ResumeScoreBreakdown;
     keywordsToAdd: string[];
     strengths: string[];
-    improvements: ResumeImprovement[];
+    weaknesses: string[];
+    actionableTips: ActionableTip[];
     overallFeedback: string;
 }

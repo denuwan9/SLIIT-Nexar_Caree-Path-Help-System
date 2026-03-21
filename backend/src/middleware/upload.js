@@ -65,4 +65,34 @@ const uploadAvatarMiddleware = (req, res, next) => {
     });
 };
 
-module.exports = { uploadAvatarMiddleware };
+/**
+ * Middleware for single resume PDF upload using memory storage.
+ * Useful for transient analysis without disk persistence.
+ */
+const uploadResumeMiddleware = (req, res, next) => {
+    const memoryLoader = multer({
+        storage: multer.memoryStorage(),
+        fileFilter: (_req, file, cb) => {
+            const ALLOWED_TYPES = ['application/pdf'];
+            if (ALLOWED_TYPES.includes(file.mimetype)) {
+                cb(null, true);
+            } else {
+                cb(new AppError('Only PDF files are allowed for resume analysis.', 415), false);
+            }
+        },
+        limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+    }).single('resume');
+
+    memoryLoader(req, res, (err) => {
+        if (!err) return next();
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return next(new AppError('File too large. Maximum size is 5 MB.', 413));
+            }
+            return next(new AppError(`Upload error: ${err.message}`, 400));
+        }
+        next(err);
+    });
+};
+
+module.exports = { uploadAvatarMiddleware, uploadResumeMiddleware };

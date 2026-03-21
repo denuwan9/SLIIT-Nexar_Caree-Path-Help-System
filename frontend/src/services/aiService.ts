@@ -32,7 +32,23 @@ export const analyzeSkillGap = async (jobDescription: string): Promise<SkillGapR
 };
 
 // ── 4. Resume Analyzer ─────────────────────────────────────────────────────
-export const analyzeResume = async (resumeText: string): Promise<ResumeAnalysisResult> => {
-    const res = await api.post('/ai/resume', { resumeText });
-    return res.data.data.report as ResumeAnalysisResult;
+export const analyzeResume = async (
+    resume: string | File,
+    jobDescription?: string,
+    targetRole?: string
+): Promise<ResumeAnalysisResult> => {
+    if (resume instanceof File) {
+        const formData = new FormData();
+        formData.append('resume', resume);
+        if (jobDescription) formData.append('jobDescription', jobDescription);
+        if (targetRole) formData.append('targetRole', targetRole);
+
+        const res = await api.post('/ai/resume', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return res.data.data.report as ResumeAnalysisResult;
+    } else {
+        const res = await api.post('/ai/resume', { resumeText: resume, jobDescription, targetRole });
+        return res.data.data.report as ResumeAnalysisResult;
+    }
 };

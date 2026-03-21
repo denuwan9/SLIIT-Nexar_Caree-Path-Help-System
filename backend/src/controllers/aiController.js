@@ -15,6 +15,7 @@
 const AppError = require('../utils/AppError');
 const StudentProfile = require('../models/StudentProfile');
 const groqService = require('../services/GroqService');
+const { extractTextFromPDF } = require('../utils/pdfExtractor');
 
 // ── Helper: Load the requesting student's profile ─────────────────────────
 const getStudentProfile = async (userId) => {
@@ -140,25 +141,40 @@ exports.analyzeSkillGap = async (req, res, next) => {
 
 /**
  * POST /api/v1/ai/resume
- * Body: { resumeText: string }
- * Returns atsScore, keywordsToAdd[], improvements[]
+ * Body: { resumeText?: string, jobDescription?: string, targetRole?: string }
+ * File: { resume: PDF }
+ * Returns atsScore, keywordsToAdd[], improvements[], etc.
  */
 exports.analyzeResume = async (req, res, next) => {
     try {
-        const { resumeText } = req.body;
+        let { resumeText, jobDescription, targetRole } = req.body;
+
+        // If a file was uploaded, extract its text
+        if (req.file) {
+            try {
+                resumeText = await extractTextFromPDF(req.file.buffer);
+            } catch (err) {
+                return next(new AppError(`File Processing Error: ${err.message}`, 400));
+            }
+        }
 
         if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 100) {
-            return next(new AppError('Please paste your resume text (at least 100 characters).', 400));
+            return next(new AppError('Please provide resume text or upload a valid PDF (at least 100 characters).', 400));
         }
-        if (resumeText.trim().length > 8000) {
-            return next(new AppError('Resume text cannot exceed 8000 characters.', 400));
+        if (resumeText.trim().length > 15000) {
+            return next(new AppError('Resume text is too long. Please limit to 15,000 characters.', 400));
         }
 
         const profile = await getStudentProfile(req.user._id);
 
         let report;
         try {
-            report = await groqService.analyzeResume(profile, resumeText.trim());
+            report = await groqService.analyzeResume(
+                profile,
+                resumeText.trim(),
+                jobDescription?.trim(),
+                targetRole?.trim()
+            );
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }

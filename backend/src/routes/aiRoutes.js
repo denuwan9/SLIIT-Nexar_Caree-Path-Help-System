@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/aiController');
 const { protect } = require('../middleware/auth');
+const { uploadResumeMiddleware } = require('../middleware/upload');
 
 // All routes require a valid JWT
 router.use(protect);
@@ -20,7 +21,7 @@ router.post('/simulate', aiController.simulateCareer);
 // POST /api/v1/ai/skill-gap  — skill gap analysis vs. job description
 router.post('/skill-gap', aiController.analyzeSkillGap);
 
-// POST /api/v1/ai/resume     — ATS resume analysis
-router.post('/resume', aiController.analyzeResume);
+// POST /api/v1/ai/resume     — ATS resume analysis (Supports text or PDF upload)
+router.post('/resume', uploadResumeMiddleware, aiController.analyzeResume);
 
 module.exports = router;
