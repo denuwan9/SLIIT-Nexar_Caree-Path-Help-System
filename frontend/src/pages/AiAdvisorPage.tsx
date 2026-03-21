@@ -104,7 +104,7 @@ const AiAdvisorPage: React.FC = () => {
                             <h1 className="text-xl font-black text-slate-900 tracking-tight">Nexar AI Advisor</h1>
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Powered by Grok AI — Profile Loaded</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Powered by Groq AI — Profile Loaded</p>
                             </div>
                         </div>
                     </div>
@@ -142,27 +142,8 @@ const AiAdvisorPage: React.FC = () => {
                 ))}
             </div>
 
-            {/* Tab Content */}
-            <div key={activeTab} className="animate-in fade-in duration-300">
+                <div key={activeTab} className="animate-in fade-in duration-300">
                 <ActiveComponent />
-            </div>
-
-            {/* Sprint Roadmap Footer Banner */}
-            <div className="mt-8 card bg-gradient-to-r from-slate-800/90 to-slate-900/90 text-white border-slate-700">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    {[
-                        { sprint: 'Sprint 1', status: '✅', task: 'Auth & Profile CRUD' },
-                        { sprint: 'Sprint 2', status: '✅', task: 'Grok AI Integration' },
-                        { sprint: 'Sprint 3', status: '🔄', task: 'Simulator & Skill Gap' },
-                        { sprint: 'Sprint 4', status: '📋', task: 'Resume Tools & Deploy' },
-                    ].map(item => (
-                        <div key={item.sprint} className="p-3">
-                            <p className="text-xl mb-1">{item.status}</p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.sprint}</p>
-                            <p className="text-xs text-slate-300 mt-1 font-medium">{item.task}</p>
-                        </div>
-                    ))}
-                </div>
             </div>
         </div>
     );

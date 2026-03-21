@@ -20,19 +20,31 @@ export const sendChatMessage = async (
 };
 
 // ── 2. Career Simulator ────────────────────────────────────────────────────
-export const simulateCareer = async (targetRole: string): Promise<CareerRoadmap> => {
-    const res = await api.post('/ai/simulate', { targetRole });
+export const simulateCareer = async (targetRole: string, currentLevel: string): Promise<CareerRoadmap> => {
+    const res = await api.post('/ai/simulate', { targetRole, currentLevel });
     return res.data.data.roadmap as CareerRoadmap;
 };
 
 // ── 3. Skill Gap Analyzer ──────────────────────────────────────────────────
-export const analyzeSkillGap = async (jobDescription: string): Promise<SkillGapResult> => {
-    const res = await api.post('/ai/skill-gap', { jobDescription });
+export const analyzeSkillGap = async (targetRole: string): Promise<SkillGapResult> => {
+    const res = await api.post('/ai/skill-gap', { targetRole });
     return res.data.data.analysis as SkillGapResult;
 };
 
 // ── 4. Resume Analyzer ─────────────────────────────────────────────────────
-export const analyzeResume = async (resumeText: string): Promise<ResumeAnalysisResult> => {
-    const res = await api.post('/ai/resume', { resumeText });
+export const analyzeResume = async (resumeText: string, targetRole: string): Promise<ResumeAnalysisResult> => {
+    const res = await api.post('/ai/resume', { resumeText, targetRole });
     return res.data.data.report as ResumeAnalysisResult;
+};
+
+export const extractTextFromFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('resume', file);
+    
+    const res = await api.post('/ai/extract-text', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return res.data.data.text as string;
 };

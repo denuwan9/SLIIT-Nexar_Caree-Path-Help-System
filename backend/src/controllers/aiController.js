@@ -14,7 +14,9 @@
 
 const AppError = require('../utils/AppError');
 const StudentProfile = require('../models/StudentProfile');
-const grokService = require('../services/GrokService');
+const { PDFParse } = require('pdf-parse');
+const groqService = require('../services/GroqService');
+const logger = require('../utils/logger');
 
 // ── Helper: Load the requesting student's profile ─────────────────────────
 const getStudentProfile = async (userId) => {
@@ -49,7 +51,7 @@ exports.chat = async (req, res, next) => {
 
         const profile = await getStudentProfile(req.user._id);
 
-        const reply = await grokService.generateCareerAdvice(
+        const reply = await groqService.generateCareerAdvice(
             profile,
             message.trim(),
             history
@@ -73,7 +75,7 @@ exports.chat = async (req, res, next) => {
  */
 exports.simulateCareer = async (req, res, next) => {
     try {
-        const { targetRole } = req.body;
+        const { targetRole, currentLevel } = req.body;
 
         if (!targetRole || typeof targetRole !== 'string' || targetRole.trim().length === 0) {
             return next(new AppError('targetRole is required.', 400));
@@ -86,7 +88,7 @@ exports.simulateCareer = async (req, res, next) => {
 
         let roadmap;
         try {
-            roadmap = await grokService.simulateCareerPath(profile, targetRole.trim());
+            roadmap = await groqService.simulateCareerPath(profile, targetRole.trim(), currentLevel);
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
@@ -109,20 +111,20 @@ exports.simulateCareer = async (req, res, next) => {
  */
 exports.analyzeSkillGap = async (req, res, next) => {
     try {
-        const { jobDescription } = req.body;
+        const { targetRole } = req.body;
 
-        if (!jobDescription || typeof jobDescription !== 'string' || jobDescription.trim().length < 50) {
-            return next(new AppError('Please provide a job description of at least 50 characters.', 400));
+        if (!targetRole || typeof targetRole !== 'string' || targetRole.trim().length < 2) {
+            return next(new AppError('Please provide a target role of at least 2 characters.', 400));
         }
-        if (jobDescription.trim().length > 5000) {
-            return next(new AppError('Job description cannot exceed 5000 characters.', 400));
+        if (targetRole.trim().length > 150) {
+            return next(new AppError('Target role cannot exceed 150 characters.', 400));
         }
 
         const profile = await getStudentProfile(req.user._id);
 
         let analysis;
         try {
-            analysis = await grokService.analyzeSkillGap(profile, jobDescription.trim());
+            analysis = await groqService.analyzeSkillGap(profile, targetRole.trim());
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
@@ -145,20 +147,20 @@ exports.analyzeSkillGap = async (req, res, next) => {
  */
 exports.analyzeResume = async (req, res, next) => {
     try {
-        const { resumeText } = req.body;
+        const { resumeText, targetRole = 'General' } = req.body;
 
         if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 100) {
             return next(new AppError('Please paste your resume text (at least 100 characters).', 400));
         }
-        if (resumeText.trim().length > 8000) {
-            return next(new AppError('Resume text cannot exceed 8000 characters.', 400));
+        if (resumeText.trim().length > 10000) {
+            return next(new AppError('Resume text cannot exceed 10000 characters.', 400));
         }
 
         const profile = await getStudentProfile(req.user._id);
 
         let report;
         try {
-            report = await grokService.analyzeResume(profile, resumeText.trim());
+            report = await groqService.analyzeResume(profile, resumeText.trim(), targetRole);
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
@@ -168,4 +170,35 @@ exports.analyzeResume = async (req, res, next) => {
             data: { report },
         });
     } catch (error) { next(error); }
+};
+
+/**
+ * POST /api/v1/ai/extract-text
+ * Accepts a PDF file and returns extracted text.
+ */
+exports.extractText = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return next(new AppError('Please upload a PDF file.', 400));
+        }
+
+        // Check if it's a PDF
+        if (req.file.mimetype !== 'application/pdf') {
+            return next(new AppError('Only PDF files are supported for text extraction.', 400));
+        }
+
+        const dataBuffer = req.file.buffer;
+        const parser = new PDFParse({ data: dataBuffer });
+        const data = await parser.getText();
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                text: data.text,
+                pageCount: data.total
+            }
+        });
+    } catch (error) {
+        return next(new AppError(`Text extraction failed: ${error.message}`, 500));
+    }
 };
