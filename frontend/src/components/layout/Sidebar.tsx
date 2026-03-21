@@ -20,6 +20,7 @@ const baseNavItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/profile', icon: User, label: 'Profile' },
     { to: '/advisor', icon: Sparkles, label: 'AI Advisor' },
+    { to: '/job-posting', icon: Briefcase, label: 'Jobs' },
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
     { to: '/study', icon: BookOpen, label: 'Study' },
     { to: '/careers', icon: Briefcase, label: 'Careers' },
@@ -28,7 +29,9 @@ const baseNavItems = [
 const adminNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: 'Command Center' },
     { to: '/admin/profiles', icon: Briefcase, label: 'Career Profiles' },
+
     { to: '/admin/job-posts', icon: Form, label: 'Job Posts' },
+];
 const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
     <NavLink
         to={to}
