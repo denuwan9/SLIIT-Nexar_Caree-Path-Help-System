@@ -13,90 +13,9 @@ import {
 } from '../services/interviewService';
 import type { IInterviewEvent, IMyBooking, IEventStats, ICompany, ISlot } from '../services/interviewService';
 
-export default function InterviewSchedulingPage() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-  const navigate = useNavigate();
-
-  const [activeTab, setActiveTab] = useState(isAdmin ? 'dashboard' : 'browse');
-
-  return (
-    <div className="min-h-screen bg-slate-50 font-main">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-8 py-6 sticky top-0 z-20 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 max-w-7xl mx-auto">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-black text-cobalt-sliit uppercase tracking-[0.3em]">Module Active</span>
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-success animate-pulse" />
-            </div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 mt-2 flex items-center gap-3">
-            {isAdmin ? (
-              <>
-                Admin <span className="text-cobalt-sliit">Command Center</span>
-              </>
-            ) : (
-              <>
-                Interview <span className="text-cobalt-sliit">Scheduling</span>
-              </>
-            )}
-            </h1>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl overflow-x-auto hide-scrollbar">
-            {!isAdmin ? (
-              <>
-                <TabButton active={activeTab === 'browse'} onClick={() => setActiveTab('browse')} icon={Search} label="Browse Events" />
-                <TabButton active={activeTab === 'my-bookings'} onClick={() => setActiveTab('my-bookings')} icon={Calendar} label="My Bookings" />
-              </>
-            ) : (
-              <>
-                <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={BarChart3} label="Dashboard" />
-                <TabButton active={activeTab === 'create-event'} onClick={() => setActiveTab('create-event')} icon={Plus} label="Create Event" />
-                <TabButton active={activeTab === 'manage'} onClick={() => setActiveTab('manage')} icon={Settings2} label="Manage Events" />
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto p-4 md:p-8">
-        <AnimatePresence mode="wait">
-          {!isAdmin && activeTab === 'browse' && <StudentBrowseEvents key="student-browse" />}
-          {!isAdmin && activeTab === 'my-bookings' && <StudentMyBookings key="student-bookings" />}
-
-          {isAdmin && activeTab === 'dashboard' && <AdminDashboard key="admin-dashboard" />}
-          {isAdmin && activeTab === 'create-event' && <AdminCreateEvent key="admin-create" onCreated={() => setActiveTab('manage')} />}
-          {isAdmin && activeTab === 'manage' && <AdminManageEvents key="admin-manage" />}
-        </AnimatePresence>
-      </main>
-
-      {/* Floating Action Button for Mock Interview */}
-      {!isAdmin && (
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/mock-interview')}
-          className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl p-4 shadow-xl shadow-indigo-500/20 flex items-center gap-3 hover:shadow-2xl hover:shadow-indigo-500/40 transition-all z-50 group"
-        >
-          <div className="bg-white/20 p-2 rounded-xl group-hover:bg-white/30 transition-colors">
-            <Bot size={24} className="text-white" />
-          </div>
-          <div className="text-left pr-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-100 opacity-80 mb-0.5">Next Step</p>
-            <p className="text-sm font-bold leading-none flex items-center gap-1">
-              Mock Interview <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </p>
-          </div>
-        </motion.button>
-      )}
-    </div>
-  );
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITY COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
 
 const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
   <button
@@ -109,12 +28,19 @@ const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, on
   </button>
 );
 
+const StatCard = ({ title, value, icon: Icon, color }: any) => (
+  <div className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col items-center text-center">
+    <div className={`p-3 rounded-xl ${color} mb-3`}><Icon size={24} /></div>
+    <span className="text-3xl font-black text-slate-900 leading-none mb-1">{value}</span>
+    <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">{title}</span>
+  </div>
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STUDENT COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function StudentBrowseEvents() {
+function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
   const [events, setEvents] = useState<IInterviewEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<IInterviewEvent | null>(null);
@@ -148,6 +74,7 @@ function StudentBrowseEvents() {
       setBookingCompany(null);
       setBookingSlot(null);
       fetchEvents(); // refresh availability
+      onBookSuccess(); // Switch to My Bookings tab
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to book slot');
     } finally {
@@ -311,7 +238,6 @@ function StudentBrowseEvents() {
   );
 }
 
-
 function StudentMyBookings() {
   const [bookings, setBookings] = useState<IMyBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -330,7 +256,7 @@ function StudentMyBookings() {
   };
 
   const handleCancel = async (eventId: string, slotId: string, companyId: string | null) => {
-    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
     try {
       await cancelBooking(eventId, slotId, companyId || undefined);
       toast.success('Booking cancelled.');
@@ -422,14 +348,6 @@ function AdminDashboard() {
   );
 }
 
-const StatCard = ({ title, value, icon: Icon, color }: any) => (
-  <div className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col items-center text-center">
-    <div className={`p-3 rounded-xl ${color} mb-3`}><Icon size={24} /></div>
-    <span className="text-3xl font-black text-slate-900 leading-none mb-1">{value}</span>
-    <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">{title}</span>
-  </div>
-);
-
 function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
   const [loading, setLoading] = useState(false);
   const [eventType, setEventType] = useState<'career' | 'normal'>('career');
@@ -460,9 +378,37 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
     setLoading(true);
 
     try {
+      // 1. Required field validations
+      if (!formData.title.trim()) return toast.error('Event title is required');
+      if (!formData.eventDate) return toast.error('Event date is required');
+
+      // 2. Date cannot be in the past
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedDate = new Date(formData.eventDate);
+      if (selectedDate < today) return toast.error('Event date cannot be in the past');
+
+      // 3 & 4. Specific validations for Event Types
       if (eventType === 'career') {
+        if (!formData.startTime || !formData.endTime) return toast.error('Start and End times are required');
+        
+        // End time must be after start time
+        if (formData.endTime <= formData.startTime) {
+          return toast.error('End time must be after start time');
+        }
+
+        // 5. Company count must be between 2–20
         if (companies.length < 2) return toast.error('At least 2 companies required');
-        if (companies.some(c => !c.name.trim())) return toast.error('All companies must have names');
+        if (companies.length > 20) return toast.error('Maximum 20 companies allowed');
+
+        // 6. Prevent duplicate company names
+        const companyNames = companies.map(c => c.name.trim());
+        if (companyNames.some(name => !name)) return toast.error('All companies must have names');
+        
+        const uniqueNames = new Set(companyNames.map(n => n.toLowerCase()));
+        if (uniqueNames.size !== companyNames.length) {
+          return toast.error('Duplicate company names are not allowed');
+        }
 
         const payloadCompanies = companies.map(c => ({
           name: c.name,
@@ -473,6 +419,10 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
         await createCareerDayEvent({ ...formData, companies: payloadCompanies });
         toast.success('Career Day event created (Draft)');
       } else {
+        if (!formData.startTime) return toast.error('Start time is required');
+        if (!formData.companyName.trim()) return toast.error('Company name is required');
+        if (formData.maxCandidates < 1) return toast.error('Max candidates must be at least 1');
+
         await createNormalDayEvent({
           title: formData.title,
           companyName: formData.companyName,
@@ -676,7 +626,7 @@ function AdminManageEvents() {
   };
 
   const handleCancel = async (id: string) => {
-    if (!confirm('Cancel this entire event? This cannot be undone.')) return;
+    if (!window.confirm('Cancel this entire event? This cannot be undone.')) return;
     try {
       await cancelEvent(id);
       toast.success('Event cancelled.');
@@ -685,7 +635,7 @@ function AdminManageEvents() {
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Permanently delete the event "${title}"? This cannot be undone.`)) return;
+    if (!window.confirm("Permanently delete the event " + title + "? This cannot be undone.")) return;
     try {
       await deleteEvent(id);
       toast.success('Event permanently deleted.');
@@ -731,5 +681,94 @@ function AdminManageEvents() {
          <div className="text-center p-12 text-slate-500 font-bold uppercase tracking-widest text-xs">No Events Found</div>
       )}
     </motion.div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function InterviewSchedulingPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState(isAdmin ? 'dashboard' : 'browse');
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-main">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200 px-8 py-6 sticky top-0 z-20 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 max-w-7xl mx-auto">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-black text-cobalt-sliit uppercase tracking-[0.3em]">Module Active</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-success animate-pulse" />
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 mt-2 flex items-center gap-3">
+            {isAdmin ? (
+              <>
+                Admin interview <span className="text-cobalt-sliit">scheduling</span>
+              </>
+            ) : (
+              <>
+                Interview <span className="text-cobalt-sliit">Scheduling</span>
+              </>
+            )}
+            </h1>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl overflow-x-auto hide-scrollbar">
+            {!isAdmin ? (
+              <>
+                <TabButton active={activeTab === 'browse'} onClick={() => setActiveTab('browse')} icon={Search} label="Browse Events" />
+                <TabButton active={activeTab === 'my-bookings'} onClick={() => setActiveTab('my-bookings')} icon={Calendar} label="My Bookings" />
+              </>
+            ) : (
+              <>
+                <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={BarChart3} label="Dashboard" />
+                <TabButton active={activeTab === 'create-event'} onClick={() => setActiveTab('create-event')} icon={Plus} label="Create Event" />
+                <TabButton active={activeTab === 'manage'} onClick={() => setActiveTab('manage')} icon={Settings2} label="Manage Events" />
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto p-4 md:p-8">
+        <AnimatePresence mode="wait">
+          {!isAdmin && activeTab === 'browse' && <StudentBrowseEvents key="student-browse" onBookSuccess={() => setActiveTab('my-bookings')} />}
+          {!isAdmin && activeTab === 'my-bookings' && <StudentMyBookings key="student-bookings" />}
+
+          {isAdmin && activeTab === 'dashboard' && <AdminDashboard key="admin-dashboard" />}
+          {isAdmin && activeTab === 'create-event' && <AdminCreateEvent key="admin-create" onCreated={() => setActiveTab('manage')} />}
+          {isAdmin && activeTab === 'manage' && <AdminManageEvents key="admin-manage" />}
+        </AnimatePresence>
+      </main>
+
+      {/* Floating Action Button for Mock Interview */}
+      {!isAdmin && (
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/mock-interview')}
+          className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl p-4 shadow-xl shadow-indigo-500/20 flex items-center gap-3 hover:shadow-2xl hover:shadow-indigo-500/40 transition-all z-50 group"
+        >
+          <div className="bg-white/20 p-2 rounded-xl group-hover:bg-white/30 transition-colors">
+            <Bot size={24} className="text-white" />
+          </div>
+          <div className="text-left pr-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-100 opacity-80 mb-0.5">Next Step</p>
+            <p className="text-sm font-bold leading-none flex items-center gap-1">
+              Mock Interview <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </p>
+          </div>
+        </motion.button>
+      )}
+    </div>
   );
 }

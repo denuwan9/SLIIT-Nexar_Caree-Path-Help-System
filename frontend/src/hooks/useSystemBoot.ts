@@ -10,6 +10,7 @@ export interface SystemBootData {
     GlobalSettings: any;
     DashboardState: {
         unreadNotifications: number;
+        interviewBookings: number;
         systemStatus: string;
         lastSync: string;
     };
