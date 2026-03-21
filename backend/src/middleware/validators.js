@@ -5,25 +5,21 @@ const registerValidator = [
     body('firstName')
         .trim()
         .notEmpty().withMessage('First name is required')
-        .isLength({ min: 2, max: 50 }).withMessage('First name must be 2–50 characters'),
+        .isLength({ min: 2, max: 50 }).withMessage('First name must be 2–50 characters')
+        .matches(/^[A-Za-z\s\-]+$/).withMessage('Only alphabets are allowed'),
     body('lastName')
         .trim()
         .notEmpty().withMessage('Last name is required')
-        .isLength({ min: 2, max: 50 }).withMessage('Last name must be 2–50 characters'),
+        .isLength({ min: 2, max: 50 }).withMessage('Last name must be 2–50 characters')
+        .matches(/^[A-Za-z\s\-]+$/).withMessage('Only alphabets are allowed'),
     body('email')
         .trim()
         .notEmpty().withMessage('Email is required')
         .matches(/^[a-zA-Z0-9._%+-]+@sliit\.lk$/).withMessage('Only @sliit.lk institutional emails are allowed')
         .normalizeEmail(),
-    body('currentMajor')
-        .trim()
-        .notEmpty().withMessage('Current major is required'),
     body('skillSet')
         .optional()
         .isArray().withMessage('Skill set must be an array'),
-    body('targetRole')
-        .trim()
-        .notEmpty().withMessage('Target role is required'),
     body('password')
         .notEmpty().withMessage('Password is required')
         .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
@@ -279,6 +275,59 @@ const jobPostValidator = [
     body('skills').optional().isArray(),
 ];
 
+// ── Career Day Event validator ─────────────────────────────────────
+const careerDayEventValidator = [
+    body('title').trim().notEmpty().withMessage('Event title is required'),
+    body('eventDate')
+        .notEmpty().withMessage('Event date is required')
+        .isISO8601().withMessage('Event date must be a valid ISO date')
+        .custom((value) => {
+            if (new Date(value) < new Date()) throw new Error('Event date must be in the future');
+            return true;
+        }),
+    body('startTime')
+        .optional()
+        .matches(/^\d{2}:\d{2}$/).withMessage('Start time must be in HH:mm format'),
+    body('endTime')
+        .optional()
+        .matches(/^\d{2}:\d{2}$/).withMessage('End time must be in HH:mm format'),
+    body('slotDurationMinutes')
+        .optional()
+        .isInt({ min: 10, max: 120 }).withMessage('Slot duration must be 10–120 minutes'),
+    body('maxBookingsPerStudent')
+        .optional()
+        .isInt({ min: 1, max: 5 }).withMessage('Max bookings per student must be 1–5'),
+    body('companies')
+        .isArray({ min: 2, max: 20 }).withMessage('Career Day must have 2–20 companies'),
+    body('companies.*.name')
+        .trim().notEmpty().withMessage('Each company must have a name'),
+];
+
+// ── Normal Day Event validator ─────────────────────────────────────
+const normalDayEventValidator = [
+    body('title').trim().notEmpty().withMessage('Event title is required'),
+    body('companyName').trim().notEmpty().withMessage('Company name is required'),
+    body('eventDate')
+        .notEmpty().withMessage('Event date is required')
+        .isISO8601().withMessage('Event date must be a valid ISO date')
+        .custom((value) => {
+            if (new Date(value) < new Date()) throw new Error('Event date must be in the future');
+            return true;
+        }),
+    body('startTime')
+        .optional()
+        .matches(/^\d{2}:\d{2}$/).withMessage('Start time must be in HH:mm format'),
+    body('endTime')
+        .optional()
+        .matches(/^\d{2}:\d{2}$/).withMessage('End time must be in HH:mm format'),
+    body('slotDurationMinutes')
+        .optional()
+        .isInt({ min: 10, max: 120 }).withMessage('Slot duration must be 10–120 minutes'),
+    body('maxCandidates')
+        .optional()
+        .isInt({ min: 1, max: 500 }).withMessage('Max candidates must be 1–500'),
+];
+
 module.exports = {
     registerValidator,
     loginValidator,
@@ -290,6 +339,8 @@ module.exports = {
     softSkillValidator,
     languageValidator,
     interviewEventValidator,
+    careerDayEventValidator,
+    normalDayEventValidator,
     studyPlanValidator,
     jobPostValidator,
 };

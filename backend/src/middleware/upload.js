@@ -44,6 +44,13 @@ const studyDocsFilter = (_req, file, cb) => {
         'text/plain',
         'text/markdown',
         'application/json',
+        'text/csv',
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ];
     if (ALLOWED_TYPES.includes(file.mimetype)) return cb(null, true);
     cb(new AppError('Unsupported file type for study documents.', 415), false);

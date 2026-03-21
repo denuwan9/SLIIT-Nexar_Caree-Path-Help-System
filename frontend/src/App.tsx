@@ -17,6 +17,8 @@ const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const AdminCareerProfiles = React.lazy(() => import('./pages/AdminCareerProfiles'));
 const AdminStudentPreview = React.lazy(() => import('./pages/AdminStudentPreview'));
 const StudyPlanPage = React.lazy(() => import('./pages/StudyPlanPage'));
+const InterviewSchedulingPage = React.lazy(() => import('./pages/InterviewSchedulingPage'));
+const MockInterviewPage = React.lazy(() => import('./pages/MockInterviewPage'));
 
 const RootRedirect: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -37,7 +39,7 @@ const App: React.FC = () => {
           }
         >
           <Toaster 
-            position="top-right" 
+            position="top-center" 
             toastOptions={{
               className: 'font-main text-sm shadow-xl',
               style: {
@@ -63,10 +65,6 @@ const App: React.FC = () => {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/advisor" element={<AiAdvisorPage />} />
-                <Route
-                  path="/interviews"
-                  element={<ComingSoon title="Interview Scheduling" description="Prepare for your dream role with our upcoming AI-powered interview simulators and scheduling system." />}
-                />
                 <Route path="/study" element={<StudyPlanPage />} />
                 <Route
                   path="/careers"
@@ -76,6 +74,8 @@ const App: React.FC = () => {
               
               {/* Shared Routes */}
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/interviews" element={<InterviewSchedulingPage />} />
+              <Route path="/mock-interview" element={<MockInterviewPage />} />
 
               {/* Admin Only */}
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

@@ -14,7 +14,7 @@
 
 const AppError = require('../utils/AppError');
 const StudentProfile = require('../models/StudentProfile');
-const { PDFParse } = require('pdf-parse');
+const pdfParse = require('pdf-parse');
 const groqService = require('../services/GroqService');
 const logger = require('../utils/logger');
 
@@ -188,14 +188,13 @@ exports.extractText = async (req, res, next) => {
         }
 
         const dataBuffer = req.file.buffer;
-        const parser = new PDFParse({ data: dataBuffer });
-        const data = await parser.getText();
+        const data = await pdfParse(dataBuffer);
 
         res.status(200).json({
             status: 'success',
             data: {
                 text: data.text,
-                pageCount: data.total
+                pageCount: data.numpages
             }
         });
     } catch (error) {

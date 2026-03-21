@@ -2,6 +2,7 @@ const User = require('../models/User');
 const StudentProfile = require('../models/StudentProfile');
 const Notification = require('../models/Notification');
 const SystemSettings = require('../models/SystemSettings');
+const InterviewEvent = require('../models/InterviewEvent');
 const logger = require('../utils/logger');
 
 /**
@@ -55,13 +56,30 @@ exports.bootSystem = async (req, res, next) => {
     try {
         const userId = req.user._id;
 
-        // Fetch everything in parallel as requested
-        const [user, profile, notifications, settings] = await Promise.all([
+        const [user, profile, notifications, settings, events] = await Promise.all([
             User.findById(userId).select('+role'),
             StudentProfile.findOne({ user: userId }),
             Notification.countDocuments({ user: userId, read: false }),
-            SystemSettings.findOne({ user: userId }) || SystemSettings.create({ user: userId })
+            SystemSettings.findOne({ user: userId }) || SystemSettings.create({ user: userId }),
+            InterviewEvent.find({ status: { $ne: 'cancelled' } })
         ]);
+
+        let interviewBookings = 0;
+        if (user.role === 'admin') {
+            events.forEach(e => interviewBookings += e.totalBookings || 0);
+        } else {
+            events.forEach(event => {
+                if (event.eventType === 'career-day') {
+                    event.companies.forEach(c => c.slots.forEach(s => {
+                        if (s.bookedBy?.toString() === userId.toString() && s.status === 'booked') interviewBookings++;
+                    }));
+                } else {
+                    event.slots.forEach(s => {
+                        if (s.bookedBy?.toString() === userId.toString() && s.status === 'booked') interviewBookings++;
+                    });
+                }
+            });
+        }
 
         res.status(200).json({
             status: 'success',
@@ -74,6 +92,7 @@ exports.bootSystem = async (req, res, next) => {
                 GlobalSettings: settings,
                 DashboardState: {
                     unreadNotifications: notifications,
+                    interviewBookings,
                     systemStatus: 'OPERATIONAL',
                     lastSync: new Date().toISOString()
                 },
