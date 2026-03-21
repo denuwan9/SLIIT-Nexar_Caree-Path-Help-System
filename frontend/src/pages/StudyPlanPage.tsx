@@ -96,6 +96,18 @@ const StudyPlanPage: React.FC = () => {
         return remaining;
     };
 
+    const computeDerivedAvailability = (input: Partial<CreateStudyPlanInput>) => {
+        const fromManualHours = input.internshipHoursPerDay
+            ? Math.max(1, Math.min(12, 24 - input.internshipHoursPerDay))
+            : null;
+        const fromTimeRange = computeStudyHoursFromInternship(
+            input.internshipStartTime,
+            input.internshipEndTime,
+            input.availableHoursPerDay
+        );
+        return fromManualHours ?? fromTimeRange ?? input.availableHoursPerDay ?? 4;
+    };
+
     const prefillDemoPlan = () => {
         const today = new Date();
         const start = new Date(today);
@@ -103,11 +115,20 @@ const StudyPlanPage: React.FC = () => {
         start.setDate(start.getDate() + 3);
         end.setDate(end.getDate() + 21);
 
+        const baselineHours = computeStudyHoursFromInternship('09:00', '13:00', 4) || 4;
+
         setPlanInput({
             title: 'Internship + Finals Sprint',
             examStartDate: start.toISOString().slice(0, 10),
             examEndDate: end.toISOString().slice(0, 10),
-            availableHoursPerDay: computeStudyHoursFromInternship('09:00', '13:00', 4) || 4,
+            internshipHoursPerDay: 4,
+            internshipDaysPerWeek: 5,
+            availableHoursPerDay: computeDerivedAvailability({
+                internshipHoursPerDay: 4,
+                internshipStartTime: '09:00',
+                internshipEndTime: '13:00',
+                availableHoursPerDay: baselineHours,
+            }),
             internshipStartTime: '09:00',
             internshipEndTime: '13:00',
             subjects: [
@@ -144,16 +165,29 @@ const StudyPlanPage: React.FC = () => {
         examStartDate: '',
         examEndDate: '',
         availableHoursPerDay: 4,
+        internshipHoursPerDay: 4,
+        internshipDaysPerWeek: 5,
         internshipStartTime: '',
         internshipEndTime: '',
         subjects: [],
     });
+    const [manualHoursOverride, setManualHoursOverride] = useState(false);
 
     const handleInternshipTimeChange = (field: 'internshipStartTime' | 'internshipEndTime', value: string) => {
+        setManualHoursOverride(false);
         setPlanInput((prev) => {
             const next = { ...prev, [field]: value };
-            const derived = computeStudyHoursFromInternship(next.internshipStartTime, next.internshipEndTime, next.availableHoursPerDay);
-            return derived ? { ...next, availableHoursPerDay: derived } : next;
+            const derived = computeDerivedAvailability(next);
+            return { ...next, availableHoursPerDay: derived };
+        });
+    };
+
+    const handleInternshipLoadChange = (field: 'internshipHoursPerDay' | 'internshipDaysPerWeek', value: number) => {
+        setManualHoursOverride(false);
+        setPlanInput((prev) => {
+            const next = { ...prev, [field]: value };
+            const derived = computeDerivedAvailability(next);
+            return { ...next, availableHoursPerDay: derived };
         });
     };
 
@@ -168,6 +202,11 @@ const StudyPlanPage: React.FC = () => {
             topicsInput: '',
         }
     );
+
+    const derivedAvailableHours = useMemo(() => {
+        if (manualHoursOverride && planInput.availableHoursPerDay) return planInput.availableHoursPerDay;
+        return computeDerivedAvailability(planInput);
+    }, [manualHoursOverride, planInput]);
 
     useEffect(() => {
         const loadPlans = async () => {
@@ -200,6 +239,15 @@ const StudyPlanPage: React.FC = () => {
         if (end <= start) return null;
         return Math.round(((end - start) / 60) * 10) / 10;
     }, [planInput.internshipStartTime, planInput.internshipEndTime]);
+
+    const internshipLoadLabel = useMemo(() => {
+        if (planInput.internshipHoursPerDay) {
+            const days = planInput.internshipDaysPerWeek ?? '—';
+            return `${days}d/w · ${planInput.internshipHoursPerDay}h`;
+        }
+        if (internshipHoursDerived) return `${internshipHoursDerived}h/day`;
+        return 'hours';
+    }, [planInput.internshipDaysPerWeek, planInput.internshipHoursPerDay, internshipHoursDerived]);
 
     const handleFileSelect = (files: FileList | File[] | null) => {
         if (!files) return;
@@ -286,11 +334,7 @@ const StudyPlanPage: React.FC = () => {
         setIsCreating(true);
         try {
             const safeTitle = planInput.title.trim() || `Study plan ${new Date().toISOString().slice(0, 10)}`;
-            const derivedHours = computeStudyHoursFromInternship(
-                planInput.internshipStartTime,
-                planInput.internshipEndTime,
-                Number(planInput.availableHoursPerDay) || 4
-            ) || Number(planInput.availableHoursPerDay) || 4;
+            const derivedHours = derivedAvailableHours || Number(planInput.availableHoursPerDay) || 4;
 
             const payload: CreateStudyPlanInput = {
                 ...planInput,
@@ -309,6 +353,8 @@ const StudyPlanPage: React.FC = () => {
                 formData.append('availableHoursPerDay', String(payload.availableHoursPerDay ?? 4));
                 if (payload.internshipStartTime) formData.append('internshipStartTime', payload.internshipStartTime);
                 if (payload.internshipEndTime) formData.append('internshipEndTime', payload.internshipEndTime);
+                if (payload.internshipHoursPerDay) formData.append('internshipHoursPerDay', String(payload.internshipHoursPerDay));
+                if (payload.internshipDaysPerWeek) formData.append('internshipDaysPerWeek', String(payload.internshipDaysPerWeek));
                 formData.append('subjects', JSON.stringify(payload.subjects));
                 if (apiKey.trim()) formData.append('aiKey', apiKey.trim());
                 allFiles.forEach((file) => formData.append('studyDocs', file));
@@ -385,10 +431,15 @@ const StudyPlanPage: React.FC = () => {
                         </button>
                     )}
                     <button
-                        onClick={prefillDemoPlan}
-                        className="btn-secondary text-sm"
+                        onClick={() => {
+                            setViewMode('builder');
+                            setCurrentStep(1);
+                            setSelectedPlanId(null);
+                        }}
+                        className="btn-secondary text-sm flex items-center gap-2"
                     >
-                        Quick-fill sample
+                        <Plus size={16} />
+                        New Study Plan
                     </button>
                     <button
                         onClick={() => navigate('/dashboard')}
@@ -546,18 +597,81 @@ const StudyPlanPage: React.FC = () => {
                                             <p className="text-xs text-slate-500">Keep it light — we’ll balance internship and study time.</p>
                                         </div>
                                     </div>
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <div>
+                                    <div className="grid gap-4 md:grid-cols-3">
+                                        <div className="md:col-span-2 space-y-2">
                                             <label className="text-xs font-semibold text-slate-600">Plan title</label>
-                                            <input
-                                                className="input w-full"
-                                                placeholder="e.g., Semester 6 + Internship"
-                                                value={planInput.title}
-                                                onChange={(e) => setPlanInput({ ...planInput, title: e.target.value })}
-                                            />
+                                            <div className="flex gap-2">
+                                                <input
+                                                    className="input w-full"
+                                                    placeholder="e.g., Semester 6 + Internship"
+                                                    value={planInput.title}
+                                                    onChange={(e) => setPlanInput({ ...planInput, title: e.target.value })}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={prefillDemoPlan}
+                                                    className="rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:text-blue-700"
+                                                >
+                                                    Quick fill
+                                                </button>
+                                            </div>
+                                            <p className="text-[11px] text-slate-500">Keep it short so you can spot the right plan later.</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-slate-600">Exam window</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="date"
+                                                    className="input w-full"
+                                                    value={planInput.examStartDate}
+                                                    onChange={(e) => setPlanInput({ ...planInput, examStartDate: e.target.value })}
+                                                />
+                                                <input
+                                                    type="date"
+                                                    className="input w-full"
+                                                    value={planInput.examEndDate}
+                                                    onChange={(e) => setPlanInput({ ...planInput, examEndDate: e.target.value })}
+                                                />
+                                            </div>
+                                            <p className="text-[11px] text-slate-500">We’ll prioritise subjects with closer exam dates.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-4 lg:grid-cols-3">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Internship days per week</label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="range"
+                                                    min={0}
+                                                    max={7}
+                                                    step={1}
+                                                    value={planInput.internshipDaysPerWeek ?? 0}
+                                                    onChange={(e) => handleInternshipLoadChange('internshipDaysPerWeek', Number(e.target.value))}
+                                                    className="flex-1"
+                                                />
+                                                <span className="w-14 text-right text-sm font-semibold text-slate-900">{planInput.internshipDaysPerWeek}d</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-500">We’ll keep study blocks on your off days.</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-600">Internship hours per day</label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="range"
+                                                    min={1}
+                                                    max={12}
+                                                    step={0.5}
+                                                    value={planInput.internshipHoursPerDay ?? 1}
+                                                    onChange={(e) => handleInternshipLoadChange('internshipHoursPerDay', Number(e.target.value))}
+                                                    className="flex-1"
+                                                />
+                                                <span className="w-14 text-right text-sm font-semibold text-slate-900">{planInput.internshipHoursPerDay}h</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-500">Used to cap your daily study time.</p>
                                         </div>
                                         <div className="grid gap-2">
-                                            <label className="text-xs font-semibold text-slate-600">Internship time range</label>
+                                            <label className="text-xs font-semibold text-slate-600">Internship time range (optional)</label>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
                                                     <span className="text-[11px] text-slate-500">Start</span>
@@ -578,48 +692,37 @@ const StudyPlanPage: React.FC = () => {
                                                     />
                                                 </div>
                                             </div>
-                                            <p className="text-[11px] text-slate-500">We’ll keep study blocks outside this range.</p>
+                                            <p className="text-[11px] text-slate-500">We’ll keep study blocks outside this window.</p>
                                         </div>
                                     </div>
+
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <div>
-                                            <label className="text-xs font-semibold text-slate-600">Available study hours</label>
+                                            <label className="text-xs font-semibold text-slate-600">Daily study hours</label>
                                             <div className="flex items-center gap-3">
                                                 <input
                                                     type="range"
                                                     min={1}
                                                     max={12}
                                                     step={0.5}
-                                                    value={planInput.availableHoursPerDay}
-                                                    onChange={(e) => setPlanInput({ ...planInput, availableHoursPerDay: Number(e.target.value) })}
+                                                    value={manualHoursOverride ? planInput.availableHoursPerDay : derivedAvailableHours}
+                                                    onChange={(e) => {
+                                                        setManualHoursOverride(true);
+                                                        setPlanInput((prev) => ({ ...prev, availableHoursPerDay: Number(e.target.value) }));
+                                                    }}
                                                     className="flex-1"
                                                 />
-                                                <span className="w-12 text-right text-sm font-semibold text-slate-900">{planInput.availableHoursPerDay}h</span>
+                                                <span className="w-12 text-right text-sm font-semibold text-slate-900">{manualHoursOverride ? planInput.availableHoursPerDay : derivedAvailableHours}h</span>
                                             </div>
-                                            <p className="text-[11px] text-slate-500">
-                                                {planInput.internshipStartTime && planInput.internshipEndTime
-                                                    ? `Derived from internship window: ${computeStudyHoursFromInternship(planInput.internshipStartTime, planInput.internshipEndTime, planInput.availableHoursPerDay) || planInput.availableHoursPerDay}h`
-                                                    : 'Slide to match the free hours you can study.'}
-                                            </p>
+                                            <p className="text-[11px] text-slate-500">Derived from your internship load: {derivedAvailableHours}h/day. Adjust only if you want to override.</p>
                                         </div>
-                                        <div className="grid gap-3 md:grid-cols-2">
-                                            <div>
-                                                <label className="text-xs font-semibold text-slate-600">Exam start date</label>
-                                                <input
-                                                    type="date"
-                                                    className="input w-full"
-                                                    value={planInput.examStartDate}
-                                                    onChange={(e) => setPlanInput({ ...planInput, examStartDate: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-semibold text-slate-600">Exam end date</label>
-                                                <input
-                                                    type="date"
-                                                    className="input w-full"
-                                                    value={planInput.examEndDate}
-                                                    onChange={(e) => setPlanInput({ ...planInput, examEndDate: e.target.value })}
-                                                />
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-3 text-xs text-slate-600">
+                                            <p className="font-semibold text-slate-800">What we’ll use</p>
+                                            <div className="mt-2 flex flex-wrap gap-2 font-semibold">
+                                                <span className="glass-pill text-[11px]">{planInput.internshipDaysPerWeek} days/week</span>
+                                                <span className="glass-pill text-[11px]">{planInput.internshipHoursPerDay}h/day</span>
+                                                <span className="glass-pill text-[11px]">{derivedAvailableHours}h study/day</span>
+                                                <span className="glass-pill text-[11px]">Exams {planInput.examStartDate || '--'} → {planInput.examEndDate || '--'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -777,14 +880,18 @@ const StudyPlanPage: React.FC = () => {
                                         <p className="text-xs text-slate-500">One click to create a calm schedule.</p>
                                     </div>
                                 </div>
-                                <div className="grid gap-3 sm:grid-cols-3 text-center">
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-center">
                                     <div className="rounded-xl bg-blue-50 p-3">
-                                        <p className="text-xs text-slate-500">Study days</p>
-                                        <p className="text-lg font-bold text-slate-900">{planInput.examStartDate && planInput.examEndDate ? Math.max(1, Math.ceil((new Date(planInput.examEndDate).getTime() - new Date(planInput.examStartDate).getTime()) / (1000 * 60 * 60 * 24))) : '-'}</p>
+                                        <p className="text-xs text-slate-500">Exam window</p>
+                                        <p className="text-sm font-bold text-slate-900 truncate">{planInput.examStartDate || '--'} → {planInput.examEndDate || '--'}</p>
+                                    </div>
+                                    <div className="rounded-xl bg-indigo-50 p-3">
+                                        <p className="text-xs text-slate-500">Internship load</p>
+                                        <p className="text-lg font-bold text-slate-900">{planInput.internshipDaysPerWeek}d/w · {planInput.internshipHoursPerDay}h</p>
                                     </div>
                                     <div className="rounded-xl bg-emerald-50 p-3">
                                         <p className="text-xs text-slate-500">Daily study hours</p>
-                                        <p className="text-lg font-bold text-slate-900">{planInput.availableHoursPerDay}h</p>
+                                        <p className="text-lg font-bold text-slate-900">{derivedAvailableHours}h</p>
                                     </div>
                                     <div className="rounded-xl bg-amber-50 p-3">
                                         <p className="text-xs text-slate-500">Subjects added</p>
@@ -792,7 +899,7 @@ const StudyPlanPage: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-4 text-sm text-slate-700">
-                                    Your personalized study plan is ready! We’ll balance internship {internshipHoursDerived ? `${internshipHoursDerived}h/day` : 'hours'} and study blocks so you can stay calm and focused.
+                                    Your personalized study plan is ready! We’ll balance internship {internshipLoadLabel} and study blocks so you can stay calm and focused.
                                 </div>
                                 {justGenerated && selectedPlan && (
                                     <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
