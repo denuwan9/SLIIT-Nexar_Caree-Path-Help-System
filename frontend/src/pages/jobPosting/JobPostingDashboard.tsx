@@ -48,6 +48,10 @@ function toSlug(str: string): string {
   return str.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 }
 
+function removeDigits(value: string): string {
+  return value.replace(/\d/g, '');
+}
+
 export const JobPostingDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -120,6 +124,11 @@ export const JobPostingDashboard: React.FC = () => {
 
     if (!formData.title.trim() || !formData.careerField.trim() || !formData.summary.trim()) {
       toast.error('Title, Career Field and Summary are required.');
+      return;
+    }
+
+    if (/\d/.test(formData.title)) {
+      toast.error('Job title cannot contain numbers.');
       return;
     }
 
@@ -234,7 +243,7 @@ export const JobPostingDashboard: React.FC = () => {
                   <label className="text-xs font-black uppercase text-slate-600">Job Title *</label>
                   <input
                     value={formData.title}
-                    onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={e => setFormData(prev => ({ ...prev, title: removeDigits(e.target.value) }))}
                     className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
                     placeholder="e.g., Junior Frontend Engineer"
                     required

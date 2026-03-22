@@ -258,7 +258,10 @@ const studyPlanValidator = [
 
 // ── Job Post validators ────────────────────────────────────────────
 const jobPostValidator = [
-    body('title').trim().notEmpty().withMessage('Job title is required'),
+    body('title')
+        .trim()
+        .notEmpty().withMessage('Job title is required')
+        .matches(/^[^\d]+$/).withMessage('Job title cannot contain numbers'),
     body('summary')
         .trim()
         .notEmpty().withMessage('Professional summary is required')

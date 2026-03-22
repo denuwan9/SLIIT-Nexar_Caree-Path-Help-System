@@ -11,6 +11,7 @@ const jobPostSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Job title is required'],
             trim: true,
+            match: [/^[^\d]+$/, 'Job title cannot contain numbers'],
         },
         summary: {
             type: String,
