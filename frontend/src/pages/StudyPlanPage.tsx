@@ -9,7 +9,6 @@ import {
     CheckCircle2,
     Clock,
     FileText,
-    KeyRound,
     Loader2,
     Plus,
     Trash2,
@@ -73,7 +72,6 @@ const buildTimeline = (subjects: StudySessionSubject[]) => {
 
 const StudyPlanPage: React.FC = () => {
     const navigate = useNavigate();
-    const [apiKey, setApiKey] = useState('');
     const [documents, setDocuments] = useState<File[]>([]);
     const [timetableFiles, setTimetableFiles] = useState<File[]>([]);
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -372,7 +370,6 @@ const StudyPlanPage: React.FC = () => {
                 if (payload.internshipHoursPerDay) formData.append('internshipHoursPerDay', String(payload.internshipHoursPerDay));
                 if (payload.internshipDaysPerWeek) formData.append('internshipDaysPerWeek', String(payload.internshipDaysPerWeek));
                 formData.append('subjects', JSON.stringify(payload.subjects));
-                if (apiKey.trim()) formData.append('aiKey', apiKey.trim());
                 allFiles.forEach((file) => formData.append('studyDocs', file));
 
                 created = await createStudyPlanWithDocs(formData);
@@ -889,23 +886,6 @@ const StudyPlanPage: React.FC = () => {
                             </div>
 
                             <div className="space-y-4">
-                                <div className="card p-5 space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        <KeyRound className="text-blue-600" size={18} />
-                                        <div>
-                                            <p className="text-sm font-semibold text-slate-900">AI key (optional)</p>
-                                            <p className="text-xs text-slate-500">Kept on this device; used for topic extraction from your files.</p>
-                                        </div>
-                                    </div>
-                                    <input
-                                        type="password"
-                                        className="input w-full"
-                                        placeholder="Paste your AI provider key"
-                                        value={apiKey}
-                                        onChange={(e) => setApiKey(e.target.value)}
-                                    />
-                                </div>
-
                                 <div className="card p-5 space-y-3">
                                     <p className="text-sm font-semibold text-slate-900">Need a break?</p>
                                     <p className="text-xs text-slate-500">You can go back and edit before generating.</p>
