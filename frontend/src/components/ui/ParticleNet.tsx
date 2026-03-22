@@ -21,13 +21,20 @@ export const ParticleNet: React.FC = () => {
     let particles: Particle[] = [];
     
     // Config
+    const particleCount = 80;
     const connectionDistance = 150;
     const mouseConnectionDistance = 200;
     const particleColor = 'rgba(0, 86, 179, 0.4)'; // SLIIT Cobalt, soft
     const lineColor = 'rgba(0, 86, 179, 0.15)';
     
     // Mouse state
-    const mouse = { x: -1000, y: -1000 };
+    let mouse = { x: -1000, y: -1000 };
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initParticles();
+    };
 
     const initParticles = () => {
       particles = [];
@@ -43,12 +50,6 @@ export const ParticleNet: React.FC = () => {
           radius: Math.random() * 1.5 + 0.5
         });
       }
-    };
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      initParticles();
     };
 
     const draw = () => {

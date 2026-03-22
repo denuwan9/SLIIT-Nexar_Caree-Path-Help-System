@@ -14,8 +14,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 
-import logoImg from '../../assets/logo.png';
-
 const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/profile', icon: User, label: 'Profile' },
@@ -35,19 +33,19 @@ const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string
     <NavLink
         to={to}
         end
+        title={label}
         className={({ isActive }) => `
-            group flex items-center gap-4 px-5 py-3.5 mx-4 rounded-2xl transition-all duration-300 font-semibold text-[14px]
+            group relative flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-500
             ${isActive
-                ? 'bg-[#0A0F1C] text-white shadow-md'
-                : 'text-[#64748B] hover:bg-slate-50 hover:text-slate-900'}
+                ? 'bg-gradient-to-br from-purple-500 to-cyan-500 text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)] scale-105'
+                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-900'}
         `}
     >
-        {({ isActive }) => (
-            <>
-                <Icon size={20} className={isActive ? 'text-white' : 'text-[#94A3B8] group-hover:text-slate-600 transition-colors'} />
-                <span>{label}</span>
-            </>
-        )}
+        <Icon size={18} className="transition-transform group-hover:scale-95" />
+        {/* Advanced Tooltip */}
+        <span className="pointer-events-none absolute left-full ml-4 px-3 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 translate-x-[-10px] group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 z-50 shadow-xl">
+            {label}
+        </span>
     </NavLink>
 );
 
@@ -80,35 +78,32 @@ export const Sidebar: React.FC = () => {
     return (
         <>
             {/* ─── Desktop Sidebar (md+) ───────────────────── */}
-            <aside className="hidden md:flex w-64 lg:w-[260px] h-screen flex-col py-8 bg-white border-r border-[#F1F5F9] z-40 flex-shrink-0 relative overflow-visible">
-                <div className="flex flex-col h-full w-full">
+            <aside className="hidden md:flex w-14 lg:w-16 h-screen flex-col py-6 bg-white/90 backdrop-blur-3xl border-r border-slate-200/50 z-40 flex-shrink-0 relative overflow-visible">
+                <div className="flex flex-col items-center h-full w-full">
                     {/* Logo */}
-                    <div className="px-8 cursor-pointer mb-8 shrink-0">
-                        <img src={logoImg} alt="Nexar Logo" className="h-12 w-auto object-contain" onError={(e) => (e.currentTarget.src = "/logo.png")} />
-                    </div>
-
-                    {/* MENU Subtitle */}
-                    <div className="px-9 mb-3 shrink-0">
-                        <span className="text-[10px] font-black tracking-[0.15em] text-[#94A3B8] uppercase">Menu</span>
+                    <div className="relative group cursor-pointer mb-8 shrink-0">
+                        <div className="absolute inset-0 bg-purple-500 blur-xl opacity-10 group-hover:opacity-20 transition-opacity"></div>
+                        <div className="relative w-9 h-9 rounded-lg bg-gradient-to-tr from-purple-600 to-cyan-500 flex items-center justify-center shadow-lg transition-transform active:scale-90">
+                            <span className="text-white font-black text-lg tracking-tighter">N</span>
+                        </div>
                     </div>
 
                     {/* Nav Items */}
-                    <nav className="flex-1 flex flex-col gap-1 w-full overflow-y-auto scrollbar-hide">
+                    <nav className="flex-1 flex flex-col gap-4 w-full items-center overflow-y-auto scrollbar-hide">
                         {currentNavItems.map(item => (
                             <SidebarItem key={item.to} {...item} />
                         ))}
                     </nav>
 
                     {/* Bottom Actions */}
-                    <div className="flex flex-col gap-1 mt-auto pt-6 shrink-0 w-full pb-4">
+                    <div className="flex flex-col gap-4 mt-auto pt-6 shrink-0 w-full items-center">
                         <SidebarItem to="/settings" icon={Settings} label="Settings" />
                         <button
                             onClick={logout}
                             title="Logout"
-                            className="group flex items-center gap-4 px-5 py-3.5 mx-4 rounded-2xl text-rose-500 hover:bg-rose-50 transition-all duration-300 font-semibold text-[14px]"
+                            className="group flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all duration-300"
                         >
-                            <LogOut size={20} className="text-rose-400 group-hover:text-rose-500 transition-transform group-hover:rotate-12" />
-                            <span>Logout</span>
+                            <LogOut size={18} className="transition-transform group-hover:rotate-12" />
                         </button>
                     </div>
                 </div>

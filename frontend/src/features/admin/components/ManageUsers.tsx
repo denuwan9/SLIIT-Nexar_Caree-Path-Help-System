@@ -142,160 +142,128 @@ export const ManageUsers: React.FC = () => {
     });
 
     return (
-        <div className="pb-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {/* Search & Filter - Tactical Controls */}
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/40">
-                <div>
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">System Registry</h3>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">Operational Personnel Management</p>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
-                    <div className="relative group/search flex-1 sm:min-w-[320px]">
-                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/search:text-indigo-500 transition-colors" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Filter by name, email or protocol..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-indigo-100/50 focus:border-indigo-400 outline-none transition-all placeholder:text-slate-300 shadow-inner"
-                        />
-                    </div>
-                    <div className="relative group/filter">
+        <div className="pb-10">
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-2 gap-4">
+                <h3 className="text-xl font-black text-slate-800 self-start sm:self-auto">System Members</h3>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <div className="relative min-w-[150px]">
                         <select
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value)}
-                            className="w-full sm:w-[200px] pl-6 pr-12 py-4 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 appearance-none focus:ring-4 focus:ring-indigo-100/50 focus:border-indigo-400 outline-none cursor-pointer shadow-sm transition-all"
+                            className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer shadow-sm transition-shadow uppercase tracking-wider"
                         >
-                            <option value="all">Global Access</option>
-                            <option value="student">Student Class</option>
-                            <option value="admin">Admin Override</option>
+                            <option value="all">All Roles</option>
+                            <option value="student">Students</option>
+                            <option value="admin">Admins</option>
                         </select>
-                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 group-hover/filter:text-indigo-500 transition-colors pointer-events-none" size={16} />
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                    </div>
+                    <div className="relative flex-1 sm:flex-none">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search users..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:min-w-[250px] transition-shadow shadow-sm bg-white"
+                        />
                     </div>
                 </div>
             </div>
             
-            {/* Member Registry - Operational View */}
-            <div className="overflow-x-auto pb-4 custom-scrollbar">
-                <table className="w-full text-left text-sm border-separate border-spacing-y-4">
-                    <thead>
-                        <tr className="text-[10px] uppercase font-black tracking-[0.3em] text-slate-400 whitespace-nowrap">
-                            <th className="px-10 py-2">Operator Identity</th>
-                            <th className="px-8 py-2">Registry Endpoint</th>
-                            <th className="px-8 py-2 text-center">Authorization</th>
-                            <th className="px-8 py-2 text-center">Status</th>
-                            <th className="px-10 py-2 text-right">Administrative Protocol</th>
+            <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-500 border-separate border-spacing-y-3">
+                <thead className="text-xs uppercase text-slate-400 font-bold tracking-widest px-4">
+                    <tr>
+                        <th className="px-6 py-2">System Member</th>
+                        <th className="px-6 py-2">Identifier</th>
+                        <th className="px-6 py-2">Access Level</th>
+                        <th className="px-6 py-2">Status</th>
+                        <th className="px-6 py-2 text-right">Administrative Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="mt-2">
+                    {filteredUsers.map((user) => (
+                        <tr key={user._id} className="bg-white hover:bg-slate-50/80 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl group border border-slate-100">
+                            <td className="px-6 py-5 font-bold text-slate-800 flex items-center gap-4 rounded-l-2xl">
+                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-105 ${user.role === 'admin' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/30' : 'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-cyan-500/30'}`}>
+                                    {user.role === 'admin' ? <Shield size={14} /> : <UserIcon size={14} />}
+                                </div>
+                                {user.firstName} {user.lastName}
+                            </td>
+                            <td className="px-6 py-5 font-medium text-slate-600">{user.email}</td>
+                            <td className="px-6 py-5 relative">
+                                <div className="relative inline-block w-32">
+                                    <select
+                                        value={user.role}
+                                        onChange={(e) => handleRoleChange(user._id, e.target.value)}
+                                        disabled={actionLoading !== null}
+                                        className={`w-full px-4 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase cursor-pointer appearance-none transition-all duration-300 border focus:ring-2 focus:ring-offset-1 focus:outline-none disabled:opacity-50
+                                            ${user.role === 'admin' 
+                                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-500' 
+                                                : 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100 focus:ring-cyan-500'}`}
+                                    >
+                                        <option value="student" className="text-slate-800 bg-white font-bold">STUDENT</option>
+                                        <option value="admin" className="text-slate-800 bg-white font-bold">ADMIN</option>
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                        <ChevronDown size={14} className={user.role === 'admin' ? 'text-indigo-500' : 'text-cyan-500'} />
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="px-6 py-5">
+                                {user.isActive ? (
+                                    <span className="text-emerald-500 font-bold flex items-center gap-1.5 before:w-1.5 before:h-1.5 before:bg-emerald-500 before:rounded-full">Active</span>
+                                ) : (
+                                    <span className="text-rose-500 font-bold flex items-center gap-1.5 before:w-1.5 before:h-1.5 before:bg-rose-500 before:rounded-full">Inactive</span>
+                                )}
+                            </td>
+                            <td className="px-6 py-5 rounded-r-2xl">
+                                <div className="flex justify-end gap-3 opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => openConfirmStatus(user)}
+                                        disabled={actionLoading !== null}
+                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                                            user.isActive 
+                                                ? 'bg-rose-50 border border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-500/30' 
+                                                : 'bg-emerald-50 border border-emerald-100 text-emerald-500 hover:bg-emerald-500 hover:text-white hover:shadow-lg hover:shadow-emerald-500/30'
+                                        }`}
+                                        title={user.isActive ? 'Suspend Access' : 'Restore Access'}
+                                    >
+                                        {actionLoading === `status-${user._id}` ? <Loader2 size={18} className="animate-spin" /> : (
+                                            user.isActive ? <PowerOff size={18} /> : <Power size={18} />
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setPasswordModal({ isOpen: true, userId: user._id })}
+                                        disabled={actionLoading !== null}
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50 border border-slate-100 text-slate-500 hover:bg-amber-500 hover:border-amber-500 hover:text-white transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/30"
+                                        title="Force Password Reset"
+                                    >
+                                        {actionLoading === `password-${user._id}` ? <Loader2 size={18} className="animate-spin" /> : <Key size={18} />}
+                                    </button>
+                                    <button
+                                        onClick={() => openConfirmDelete(user)}
+                                        disabled={actionLoading !== null}
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50 border border-slate-100 text-slate-400 hover:bg-red-600 hover:border-red-600 hover:text-white transition-all duration-300 hover:shadow-lg hover:shadow-red-600/30"
+                                        title="Permanently Delete Profil"
+                                    >
+                                        {actionLoading === `delete-${user._id}` ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {filteredUsers.map((user) => (
-                            <tr key={user._id} className="group/row transition-all duration-500">
-                                <td className="bg-white px-10 py-6 rounded-l-[2rem] border-y border-l border-slate-100 group-hover/row:border-indigo-200 group-hover/row:bg-indigo-50/20 shadow-sm group-hover/row:shadow-lg group-hover/row:shadow-indigo-500/5 transition-all">
-                                    <div className="flex items-center gap-5">
-                                        <div className={`relative w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl transition-all duration-500 group-hover/row:scale-110 group-hover/row:rotate-3 ${
-                                            user.role === 'admin' 
-                                                ? 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/30' 
-                                                : 'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-cyan-500/30'
-                                        }`}>
-                                            <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover/row:opacity-100 transition-opacity" />
-                                            {user.role === 'admin' ? <Shield size={18} /> : <UserIcon size={18} />}
-                                        </div>
-                                        <div>
-                                            <div className="font-black text-slate-900 text-base tracking-tight">{user.firstName} {user.lastName}</div>
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Level {user.role === 'admin' ? '99' : '01'} Personnel</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="bg-white px-8 py-6 border-y border-slate-100 group-hover/row:border-indigo-200 group-hover/row:bg-indigo-50/20 transition-all font-bold text-slate-500">
-                                    {user.email}
-                                </td>
-                                <td className="bg-white px-8 py-6 border-y border-slate-100 group-hover/row:border-indigo-200 group-hover/row:bg-indigo-50/20 transition-all text-center">
-                                    <div className="relative inline-block w-36">
-                                        <select
-                                            value={user.role}
-                                            onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                                            disabled={actionLoading !== null}
-                                            className={`w-full px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-[0.2em] uppercase cursor-pointer appearance-none transition-all duration-300 border focus:ring-4 focus:outline-none disabled:opacity-50 text-center
-                                                ${user.role === 'admin' 
-                                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-200' 
-                                                    : 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100 focus:ring-cyan-200'}`}
-                                        >
-                                            <option value="student">STUDENT</option>
-                                            <option value="admin">ADMIN</option>
-                                        </select>
-                                        <ChevronDown size={14} className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${user.role === 'admin' ? 'text-indigo-400' : 'text-cyan-400'}`} />
-                                    </div>
-                                </td>
-                                <td className="bg-white px-8 py-6 border-y border-slate-100 group-hover/row:border-indigo-200 group-hover/row:bg-indigo-50/20 transition-all text-center">
-                                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-500 shadow-sm ${
-                                        user.isActive 
-                                            ? 'bg-emerald-50 border-emerald-100 text-emerald-600 group-hover/row:bg-emerald-500 group-hover/row:text-white group-hover/row:shadow-emerald-500/20' 
-                                            : 'bg-rose-50 border-rose-100 text-rose-600 group-hover/row:bg-rose-500 group-hover/row:text-white group-hover/row:shadow-rose-500/20'
-                                    }`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-rose-500'} group-hover/row:bg-white animate-pulse`} />
-                                        {user.isActive ? 'Active' : 'Suspended'}
-                                    </div>
-                                </td>
-                                <td className="bg-white px-10 py-6 rounded-r-[2rem] border-y border-r border-slate-100 group-hover/row:border-indigo-200 group-hover/row:bg-indigo-50/20 transition-all shadow-sm group-hover/row:shadow-lg group-hover/row:shadow-indigo-500/5">
-                                    <div className="flex justify-end gap-3 transition-all duration-500">
-                                        <button
-                                            onClick={() => openConfirmStatus(user)}
-                                            disabled={actionLoading !== null}
-                                            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-md ${
-                                                user.isActive 
-                                                    ? 'bg-rose-50 border border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white hover:shadow-xl hover:shadow-rose-500/40' 
-                                                    : 'bg-emerald-50 border border-emerald-100 text-emerald-500 hover:bg-emerald-500 hover:text-white hover:shadow-xl hover:shadow-emerald-500/40'
-                                            }`}
-                                            title={user.isActive ? 'Operational Suspension' : 'Access Restoration'}
-                                        >
-                                            {actionLoading === `status-${user._id}` ? <Loader2 size={20} className="animate-spin" /> : (
-                                                user.isActive ? <PowerOff size={20} /> : <Power size={20} />
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => setPasswordModal({ isOpen: true, userId: user._id })}
-                                            disabled={actionLoading !== null}
-                                            className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white border border-slate-100 text-slate-500 hover:bg-amber-500 hover:border-amber-500 hover:text-white transition-all duration-500 hover:shadow-xl hover:shadow-amber-500/40 shadow-md"
-                                            title="Protocol Hardening"
-                                        >
-                                            {actionLoading === `password-${user._id}` ? <Loader2 size={20} className="animate-spin" /> : <Key size={20} />}
-                                        </button>
-                                        <button
-                                            onClick={() => openConfirmDelete(user)}
-                                            disabled={actionLoading !== null}
-                                            className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white border border-slate-100 text-slate-400 hover:bg-rose-600 hover:border-rose-600 hover:text-white transition-all duration-500 hover:shadow-xl hover:shadow-rose-600/40 shadow-md"
-                                            title="Registry Purge"
-                                        >
-                                            {actionLoading === `delete-${user._id}` ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {filteredUsers.length === 0 && (
-                            <tr>
-                                <td colSpan={5} className="py-20 text-center">
-                                    <div className="inline-flex flex-col items-center gap-6 p-12 rounded-[3rem] bg-white border border-slate-100 shadow-2xl shadow-slate-200/40">
-                                        <div className="p-6 rounded-full bg-slate-50 text-slate-300">
-                                            <UserX size={48} strokeWidth={1.5} />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-xl font-black text-slate-800 tracking-tight">Registry Anomaly Detected</p>
-                                            <p className="text-sm font-bold text-slate-400 capitalize whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">No personnel matching metadata "{searchQuery}"</p>
-                                        </div>
-                                        <button 
-                                            onClick={() => {setSearchQuery(''); setRoleFilter('all');}}
-                                            className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
-                                        >
-                                            Reset Filters
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                    ))}
+                    {filteredUsers.length === 0 && (
+                        <tr>
+                            <td colSpan={5} className="text-center py-10 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                <UserX size={40} className="mx-auto text-slate-300 mb-3" />
+                                <p className="text-slate-500 font-medium">No users found matching "{searchQuery}"</p>
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
             </div>
 
             {/* Global Admin Modals */}

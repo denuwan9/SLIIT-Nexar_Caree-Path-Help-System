@@ -6,7 +6,6 @@ import profileService from '../../../services/profileService';
 import type { StudentProfile } from '../../../types/profile';
 import { profileInfoSchema, type ProfileInfoInput } from '../profileSchemas';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../components/auth/AuthProvider';
 
 interface Props {
     profile: StudentProfile;
@@ -14,7 +13,6 @@ interface Props {
 }
 
 const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
-    const { updateUser } = useAuth();
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -81,7 +79,6 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
             setError(null);
             const { avatarUrl, profile: updatedProfile } = await profileService.uploadAvatar(file);
             setProfile({ ...profile, avatarUrl, ...updatedProfile });
-            updateUser({ avatarUrl });
             toast.success('Avatar updated successfully');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Avatar upload failed');
@@ -97,7 +94,6 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
             setSuccess(false);
             const updated = await profileService.updateMe(data);
             setProfile({ ...profile, ...updated });
-            updateUser({ firstName: data.firstName, lastName: data.lastName });
             setSuccess(true);
             toast.success('Profile saved successfully');
             setTimeout(() => setSuccess(false), 3000);
@@ -108,274 +104,259 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
     };
 
     return (
-        <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Header & Avatar */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
-                <div className="mb-8">
-                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] uppercase tracking-widest text-[14px]">
-                        Identity & Presence
-                    </h2>
-                    <p className="text-[13px] font-bold text-[#64748B] mt-1">Update your professional identity and appearance.</p>
-                </div>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div>
+                <h2 className="text-xl font-black tracking-tight text-slate-900">Personal Information</h2>
+                <p className="text-sm font-bold text-slate-500">Update your basic details and profile photo.</p>
+            </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-8 p-8 rounded-[2rem] bg-slate-50 border border-slate-100/50">
-                    <div className="relative group">
-                        <div className="w-32 h-32 rounded-[2rem] overflow-hidden bg-white border-4 border-white shadow-xl group-hover:shadow-2xl transition-all duration-500">
-                            {profile.avatarUrl ? (
-                                <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-3xl">
-                                    {profile.firstName?.[0] || 'N'}
-                                </div>
-                            )}
-                        </div>
-                        <label className="absolute inset-0 flex items-center justify-center bg-[#0F172A]/60 text-white opacity-0 group-hover:opacity-100 cursor-pointer rounded-[2rem] transition-all duration-300 backdrop-blur-sm">
-                            <div className="flex flex-col items-center gap-2">
-                                {uploading ? <Loader2 className="animate-spin" size={24} /> : <Camera size={24} />}
-                                <span className="text-[10px] font-black uppercase tracking-widest">Update</span>
+            {/* Avatar Upload Container remains same... */}
+            <div className="flex items-center gap-6 p-6 rounded-3xl bg-slate-50 border border-slate-100">
+                <div className="relative group">
+                    <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white border-4 border-white shadow-sm">
+                        {profile.avatarUrl ? (
+                            <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover group-hover:opacity-75 transition-opacity" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-500 font-black text-2xl">
+                                {profile.firstName?.[0] || 'N'}
                             </div>
-                            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploading} />
-                        </label>
+                        )}
                     </div>
-                    
-                    <div className="flex-1 text-center md:text-left">
-                        <h3 className="text-xl font-black text-[#0F172A] tracking-tight">Professional Portrait</h3>
-                        <p className="text-[13px] font-medium text-[#64748B] mt-1 mb-6 leading-relaxed max-w-sm">
-                            A professional photo increases your profile visibility by 14x. Use a clear, high-resolution headshot.
-                        </p>
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-                            <label className="px-6 py-2.5 bg-white border border-slate-200 text-[#0F172A] rounded-xl font-black text-[12px] shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer">
-                                {uploading ? 'Processing...' : 'Upload New Photo'}
-                                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploading} />
-                            </label>
-                            {profile.avatarUrl && (
-                                <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100/50">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                    Active Profile Image
-                                </span>
-                            )}
-                        </div>
-                    </div>
+                    <label className="absolute inset-0 flex items-center justify-center bg-slate-900/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer rounded-2xl transition-opacity">
+                        {uploading ? <Loader2 className="animate-spin" /> : <Camera />}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploading} />
+                    </label>
+                </div>
+                <div>
+                    <h3 className="font-bold text-slate-900">Profile Photo</h3>
+                    <p className="text-xs text-slate-500 mb-3">Square image, JPG or PNG up to 5MB.</p>
+                    <label className="btn-secondary text-xs cursor-pointer py-1.5 px-3">
+                        {uploading ? 'Uploading...' : 'Change Photo'}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploading} />
+                    </label>
                 </div>
             </div>
 
             {error && (
-                <div className="flex items-center gap-3 p-5 rounded-3xl bg-rose-50 text-rose-600 border border-rose-100 text-[13px] font-bold">
-                    <AlertCircle size={18} /> {error}
+                <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 text-red-600 border border-red-100 text-sm font-bold">
+                    <AlertCircle size={16} /> {error}
                 </div>
             )}
 
-            <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-10">
+            <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-10">
                 {/* Basic Info Section */}
-                <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
-                    <div className="mb-8">
-                        <h3 className="text-xl font-black text-[#0F172A] tracking-tight flex items-center gap-2">
-                             Core Information
-                        </h3>
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">First Name</label>
+                            <input
+                                {...register('firstName')}
+                                type="text"
+                                className={`input-field ${errors.firstName ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="John"
+                            />
+                            {errors.firstName && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.firstName.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Last Name</label>
+                            <input
+                                {...register('lastName')}
+                                type="text"
+                                className={`input-field ${errors.lastName ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="Doe"
+                            />
+                            {errors.lastName && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.lastName.message}</p>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">First Name</label>
-                                <input
-                                    {...register('firstName')}
-                                    type="text"
-                                    className={`input-field h-12 text-[13px] ${errors.firstName ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
-                                    placeholder="John"
-                                />
-                                {errors.firstName && (
-                                    <p className="text-[10px] font-bold text-rose-500 mt-1">{errors.firstName.message}</p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Last Name</label>
-                                <input
-                                    {...register('lastName')}
-                                    type="text"
-                                    className={`input-field h-12 text-[13px] ${errors.lastName ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
-                                    placeholder="Doe"
-                                />
-                                {errors.lastName && (
-                                    <p className="text-[10px] font-bold text-rose-500 mt-1">{errors.lastName.message}</p>
-                                )}
-                            </div>
-                        </div>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">Professional Headline</label>
+                        <input
+                            {...register('headline')}
+                            type="text"
+                            className={`input-field ${errors.headline ? 'border-red-500 bg-red-50' : ''}`}
+                            placeholder="e.g. Full Stack Developer | React Enthusiast"
+                        />
+                        {errors.headline && (
+                            <p className="text-[10px] font-bold text-red-500 mt-1">{errors.headline.message}</p>
+                        )}
+                    </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Professional Headline</label>
-                            <input
-                                {...register('headline')}
-                                type="text"
-                                className={`input-field h-12 text-[13px] ${errors.headline ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
-                                placeholder="e.g. Full Stack Developer | ML Enthusiast"
-                            />
-                            {errors.headline && (
-                                <p className="text-[10px] font-bold text-rose-500 mt-1">{errors.headline.message}</p>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">About Me (Bio)</label>
-                            <textarea
-                                {...register('bio')}
-                                className={`input-field min-h-[140px] resize-none py-4 text-[13px] leading-relaxed ${errors.bio ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
-                                placeholder="Describe your journey, skills, and what drives you..."
-                            />
-                            {errors.bio && (
-                                <p className="text-[10px] font-bold text-rose-500 mt-1">{errors.bio.message}</p>
-                            )}
-                        </div>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">About Me (Bio)</label>
+                        <textarea
+                            {...register('bio')}
+                            className={`input-field min-h-[120px] resize-y ${errors.bio ? 'border-red-500 bg-red-50' : ''}`}
+                            placeholder="Write a short summary about yourself..."
+                        />
+                        {errors.bio && (
+                            <p className="text-[10px] font-bold text-red-500 mt-1">{errors.bio.message}</p>
+                        )}
                     </div>
                 </div>
 
                 {/* Academic Information Section */}
-                <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
-                    <div className="mb-8">
-                        <h3 className="text-xl font-black text-[#0F172A] tracking-tight">Academic Nexus</h3>
-                        <p className="text-[13px] font-bold text-[#64748B] mt-1">Your current placement and academic trajectory.</p>
+                <div className="pt-8 border-t border-slate-100 flex flex-col gap-6">
+                    <div>
+                        <h3 className="text-lg font-black tracking-tight text-slate-900">Academic Information</h3>
+                        <p className="text-sm font-bold text-slate-500">Your current university and study status.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2 md:col-span-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">University / Institution</label>
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">University</label>
                             <input
                                 {...register('university')}
                                 type="text"
-                                className={`input-field h-12 text-[13px] ${errors.university ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
+                                className={`input-field ${errors.university ? 'border-red-500 bg-red-50' : ''}`}
                                 placeholder="e.g. SLIIT"
                             />
+                            {errors.university && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.university.message}</p>}
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Faculty</label>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Faculty</label>
                             <input
                                 {...register('faculty')}
                                 type="text"
-                                className={`input-field h-12 text-[13px] ${errors.faculty ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
+                                className={`input-field ${errors.faculty ? 'border-red-500 bg-red-50' : ''}`}
                                 placeholder="e.g. Computing"
                             />
+                            {errors.faculty && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.faculty.message}</p>}
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Major / Specialization</label>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Major / Degree</label>
                             <input
                                 {...register('major')}
                                 type="text"
-                                className={`input-field h-12 text-[13px] ${errors.major ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
-                                placeholder="e.g. Software Engineering"
+                                className={`input-field ${errors.major ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="e.g. Information Technology"
                             />
+                            {errors.major && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.major.message}</p>}
                         </div>
 
                         <div className="grid grid-cols-3 gap-6 md:col-span-2">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Year</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Year of Study</label>
                                 <input
                                     {...register('yearOfStudy', { valueAsNumber: true })}
                                     type="number"
                                     min="1"
-                                    className={`input-field h-12 text-[13px] ${errors.yearOfStudy ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
+                                    max="6"
+                                    className={`input-field ${errors.yearOfStudy ? 'border-red-500 bg-red-50' : ''}`}
+                                    placeholder="1-4"
                                 />
+                                {errors.yearOfStudy && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.yearOfStudy.message}</p>}
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">GPA</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Current GPA</label>
                                 <input
                                     {...register('gpa', { valueAsNumber: true })}
                                     type="number"
                                     step="0.01"
-                                    className={`input-field h-12 text-[13px] ${errors.gpa ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
-                                    placeholder="4.00"
+                                    min="0"
+                                    max="4.0"
+                                    className={`input-field ${errors.gpa ? 'border-red-500 bg-red-50' : ''}`}
+                                    placeholder="0.00 - 4.00"
                                 />
+                                {errors.gpa && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.gpa.message}</p>}
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Student ID</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Student ID</label>
                                 <input
                                     {...register('studentId')}
                                     type="text"
-                                    className={`input-field h-12 text-[13px] ${errors.studentId ? 'border-rose-500 bg-rose-50/30' : 'bg-slate-50/50'}`}
-                                    placeholder="ITXXXXXXXX"
+                                    className={`input-field ${errors.studentId ? 'border-red-500 bg-red-50' : ''}`}
+                                    placeholder="e.g. IT12345678"
                                 />
+                                {errors.studentId && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.studentId.message}</p>}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Location & Visibility Section */}
-                <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
-                    <div className="mb-8">
-                        <h3 className="text-xl font-black text-[#0F172A] tracking-tight">Presence & Preferences</h3>
-                        <p className="text-[13px] font-bold text-[#64748B] mt-1">Manage your visibility and professional status.</p>
+                {/* Location Information Section */}
+                <div className="pt-8 border-t border-slate-100 space-y-6">
+                    <div>
+                        <h3 className="text-lg font-black tracking-tight text-slate-900">Location & Contact</h3>
+                        <p className="text-sm font-bold text-slate-500">How researchers and peers can find you.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">City</label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">City</label>
                             <input
                                 {...register('location.city')}
-                                className="input-field h-12 text-[13px] bg-slate-50/50"
+                                type="text"
+                                className={`input-field ${errors.location?.city ? 'border-red-500 bg-red-50' : ''}`}
                                 placeholder="Colombo"
                             />
+                            {errors.location?.city && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.location.city.message}</p>
+                            )}
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Country</label>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Country</label>
                             <input
                                 {...register('location.country')}
-                                className="input-field h-12 text-[13px] bg-slate-50/50"
+                                type="text"
+                                className={`input-field ${errors.location?.country ? 'border-red-500 bg-red-50' : ''}`}
                                 placeholder="Sri Lanka"
                             />
+                            {errors.location?.country && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.location.country.message}</p>
+                            )}
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Contact Phone</label>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Phone</label>
                             <input
                                 {...register('phone')}
-                                className="input-field h-12 text-[13px] bg-slate-50/50"
-                                placeholder="+94 7..."
+                                type="tel"
+                                className={`input-field ${errors.phone ? 'border-red-500 bg-red-50' : ''}`}
+                                placeholder="+94 7X XXX XXXX"
                             />
+                            {errors.phone && (
+                                <p className="text-[10px] font-bold text-red-500 mt-1">{errors.phone.message}</p>
+                            )}
                         </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-8 py-6 border-t border-slate-50">
-                        <label className="flex items-center gap-3 cursor-pointer group">
-                            <div className="relative">
-                                <input
-                                    {...register('isActivelyLooking')}
-                                    type="checkbox"
-                                    className="peer sr-only"
-                                />
-                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </div>
-                            <span className="text-[13px] font-black text-[#0F172A] group-hover:text-blue-600 transition-colors">Open to Opportunities</span>
-                        </label>
-
-                        <label className="flex items-center gap-3 cursor-pointer group">
-                            <div className="relative">
-                                <input
-                                    {...register('isPublic')}
-                                    type="checkbox"
-                                    className="peer sr-only"
-                                />
-                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                            </div>
-                            <span className="text-[13px] font-black text-[#0F172A] group-hover:text-emerald-600 transition-colors">Public Profile Discovery</span>
-                        </label>
                     </div>
                 </div>
 
-                {/* Submit Bar */}
-                <div className="flex items-center justify-between p-8 rounded-[2rem] bg-[#0F172A] shadow-xl">
-                    <div>
-                        <p className="text-white font-black text-[14px]">Ready to sync updates?</p>
-                        <p className="text-slate-400 text-[11px] font-bold">Your profile will be re-analyzed by NEXAR AI upon saving.</p>
+                <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                    {/* Toggles */}
+                    <div className="flex gap-6">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                {...register('isActivelyLooking')}
+                                type="checkbox"
+                                className="w-4 h-4 text-blue-600 rounded border-slate-300 ring-blue-500"
+                            />
+                            <span className="text-sm font-bold text-slate-700">Actively looking for work</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                {...register('isPublic')}
+                                type="checkbox"
+                                className="w-4 h-4 text-blue-600 rounded border-slate-300 ring-blue-500"
+                            />
+                            <span className="text-sm font-bold text-slate-700">Public Profile</span>
+                        </label>
                     </div>
+
                     <button 
                         type="submit" 
                         disabled={isSubmitting || (!isDirty && !!profile.avatarUrl)} 
-                        className={`px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-blue-900/40 hover:bg-blue-500 transition-all flex items-center gap-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`btn-primary flex items-center gap-2 ${(isSubmitting || (!isDirty && !!profile.avatarUrl)) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                        {success ? 'Nexus Synced!' : 'Force Save Updates'}
+                        {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        {success ? 'Saved!' : 'Save Changes'}
                     </button>
                 </div>
             </form>

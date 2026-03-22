@@ -18,12 +18,12 @@ interface Props {
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-    beginner: 'bg-slate-100 text-slate-600 border border-slate-200',
-    intermediate: 'bg-blue-50 text-blue-600 border border-blue-100',
-    advanced: 'bg-indigo-50 text-indigo-600 border border-indigo-100',
-    expert: 'bg-purple-50 text-purple-600 border border-purple-100',
-    developing: 'bg-amber-50 text-amber-600 border border-amber-100',
-    proficient: 'bg-emerald-50 text-emerald-600 border border-emerald-100',
+    beginner: 'bg-slate-100 text-slate-700',
+    intermediate: 'bg-blue-100 text-blue-700',
+    advanced: 'bg-indigo-100 text-indigo-700',
+    expert: 'bg-purple-100 text-purple-700',
+    developing: 'bg-slate-100 text-slate-700',
+    proficient: 'bg-emerald-100 text-emerald-700',
 };
 
 const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
@@ -89,38 +89,36 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
     };
 
     return (
-        <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {error && (
-                <div className="flex items-center gap-3 p-5 rounded-3xl bg-rose-50 text-rose-600 border border-rose-100 text-[13px] font-bold">
-                    <AlertCircle size={18} /> {error}
+                <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 text-red-600 border border-red-100 text-sm font-bold">
+                    <AlertCircle size={16} /> {error}
                 </div>
             )}
 
             {/* Technical Skills Section */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
-                <div className="mb-8">
-                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3 uppercase tracking-widest text-[14px]">
-                        <div className="w-10 h-10 rounded-2xl bg-blue-500 flex items-center justify-center text-white">
-                            <Award size={20} />
-                        </div> 
-                        Technical Arsenal
+            <section>
+                <div className="mb-4">
+                    <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+                        <Award size={20} className="text-blue-500" /> Technical Skills
                     </h2>
-                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">The languages and frameworks that power your solutions.</p>
+                    <p className="text-sm font-bold text-slate-500 mt-1">Languages, frameworks, tools, and platforms.</p>
                 </div>
 
-                <form onSubmit={techForm.handleSubmit(onAddTech)} className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-10 p-6 rounded-[2rem] bg-slate-50 border border-slate-100/50 items-end">
-                    <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Skill</label>
+                <form onSubmit={techForm.handleSubmit(onAddTech)} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-100 items-end">
+                    <div className="md:col-span-2 space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Skill Name</label>
                         <input 
                             type="text" 
                             {...techForm.register('name')} 
                             placeholder="e.g. React" 
-                            className={`input-field h-12 text-[13px] ${techForm.formState.errors.name ? 'border-rose-500 bg-rose-50/50' : 'bg-white'}`} 
+                            className={`input-field py-2 text-sm ${techForm.formState.errors.name ? 'border-red-500' : ''}`} 
                         />
+                        {techForm.formState.errors.name && <p className="text-[10px] font-bold text-red-500">{techForm.formState.errors.name.message}</p>}
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Category</label>
-                        <select {...techForm.register('category')} className="input-field h-12 text-[13px] bg-white">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Category</label>
+                        <select {...techForm.register('category')} className="input-field py-2 text-sm">
                             <option value="language">Language</option>
                             <option value="framework">Framework</option>
                             <option value="database">Database</option>
@@ -129,102 +127,96 @@ const SkillsTab: React.FC<Props> = ({ profile, setProfile }) => {
                             <option value="other">Other</option>
                         </select>
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Proficiency</label>
-                        <select {...techForm.register('level')} className="input-field h-12 text-[13px] bg-white">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Level</label>
+                        <select {...techForm.register('level')} className="input-field py-2 text-sm">
                             <option value="beginner">Beginner</option>
                             <option value="intermediate">Intermediate</option>
                             <option value="advanced">Advanced</option>
                             <option value="expert">Expert</option>
                         </select>
                     </div>
-                    <button type="submit" disabled={loading} className="h-12 bg-[#0F172A] text-white rounded-2xl font-black text-[13px] hover:bg-black transition-all shadow-lg flex items-center justify-center gap-2">
-                        {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={18} />} Push Skill
-                    </button>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">&nbsp;</label>
+                        <button type="submit" disabled={loading} className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2">
+                            {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Add Skill
+                        </button>
+                    </div>
                 </form>
 
-                <div className="flex flex-wrap gap-3">
-                    {profile.technicalSkills?.length === 0 && (
-                        <div className="w-full text-center py-10 text-[13px] font-bold text-[#94A3B8] italic">
-                            Your technical arsenal is currently empty.
-                        </div>
-                    )}
+                <div className="flex flex-wrap gap-2">
+                    {profile.technicalSkills?.length === 0 && <p className="text-sm italic text-slate-400">No technical skills added yet.</p>}
                     {profile.technicalSkills?.map((skill) => (
-                        <div key={skill._id} className="flex items-center gap-4 pl-4 pr-2 py-3 rounded-[1.25rem] border border-slate-100 bg-white shadow-sm hover:shadow-md transition-all group cursor-default">
-                            <div className="flex flex-col">
-                                <span className="text-[14px] font-black text-[#0F172A] leading-none">{skill.name}</span>
-                                <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#94A3B8] mt-1.5">{skill.category}</span>
+                        <div key={skill._id} className="flex items-center gap-3 pl-3 pr-2 py-2 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-200 transition-all group">
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-black text-slate-800 leading-none truncate">{skill.name}</span>
+                                <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-slate-400 mt-1">{skill.category}</span>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl ${LEVEL_COLORS[skill.level] || 'bg-slate-50 text-slate-500'}`}>
-                                    {skill.level}
-                                </span>
-                                <button onClick={() => handleRemoveTech(skill._id!)} className="p-2 text-[#94A3B8] hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all opacity-0 group-hover:opacity-100">
-                                    <X size={14} />
-                                </button>
-                            </div>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg shrink-0 ${LEVEL_COLORS[skill.level] || 'bg-slate-100'}`}>
+                                {skill.level}
+                            </span>
+                            <button onClick={() => handleRemoveTech(skill._id!)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100 shrink-0">
+                                <X size={14} />
+                            </button>
                         </div>
                     ))}
                 </div>
-            </div>
+            </section>
+
+            <hr className="border-slate-100" />
 
             {/* Soft Skills Section */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
-                <div className="mb-8">
-                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3 uppercase tracking-widest text-[14px]">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-white">
-                            <Award size={20} />
-                        </div> 
-                        Human Excellence
+            <section>
+                <div className="mb-4">
+                    <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+                        <Award size={20} className="text-emerald-500" /> Soft Skills
                     </h2>
-                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">The interpersonal superpowers that make you a great collaborator.</p>
+                    <p className="text-sm font-bold text-slate-500 mt-1">Interpersonal and non-technical proficiencies.</p>
                 </div>
 
-                <form onSubmit={softForm.handleSubmit(onAddSoft)} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10 p-6 rounded-[2rem] bg-slate-50 border border-slate-100/50 items-end">
-                    <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Skill Name</label>
+                <form onSubmit={softForm.handleSubmit(onAddSoft)} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-100 items-end">
+                    <div className="md:col-span-2 space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Skill Name</label>
                         <input 
                             type="text" 
                             {...softForm.register('name')} 
-                            placeholder="e.g. Leadership, Strategic Thinking" 
-                            className={`input-field h-12 text-[13px] ${softForm.formState.errors.name ? 'border-rose-500 bg-rose-50/50' : 'bg-white'}`} 
+                            placeholder="e.g. Leadership, Communication" 
+                            className={`input-field py-2 text-sm ${softForm.formState.errors.name ? 'border-red-500' : ''}`} 
                         />
+                        {softForm.formState.errors.name && <p className="text-[10px] font-bold text-red-500">{softForm.formState.errors.name.message}</p>}
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Proficiency</label>
-                        <select {...softForm.register('level')} className="input-field h-12 text-[13px] bg-white">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Level</label>
+                        <select {...softForm.register('level')} className="input-field py-2 text-sm">
                             <option value="developing">Developing</option>
                             <option value="proficient">Proficient</option>
                             <option value="advanced">Advanced</option>
                             <option value="expert">Expert</option>
                         </select>
                     </div>
-                    <button type="submit" disabled={loading} className="h-12 bg-emerald-600 text-white rounded-2xl font-black text-[13px] hover:bg-emerald-700 transition-all shadow-lg flex items-center justify-center gap-2">
-                        {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={18} />} Add Talent
-                    </button>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">&nbsp;</label>
+                        <button type="submit" disabled={loading} className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2">
+                            {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Add Skill
+                        </button>
+                    </div>
                 </form>
 
-                <div className="flex flex-wrap gap-3">
-                    {profile.softSkills?.length === 0 && (
-                        <div className="w-full text-center py-10 text-[13px] font-bold text-[#94A3B8] italic">
-                            No soft skills documented yet.
-                        </div>
-                    )}
+                <div className="flex flex-wrap gap-2">
+                    {profile.softSkills?.length === 0 && <p className="text-sm italic text-slate-400">No soft skills added yet.</p>}
                     {profile.softSkills?.map((skill) => (
-                        <div key={skill._id} className="flex items-center gap-4 pl-4 pr-2 py-3 rounded-[1.25rem] border border-slate-100 bg-white shadow-sm hover:shadow-md transition-all group cursor-default">
-                            <span className="text-[14px] font-black text-[#0F172A]">{skill.name}</span>
-                            <div className="flex items-center gap-3">
-                                <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl ${LEVEL_COLORS[skill.level] || 'bg-slate-50 text-slate-500'}`}>
-                                    {skill.level}
-                                </span>
-                                <button onClick={() => handleRemoveSoft(skill._id!)} className="p-2 text-[#94A3B8] hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all opacity-0 group-hover:opacity-100">
-                                    <X size={14} />
-                                </button>
-                            </div>
+                        <div key={skill._id} className="flex items-center gap-3 pl-3 pr-2 py-2 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group">
+                            <span className="text-sm font-black text-slate-800 truncate">{skill.name}</span>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg shrink-0 ${LEVEL_COLORS[skill.level] || 'bg-slate-100'}`}>
+                                {skill.level}
+                            </span>
+                            <button onClick={() => handleRemoveSoft(skill._id!)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1 opacity-0 group-hover:opacity-100 shrink-0">
+                                <X size={14} />
+                            </button>
                         </div>
                     ))}
                 </div>
-            </div>
+            </section>
         </div>
     );
 };
