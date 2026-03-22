@@ -6,6 +6,7 @@ import profileService from '../../../services/profileService';
 import type { StudentProfile } from '../../../types/profile';
 import { profileInfoSchema, type ProfileInfoInput } from '../profileSchemas';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../../components/auth/AuthProvider';
 
 interface Props {
     profile: StudentProfile;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
+    const { updateUser } = useAuth();
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -79,6 +81,7 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
             setError(null);
             const { avatarUrl, profile: updatedProfile } = await profileService.uploadAvatar(file);
             setProfile({ ...profile, avatarUrl, ...updatedProfile });
+            updateUser({ avatarUrl });
             toast.success('Avatar updated successfully');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Avatar upload failed');
@@ -94,6 +97,7 @@ const EditInfoTab: React.FC<Props> = ({ profile, setProfile }) => {
             setSuccess(false);
             const updated = await profileService.updateMe(data);
             setProfile({ ...profile, ...updated });
+            updateUser({ firstName: data.firstName, lastName: data.lastName });
             setSuccess(true);
             toast.success('Profile saved successfully');
             setTimeout(() => setSuccess(false), 3000);
