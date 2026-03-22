@@ -238,7 +238,7 @@ export const ManageUsers: React.FC = () => {
                                     </div>
                                 </td>
                                 <td className="bg-white px-10 py-6 rounded-r-[2rem] border-y border-r border-slate-100 group-hover/row:border-indigo-200 group-hover/row:bg-indigo-50/20 transition-all shadow-sm group-hover/row:shadow-lg group-hover/row:shadow-indigo-500/5">
-                                    <div className="flex justify-end gap-3 translate-x-4 opacity-0 group-hover/row:opacity-100 group-hover/row:translate-x-0 transition-all duration-500">
+                                    <div className="flex justify-end gap-3 transition-all duration-500">
                                         <button
                                             onClick={() => openConfirmStatus(user)}
                                             disabled={actionLoading !== null}
