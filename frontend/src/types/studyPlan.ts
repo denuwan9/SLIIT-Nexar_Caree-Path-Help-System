@@ -43,6 +43,7 @@ export interface StudyPlan {
     internshipStartTime?: string;
     internshipEndTime?: string;
     internshipHoursPerDay?: number;
+    internshipDaysPerWeek?: number;
     subjects: StudySubject[];
     availableHoursPerDay: number;
     sessions: StudySession[];
@@ -62,4 +63,5 @@ export interface CreateStudyPlanInput {
     internshipStartTime?: string;
     internshipEndTime?: string;
     internshipHoursPerDay?: number;
+    internshipDaysPerWeek?: number;
 }

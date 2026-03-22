@@ -246,18 +246,28 @@ const studyPlanValidator = [
     body('availableHoursPerDay')
         .optional()
         .isFloat({ min: 1, max: 16 }).withMessage('Must be between 1 and 16 hours'),
-    body('subjects')
-        .custom((val) => {
-            if (Array.isArray(val)) return val.length > 0;
-            try {
-                const parsed = JSON.parse(val);
-                if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+        body('subjects')
+            .custom((val, { req }) => {
+                let parsed;
+                if (Array.isArray(val)) {
+                    parsed = val;
+                } else {
+                    try {
+                        parsed = JSON.parse(val);
+                    } catch {
+                        throw new Error('Subjects must be an array');
+                    }
+                }
+                if (!Array.isArray(parsed)) throw new Error('Subjects must be an array');
+
+                const hasDocs = Array.isArray(req.files) && req.files.length > 0;
+                if (!hasDocs && parsed.length === 0) {
+                    throw new Error('Subjects must be a non-empty array when no study documents are uploaded');
+                }
                 return true;
-            } catch {
-                throw new Error('Subjects must be a non-empty array');
-            }
-        }),
+            }),
     body('subjects.*.name')
+        .optional()
         .notEmpty().withMessage('Each subject must have a name'),
 ];
 
