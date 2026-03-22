@@ -12,10 +12,11 @@ import {
     KeyRound,
     Loader2,
     Plus,
+    Trash2,
     Upload,
     Wand2,
 } from 'lucide-react';
-import { createStudyPlan, createStudyPlanWithDocs, fetchStudyPlans, markStudySubjectComplete, updateSubjectStatus } from '../services/studyPlanService';
+import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, markStudySubjectComplete, updateSubjectStatus } from '../services/studyPlanService';
 import type {
     CreateStudyPlanInput,
     StudyPlan,
@@ -82,6 +83,7 @@ const StudyPlanPage: React.FC = () => {
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'builder' | 'plans' | 'schedule'>('builder');
     const [justGenerated, setJustGenerated] = useState(false);
+    const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
     const computeStudyHoursFromInternship = (start?: string, end?: string, fallback?: number) => {
         if (!start || !end) return fallback;
@@ -399,6 +401,27 @@ const StudyPlanPage: React.FC = () => {
             toast.success(labels[status]);
         } catch (error: any) {
             toast.error(error?.response?.data?.message || 'Could not update status');
+        }
+    };
+
+    const handleDeletePlan = async (planId: string) => {
+        const plan = plans.find((p) => p._id === planId);
+        const name = plan?.title || 'this plan';
+        if (!window.confirm(`Delete ${name}? This cannot be undone.`)) return;
+        setDeletingPlanId(planId);
+        try {
+            await deleteStudyPlan(planId);
+            setPlans((prev) => prev.filter((p) => p._id !== planId));
+            if (selectedPlanId === planId) {
+                const next = plans.find((p) => p._id !== planId) || null;
+                setSelectedPlanId(next?._id || null);
+                if (viewMode === 'schedule') setViewMode('plans');
+            }
+            toast.success('Plan deleted');
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Could not delete plan');
+        } finally {
+            setDeletingPlanId(null);
         }
     };
 
@@ -942,34 +965,44 @@ const StudyPlanPage: React.FC = () => {
                                             <p className="text-sm text-slate-500">No plans yet. Generate to see the schedule.</p>
                                         )}
                                         {plans.map((plan) => (
-                                            <button
+                                            <div
                                                 key={plan._id}
-                                                onClick={() => {
-                                                    setSelectedPlanId(plan._id);
-                                                    setViewMode('schedule');
-                                                }}
                                                 className={`w-full rounded-2xl border px-4 py-3 text-left transition hover:border-blue-200 hover:bg-blue-50/50 ${
                                                     selectedPlan?._id === plan._id ? 'border-blue-300 bg-blue-50' : 'border-slate-100'
                                                 }`}
                                             >
-                                                <div className="flex items-center justify-between">
-                                                    <div>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedPlanId(plan._id);
+                                                            setViewMode('schedule');
+                                                        }}
+                                                        className="flex-1 text-left"
+                                                    >
                                                         <p className="text-sm font-bold text-slate-900">{plan.title}</p>
                                                         <p className="text-[11px] uppercase tracking-wide text-slate-500">
                                                             {plan.subjects.length} subjects · {plan.totalStudyDays} days
                                                         </p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-xs font-semibold text-blue-700">{plan.overallProgress}%</p>
-                                                        <div className="mt-1 h-2 w-20 overflow-hidden rounded-full bg-slate-200">
-                                                            <div
-                                                                className="h-full bg-blue-600"
-                                                                style={{ width: `${plan.overallProgress}%` }}
-                                                            />
+                                                        <div className="mt-2 text-right">
+                                                            <p className="text-xs font-semibold text-blue-700">{plan.overallProgress}%</p>
+                                                            <div className="mt-1 h-2 w-20 overflow-hidden rounded-full bg-slate-200">
+                                                                <div
+                                                                    className="h-full bg-blue-600"
+                                                                    style={{ width: `${plan.overallProgress}%` }}
+                                                                />
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeletePlan(plan._id)}
+                                                        disabled={deletingPlanId === plan._id}
+                                                        className="rounded-full p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                                                        aria-label="Delete plan"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
-                                            </button>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
@@ -1045,14 +1078,18 @@ const StudyPlanPage: React.FC = () => {
                             const totalTasks = plan.sessions?.reduce((s, sess) => s + sess.subjects.length, 0) || 0;
                             const completedTasks = plan.sessions?.reduce((s, sess) => s + sess.subjects.filter(sub => sub.isCompleted).length, 0) || 0;
                             return (
-                                <button
+                                <div
                                     key={plan._id}
-                                    onClick={() => {
-                                        setSelectedPlanId(plan._id);
-                                        setViewMode('schedule');
-                                    }}
                                     className="card p-5 text-left transition-all hover:shadow-lg hover:border-blue-200 hover:-translate-y-0.5 space-y-4"
                                 >
+                                    <div className="flex justify-between items-start gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setSelectedPlanId(plan._id);
+                                                setViewMode('schedule');
+                                            }}
+                                            className="flex-1 text-left space-y-4"
+                                        >
                                     {/* Header */}
                                     <div className="space-y-1">
                                         <p className="text-base font-bold text-slate-900 truncate">{plan.title}</p>
@@ -1104,7 +1141,17 @@ const StudyPlanPage: React.FC = () => {
                                             />
                                         </div>
                                     </div>
-                                </button>
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan._id); }}
+                                            disabled={deletingPlanId === plan._id}
+                                            className="rounded-full p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                                            aria-label="Delete plan"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
                             );
                         })}
                     </div>
