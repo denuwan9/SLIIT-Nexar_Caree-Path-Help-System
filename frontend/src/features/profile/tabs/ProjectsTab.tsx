@@ -87,30 +87,33 @@ const ProjectsTab: React.FC<Props> = ({ profile, setProfile }) => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-                        <Code2 size={20} className="text-rose-500" /> Key Projects
+                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-rose-600 flex items-center justify-center text-white">
+                            <Code2 size={20} />
+                        </div> 
+                        Key Projects
                     </h2>
-                    <p className="text-sm font-bold text-slate-500 mt-1">Showcase your best engineering work.</p>
+                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">Showcase your engineering prowess through concrete work.</p>
                 </div>
                 {!isAdding && (
-                    <button onClick={() => setIsAdding(true)} className="btn-primary py-2 px-4 shadow-sm text-sm flex items-center gap-2 bg-rose-600 hover:bg-rose-700 ring-rose-500">
-                        <Plus size={16} /> Add Project
+                    <button onClick={() => setIsAdding(true)} className="px-6 py-3 bg-rose-600 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-rose-200 hover:bg-rose-700 transition-all flex items-center gap-2">
+                        <Plus size={18} /> Add Project
                     </button>
                 )}
             </div>
 
             {error && (
-                <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 text-red-600 border border-red-100 text-sm font-bold">
-                    <AlertCircle size={16} /> {error}
+                <div className="flex items-center gap-3 p-5 rounded-3xl bg-rose-50 text-rose-600 border border-rose-100 text-[13px] font-bold">
+                    <AlertCircle size={18} /> {error}
                 </div>
             )}
 
             {isAdding && (
-                <form onSubmit={handleSubmit(onSubmit)} className="p-6 rounded-3xl bg-slate-50 border border-slate-200 animate-in slide-in-from-top-4 duration-300">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="font-black text-slate-900">Project Details</h3>
-                        <button type="button" onClick={() => { setIsAdding(false); reset(); }} className="p-1 text-slate-400 hover:text-slate-900 transition-colors">
-                            <X size={20} />
+                <form onSubmit={handleSubmit(onSubmit)} className="p-8 rounded-[2.5rem] bg-slate-50/50 border border-slate-200/60 animate-in slide-in-from-top-4 duration-500 shadow-inner">
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-xl font-black text-[#0F172A] tracking-tight">Project Details</h3>
+                        <button type="button" onClick={() => { setIsAdding(false); reset(); }} className="p-2 text-[#94A3B8] hover:text-[#0F172A] hover:bg-white rounded-xl transition-all">
+                            <X size={24} />
                         </button>
                     </div>
 
@@ -207,62 +210,81 @@ const ProjectsTab: React.FC<Props> = ({ profile, setProfile }) => {
                 </form>
             )}
 
-            <div className="space-y-4">
-                {profile.projects?.length === 0 ? (
-                    <div className="p-12 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center bg-slate-50 text-center">
-                        <div className="w-16 h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center mb-4">
-                            <Code2 size={32} className="text-slate-300" />
-                        </div>
-                        <h3 className="text-lg font-black text-slate-900">No projects added yet</h3>
-                        <p className="text-sm font-bold text-slate-500 mt-1 max-w-xs">Showcase your coding skills by adding your best projects.</p>
-                    </div>
-                ) : (
-                    profile.projects?.map((item) => (
-                        <div key={item._id} className="group relative p-6 rounded-[2rem] bg-white border border-slate-200 hover:border-rose-200 hover:shadow-xl hover:shadow-rose-500/5 transition-all duration-500">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="text-lg font-black text-slate-900 group-hover:text-rose-600 transition-colors">{item.title}</h3>
-                                </div>
-                                <button
-                                    onClick={() => handleRemove(item._id!)}
-                                    className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                                >
-                                    <X size={16} />
-                                </button>
+            <div className="space-y-6">
+                {profile.projects?.length === 0 && !isAdding && (
+                    <div className="text-center py-20 px-8 rounded-[2.5rem] border-2 border-dashed border-slate-100 bg-slate-50/50 relative overflow-hidden group">
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="w-16 h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center text-[#94A3B8] mb-6 group-hover:scale-110 transition-transform">
+                                <Code2 size={32} />
                             </div>
-
-                            <p className="text-sm text-slate-600 font-medium leading-relaxed mb-5">
-                                {item.description}
+                            <h3 className="text-xl font-black text-[#0F172A] tracking-tight">Showcase Your Work</h3>
+                            <p className="text-sm font-medium text-[#64748B] mt-2 max-w-sm mx-auto leading-relaxed">
+                                Projects are the best way to prove your technical skills to the NEXAR AI and potential recruiters. Add your GitHub repos or live demos.
                             </p>
-
-                            <div className="flex flex-wrap gap-2 mb-6">
-                                {item.techStack?.map((tech) => (
-                                    <span key={tech} className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[10px] font-black text-slate-600 group-hover:bg-rose-50 group-hover:border-rose-100 group-hover:text-rose-600 transition-colors">
-                                        {tech}
-                                    </span>
-                                ))}
-                            </div>
-
-                            <div className="flex items-center gap-4 pt-4 border-t border-slate-50">
-                                {item.githubUrl && (
-                                    <a href={item.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-black text-slate-600 hover:text-rose-600 transition-colors">
-                                        <Github size={14} /> GitHub Repo
-                                    </a>
-                                )}
-                                {item.liveUrl && (
-                                    <a href={item.liveUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-black text-slate-600 hover:text-rose-600 transition-colors">
-                                        <Globe size={14} /> Live Demo
-                                    </a>
-                                )}
-                                {item.impact && (
-                                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full ml-auto">
-                                        Impact: {item.impact}
-                                    </div>
-                                )}
-                            </div>
+                            <button onClick={() => setIsAdding(true)} className="mt-8 px-8 py-3.5 bg-rose-600 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-rose-200 hover:bg-rose-700 transition-all">
+                                Add First Project
+                            </button>
                         </div>
-                    ))
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-rose-50 rounded-bl-[100px] opacity-30 -z-0"></div>
+                    </div>
                 )}
+
+                {profile.projects?.map((item) => (
+                    <div key={item._id} className="group relative p-8 rounded-[2.5rem] bg-white border border-slate-100 hover:border-rose-200 hover:shadow-xl hover:shadow-rose-100/30 transition-all duration-500">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-all duration-500">
+                                    <Code2 size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-[#0F172A] tracking-tight group-hover:text-rose-600 transition-colors leading-tight">{item.title}</h3>
+                                    {item.impact && (
+                                        <div className="mt-1 flex items-center gap-1.5 text-[11px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-100/50 w-fit">
+                                            {item.impact}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => handleRemove(item._id!)}
+                                className="p-2.5 rounded-2xl bg-slate-50 text-[#94A3B8] hover:bg-rose-50 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <p className="text-[14px] font-medium text-[#64748B] leading-relaxed mb-6 pl-4 border-l-2 border-slate-50 group-hover:border-rose-200 transition-colors">
+                            {item.description}
+                        </p>
+
+                        <div className="flex flex-wrap gap-2 mb-8">
+                            {item.techStack?.map((tech) => (
+                                <span key={tech} className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100/50 text-[11px] font-black text-[#64748B] group-hover:bg-rose-50 group-hover:border-rose-100 group-hover:text-rose-600 transition-all">
+                                    {tech}
+                                </span>
+                            ))}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-6 pt-6 border-t border-slate-50/80">
+                            {item.githubUrl && (
+                                <a href={item.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[12px] font-black text-[#0F172A] hover:text-rose-600 transition-colors group/link">
+                                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center group-hover/link:bg-rose-50">
+                                        <Github size={16} />
+                                    </div>
+                                    Browse Source
+                                </a>
+                            )}
+                            {item.liveUrl && (
+                                <a href={item.liveUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[12px] font-black text-[#0F172A] hover:text-rose-600 transition-colors group/link">
+                                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center group-hover/link:bg-rose-50">
+                                        <Globe size={16} />
+                                    </div>
+                                    Live Demonstration
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );

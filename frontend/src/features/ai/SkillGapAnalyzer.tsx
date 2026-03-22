@@ -172,6 +172,33 @@ const SkillGapAnalyzer: React.FC = () => {
                         The AI will automatically fetch your profile datasets (Skills, Projects, Education) for comparison.
                     </p>
                 </div>
+
+                {/* Suggested Roles Chips */}
+                {!result && !isLoading && (
+                    <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-700 delay-200">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">Quick Select:</span>
+                        {[
+                            "Full Stack Developer",
+                            "Data Scientist",
+                            "Cloud Architect",
+                            "Cybersecurity Analyst",
+                            "UI/UX Designer",
+                            "AI Engineer"
+                        ].map((sug) => (
+                            <button
+                                key={sug}
+                                onClick={() => setTargetRole(sug)}
+                                className={`text-[10px] font-black px-3 py-1.5 rounded-xl border transition-all duration-300 hover:scale-105 ${
+                                    targetRole === sug 
+                                    ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-200' 
+                                    : 'bg-white text-slate-600 border-slate-100 hover:border-amber-200 hover:text-amber-600'
+                                }`}
+                            >
+                                {sug}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {error && (
