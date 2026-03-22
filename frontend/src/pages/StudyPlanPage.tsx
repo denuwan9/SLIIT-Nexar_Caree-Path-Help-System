@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -23,6 +23,7 @@ import {
     Gauge,
     Sparkles,
     Activity,
+    ArrowLeft,
 } from 'lucide-react';
 import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, markStudySubjectComplete, updateSubjectStatus } from '../services/studyPlanService';
 import type {
@@ -129,7 +130,6 @@ const StudyPlanPage: React.FC = () => {
             }),
             internshipStartTime: '09:00',
             internshipEndTime: '13:00',
-            internshipHoursPerDay: 4,
             subjects: [
                 {
                     name: 'Distributed Systems',
@@ -168,7 +168,6 @@ const StudyPlanPage: React.FC = () => {
         internshipDaysPerWeek: 5,
         internshipStartTime: '',
         internshipEndTime: '',
-        internshipHoursPerDay: 4,
         subjects: [],
     });
     const [manualHoursOverride, setManualHoursOverride] = useState(false);
@@ -192,10 +191,10 @@ const StudyPlanPage: React.FC = () => {
     };
 
     useEffect(() => {
-        if (manualStudyHours) return;
-        const suggested = deriveStudyHoursFromInternshipLoad(internshipHoursPerDay);
-        setPlanInput((prev) => ({ ...prev, availableHoursPerDay: suggested, internshipHoursPerDay }));
-    }, [internshipHoursPerDay, manualStudyHours]);
+        if (manualHoursOverride) return;
+        const suggested = computeDerivedAvailability({ ...planInput });
+        setPlanInput((prev) => ({ ...prev, availableHoursPerDay: suggested }));
+    }, [planInput.internshipHoursPerDay, manualHoursOverride]);
 
     const [subjectDraft, setSubjectDraft] = useState<StudySubject & { topicsInput?: string }>(
         {
@@ -235,16 +234,12 @@ const StudyPlanPage: React.FC = () => {
         [plans, selectedPlanId]
     );
 
-
-
     const internshipLoadLabel = useMemo(() => {
-        if (planInput.internshipHoursPerDay) {
-            const days = planInput.internshipDaysPerWeek ?? '—';
-            return `${days}d/w · ${planInput.internshipHoursPerDay}h`;
+        if (planInput.internshipHoursPerDay && planInput.internshipDaysPerWeek) {
+            return `${planInput.internshipDaysPerWeek}d/w · ${planInput.internshipHoursPerDay}h`;
         }
-        if (internshipHoursDerived) return `${internshipHoursDerived}h/day`;
-        return 'hours';
-    }, [planInput.internshipDaysPerWeek, planInput.internshipHoursPerDay, internshipHoursDerived]);
+        return `${derivedAvailableHours}h/day`;
+    }, [planInput.internshipDaysPerWeek, planInput.internshipHoursPerDay, derivedAvailableHours]);
 
     const handleFileSelect = (files: FileList | File[] | null) => {
         if (!files) return;
@@ -333,6 +328,7 @@ const StudyPlanPage: React.FC = () => {
 
         setIsCreating(true);
         try {
+            const allFiles = [...documents, ...timetableFiles];
             const safeTitle = planInput.title.trim() || `Study plan ${new Date().toISOString().slice(0, 10)}`;
             const derivedHours = derivedAvailableHours || Number(planInput.availableHoursPerDay) || 4;
 
@@ -343,7 +339,6 @@ const StudyPlanPage: React.FC = () => {
                 availableHoursPerDay: derivedHours,
             };
 
-            const allFiles = [...documents, ...timetableFiles];
             if (allFiles.length === 0 && planInput.subjects.length === 0) {
                 toast.error('Upload study docs or add at least one subject');
                 return;
@@ -415,7 +410,7 @@ const StudyPlanPage: React.FC = () => {
         }
     };
 
-    const totalHours = selectedPlan?.sessions?.reduce((sum, s) => sum + (s.totalStudyHours || 0), 0) || 0;
+    const totalHours = selectedPlan?.sessions?.reduce((s, sess) => s + (sess.totalStudyHours || 0), 0) || 0;
 
     return (
         <div className="max-w-7xl mx-auto space-y-12 pb-24">
@@ -465,34 +460,28 @@ const StudyPlanPage: React.FC = () => {
                             </button>
                         )}
                         <button
-                            onClick={() => navigate('/study')}
-                            className="flex items-center justify-center gap-3 rounded-2xl bg-white/5 px-6 py-4 text-sm font-bold text-white transition-all hover:bg-white/10 border border-white/10"
+                            onClick={() => {
+                                setViewMode('builder');
+                                setCurrentStep(1);
+                                setSelectedPlanId(null);
+                            }}
+                            className="btn-secondary text-sm flex items-center gap-2"
                         >
-                            <Plus size={18} />
+                            <Plus size={16} />
                             New Study Plan
                         </button>
-                    )}
-                    <button
-                        onClick={() => {
-                            setViewMode('builder');
-                            setCurrentStep(1);
-                            setSelectedPlanId(null);
-                        }}
-                        className="btn-secondary text-sm flex items-center gap-2"
-                    >
-                        <Plus size={16} />
-                        New Study Plan
-                    </button>
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="btn-ghost inline-flex items-center gap-2 text-sm"
-                    >
-                        <ArrowLeft size={16} />
-                        Back to dashboard
-                    </button>
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="btn-ghost inline-flex items-center gap-2 text-sm"
+                        >
+                            <ArrowLeft size={16} />
+                            Back to dashboard
+                        </button>
+                    </div>
                 </div>
             </div>
 
+            <>
             {viewMode === 'builder' && (
                 <div className="space-y-8 animate-slide-in">
                     {/* ── Premium Stepper ── */}
@@ -505,11 +494,11 @@ const StudyPlanPage: React.FC = () => {
                                             <div className={`flex h-12 w-12 items-center justify-center rounded-2xl font-black text-sm transition-all duration-500 ${
                                                 currentStep === step
                                                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110'
-                                                    : step < currentStep
+                                                    : step < (currentStep as number)
                                                         ? 'bg-emerald-500 text-white'
                                                         : 'bg-slate-100 text-slate-400'
                                             }`}>
-                                                {step < currentStep ? <CheckCircle2 size={18} /> : step}
+                                                {step < (currentStep as number) ? <CheckCircle2 size={18} /> : step}
                                             </div>
                                             <div className="hidden lg:block">
                                                 <p className={`text-[10px] font-black uppercase tracking-wider ${
@@ -684,21 +673,27 @@ const StudyPlanPage: React.FC = () => {
                     {currentStep === 2 && (
                         <div className="grid gap-6 lg:grid-cols-3">
                             <div className="space-y-6 lg:col-span-2">
-                                <div className="card p-6 space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <Calendar className="text-purple-600" size={20} />
+                                <div className="rounded-[2.5rem] bg-white p-8 shadow-xl shadow-slate-200/50 border border-slate-100">
+                                    <div className="flex items-center gap-4 mb-8">
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600">
+                                            <Calendar size={24} />
+                                        </div>
                                         <div>
-                                            <p className="text-sm font-semibold text-slate-900">Study preferences</p>
-                                            <p className="text-xs text-slate-500">Keep it light — we’ll balance internship and study time.</p>
+                                            <h3 className="text-lg font-black text-slate-900">Study Parameters</h3>
+                                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Schedule Tuning Hub</p>
                                         </div>
                                     </div>
-                                    <div className="grid gap-4 md:grid-cols-3">
-                                        <div className="md:col-span-2 space-y-2">
-                                            <label className="text-xs font-semibold text-slate-600">Plan title</label>
-                                            <div className="flex gap-2">
+                                    
+                                    <div className="grid gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Blueprint Title</label>
+                                            <div className="flex gap-4">
                                                 <input
-                                                    className="input w-full"
-                                                    placeholder="e.g., Semester 6 + Internship"
+                                                    type="text"
+                                                    className={`flex-1 rounded-2xl border bg-slate-50 px-6 py-4 text-sm font-bold text-slate-900 transition-all focus:bg-white focus:ring-2 focus:ring-blue-500/20 ${
+                                                        titleError ? 'border-rose-200 ring-2 ring-rose-500/10' : 'border-slate-100'
+                                                    }`}
+                                                    placeholder="e.g., End-of-Semester Sprint"
                                                     value={planInput.title}
                                                     onChange={(e) => {
                                                         const next = e.target.value;
@@ -706,100 +701,36 @@ const StudyPlanPage: React.FC = () => {
                                                         if (next.trim()) setTitleError(null);
                                                     }}
                                                 />
-                                                <button
-                                                    type="button"
-                                                    onClick={prefillDemoPlan}
-                                                    className="rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:text-blue-700"
-                                                >
-                                                    Quick fill
-                                                </button>
                                             </div>
-                                            {titleError ? (
-                                                <p className="text-[11px] font-semibold text-red-600">The title is required</p>
-                                            ) : (
-                                                <p className="text-[11px] text-slate-500">Keep it short so you can spot the right plan later.</p>
+                                            {titleError && (
+                                                <p className="text-[10px] font-black uppercase tracking-tighter text-rose-500 animate-in fade-in slide-in-from-left-2">{titleError}</p>
                                             )}
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-semibold text-slate-600">Exam window</label>
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Temporal Window</label>
+                                            <div className="grid grid-cols-2 gap-3">
                                                 <input
                                                     type="date"
-                                                    className="input w-full"
+                                                    className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 transition-all focus:bg-white focus:ring-2 focus:ring-blue-500/20"
                                                     min={todayISO}
                                                     value={planInput.examStartDate}
                                                     onChange={(e) => setPlanInput({ ...planInput, examStartDate: clampToToday(e.target.value) })}
                                                 />
                                                 <input
                                                     type="date"
-                                                    className="input w-full"
+                                                    className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 transition-all focus:bg-white focus:ring-2 focus:ring-blue-500/20"
                                                     min={todayISO}
                                                     value={planInput.examEndDate}
                                                     onChange={(e) => setPlanInput({ ...planInput, examEndDate: clampToToday(e.target.value) })}
                                                 />
                                             </div>
-                                            <p className="text-[11px] text-slate-500">We’ll prioritise subjects with closer exam dates.</p>
                                         </div>
                                     </div>
 
-                                    <div className="grid gap-4 lg:grid-cols-3">
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-600">Internship days per week</label>
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="range"
-                                                    min={0}
-                                                    max={7}
-                                                    step={1}
-                                                    value={planInput.internshipDaysPerWeek ?? 0}
-                                                    onChange={(e) => handleInternshipLoadChange('internshipDaysPerWeek', Number(e.target.value))}
-                                                    className="flex-1"
-                                                />
-                                                <span className="w-14 text-right text-sm font-semibold text-slate-900">{planInput.internshipDaysPerWeek}d</span>
-                                            </div>
-                                            <p className="text-[11px] text-slate-500">We’ll keep study blocks on your off days.</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-600">Internship hours per day</label>
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="range"
-                                                    min={1}
-                                                    max={12}
-                                                    step={0.5}
-                                                    value={planInput.internshipHoursPerDay ?? 1}
-                                                    onChange={(e) => handleInternshipLoadChange('internshipHoursPerDay', Number(e.target.value))}
-                                                    className="flex-1"
-                                                />
-                                                <span className="w-14 text-right text-sm font-semibold text-slate-900">{planInput.internshipHoursPerDay}h</span>
-                                            </div>
-                                            <p className="text-[11px] text-slate-500">Used to cap your daily study time.</p>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <label className="text-xs font-semibold text-slate-600">Internship time range (optional)</label>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <span className="text-[11px] text-slate-500">Start</span>
-                                                    <input
-                                                        type="time"
-                                                        className="input w-full"
-                                                        value={planInput.internshipStartTime}
-                                                        onChange={(e) => handleInternshipTimeChange('internshipStartTime', e.target.value)}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Study preferences</p>
-                                                    <h3 className="text-lg font-black text-slate-900">Balance study + internship</h3>
-                                                </div>
-                                            </div>
-                                            <p className="text-[11px] text-slate-500">We’ll keep study blocks outside this window.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-600">Daily study hours</label>
-                                            <div className="flex items-center gap-3">
+                                    <div className="grid gap-6 sm:grid-cols-3 mt-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Daily Study Capacity</label>
+                                            <div className="flex items-center gap-4 bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
                                                 <input
                                                     type="range"
                                                     min={1}
@@ -812,175 +743,178 @@ const StudyPlanPage: React.FC = () => {
                                                     }}
                                                     className="flex-1"
                                                 />
-                                                <span className="w-12 text-right text-sm font-semibold text-slate-900">{manualHoursOverride ? planInput.availableHoursPerDay : derivedAvailableHours}h</span>
+                                                <span className="text-sm font-black text-slate-900 min-w-[3ch]">{manualHoursOverride ? planInput.availableHoursPerDay : derivedAvailableHours}h</span>
                                             </div>
-                                            <p className="text-[11px] text-slate-500">Derived from your internship load: {derivedAvailableHours}h/day. Adjust only if you want to override.</p>
                                         </div>
-                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-3 text-xs text-slate-600">
-                                            <p className="font-semibold text-slate-800">What we’ll use</p>
-                                            <div className="mt-2 flex flex-wrap gap-2 font-semibold">
-                                                <span className="glass-pill text-[11px]">{planInput.internshipDaysPerWeek} days/week</span>
-                                                <span className="glass-pill text-[11px]">{planInput.internshipHoursPerDay}h/day</span>
-                                                <span className="glass-pill text-[11px]">{derivedAvailableHours}h study/day</span>
-                                                <span className="glass-pill text-[11px]">Exams {planInput.examStartDate || '--'} → {planInput.examEndDate || '--'}</span>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Internship Density</label>
+                                            <div className="flex items-center gap-4 bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
+                                                <input
+                                                    type="range"
+                                                    min={0}
+                                                    max={7}
+                                                    step={1}
+                                                    value={planInput.internshipDaysPerWeek ?? 0}
+                                                    onChange={(e) => handleInternshipLoadChange('internshipDaysPerWeek', Number(e.target.value))}
+                                                    className="flex-1"
+                                                />
+                                                <span className="text-sm font-black text-slate-900 min-w-[3ch]">{planInput.internshipDaysPerWeek}d</span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Daily Internship Load</label>
+                                            <div className="flex items-center gap-4 bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
+                                                <input
+                                                    type="range"
+                                                    min={1}
+                                                    max={12}
+                                                    step={0.5}
+                                                    value={planInput.internshipHoursPerDay ?? 1}
+                                                    onChange={(e) => handleInternshipLoadChange('internshipHoursPerDay', Number(e.target.value))}
+                                                    className="flex-1"
+                                                />
+                                                <span className="text-sm font-black text-slate-900 min-w-[3ch]">{planInput.internshipHoursPerDay}h</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Subject Management Panel */}
-                                <div className="lg:col-span-2 space-y-6">
-                                    <div className="rounded-[2.5rem] bg-white p-8 shadow-xl shadow-slate-200/50 border border-slate-100 h-full">
-                                        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between mb-8">
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                                                    <ListTodo size={24} />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-lg font-black text-slate-900">Intellectual Registry</h3>
-                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Subject Management Stack</p>
-                                                </div>
+                                <div className="rounded-[2.5rem] bg-white p-8 shadow-xl shadow-slate-200/50 border border-slate-100">
+                                    <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between mb-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                                <ListTodo size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-black text-slate-900">Intellectual Registry</h3>
+                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Subject Management Stack</p>
                                             </div>
                                         </div>
+                                    </div>
 
-                                        <div className="space-y-6">
-                                            {/* Add Subject Glass-box */}
-                                            <div className="rounded-3xl bg-slate-50 p-6 border border-slate-100">
-                                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                                                    <div className="lg:col-span-2">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Subject Title"
-                                                            value={subjectDraft.name}
-                                                            onChange={(e) => setSubjectDraft({ ...subjectDraft, name: e.target.value })}
-                                                            className="w-full rounded-2xl border-slate-200 bg-white py-3 px-4 text-sm font-bold text-slate-900 focus:border-blue-500"
-                                                        />
-                                                    </div>
-                                                    <select
-                                                        value={subjectDraft.difficulty}
-                                                        onChange={(e) => setSubjectDraft({ ...subjectDraft, difficulty: e.target.value as StudyDifficulty })}
-                                                        className="w-full rounded-2xl border-slate-200 bg-white py-3 px-4 text-sm font-bold text-slate-900 focus:border-blue-500"
-                                                    >
-                                                        <option value="easy">Level: Easy</option>
-                                                        <option value="medium">Level: Medium</option>
-                                                        <option value="hard">Level: Hard</option>
-                                                    </select>
+                                    <div className="space-y-6">
+                                        {/* Add Subject Glass-box */}
+                                        <div className="rounded-3xl bg-slate-50 p-6 border border-slate-100">
+                                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                                                <div className="lg:col-span-2">
                                                     <input
-                                                        type="number"
-                                                        placeholder="Credits"
-                                                        value={subjectDraft.creditHours}
-                                                        onChange={(e) => setSubjectDraft({ ...subjectDraft, creditHours: Number(e.target.value) })}
+                                                        type="text"
+                                                        placeholder="Subject Title"
+                                                        value={subjectDraft.name}
+                                                        onChange={(e) => setSubjectDraft({ ...subjectDraft, name: e.target.value })}
                                                         className="w-full rounded-2xl border-slate-200 bg-white py-3 px-4 text-sm font-bold text-slate-900 focus:border-blue-500"
                                                     />
-                                                    <button
-                                                        onClick={handleAddSubject}
-                                                        disabled={!subjectDraft.name}
-                                                        className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                                                    >
-                                                        <Plus size={16} />
-                                                        Deploy
-                                                    </button>
                                                 </div>
+                                                <select
+                                                    value={subjectDraft.difficulty}
+                                                    onChange={(e) => setSubjectDraft({ ...subjectDraft, difficulty: e.target.value as StudyDifficulty })}
+                                                    className="w-full rounded-2xl border-slate-200 bg-white py-3 px-4 text-sm font-bold text-slate-900 focus:border-blue-500"
+                                                >
+                                                    <option value="easy">Level: Easy</option>
+                                                    <option value="medium">Level: Medium</option>
+                                                    <option value="hard">Level: Hard</option>
+                                                </select>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Credits"
+                                                    value={subjectDraft.creditHours}
+                                                    onChange={(e) => setSubjectDraft({ ...subjectDraft, creditHours: Number(e.target.value) })}
+                                                    className="w-full rounded-2xl border-slate-200 bg-white py-3 px-4 text-sm font-bold text-slate-900 focus:border-blue-500"
+                                                />
+                                                <button
+                                                    onClick={handleAddSubject}
+                                                    disabled={!subjectDraft.name}
+                                                    className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <Plus size={16} />
+                                                    Deploy
+                                                </button>
                                             </div>
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-600">Credit hours</label>
-                                            <input
-                                                type="number"
-                                                className="input w-full"
-                                                min={1}
-                                                max={6}
-                                                value={subjectDraft.creditHours}
-                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, creditHours: Number(e.target.value) })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid gap-3 md:grid-cols-3">
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-600">Weight</label>
-                                            <input
-                                                type="number"
-                                                className="input w-full"
-                                                min={1}
-                                                max={5}
-                                                step={0.5}
-                                                value={subjectDraft.weight}
-                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, weight: Number(e.target.value) })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-600">Exam date (optional)</label>
-                                            <input
-                                                type="date"
-                                                className="input w-full"
-                                                min={todayISO}
-                                                value={subjectDraft.examDate}
-                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, examDate: clampToToday(e.target.value) })}
-                                            />
-                                        </div>
-                                        <div className="flex flex-col justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={handleAddSubject}
-                                                className="btn-primary inline-flex items-center justify-center gap-2 text-sm"
-                                            >
-                                                <Plus size={16} />
-                                                Add subject
-                                            </button>
-                                        </div>
-                                    </div>
 
-                                            {/* Subjects List */}
-                                            <div className="grid gap-4 sm:grid-cols-2">
-                                                {planInput.subjects.length === 0 ? (
-                                                    <div className="col-span-full flex flex-col items-center justify-center py-12 text-center text-slate-400">
-                                                        <div className="mb-4 rounded-full bg-slate-50 p-4">
-                                                            <ListTodo size={32} />
-                                                        </div>
-                                                        <p className="text-sm font-bold">Stack Empty</p>
-                                                        <p className="max-w-[200px] text-xs">Define your subjects to begin schedule orchestration.</p>
+                                        {/* Subjects List */}
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            {planInput.subjects.length === 0 ? (
+                                                <div className="col-span-full flex flex-col items-center justify-center py-12 text-center text-slate-400">
+                                                    <div className="mb-4 rounded-full bg-slate-50 p-4">
+                                                        <ListTodo size={32} />
                                                     </div>
-                                                ) : (
-                                                    planInput.subjects.map((sub, idx) => (
-                                                        <div key={idx} className="group relative flex items-center gap-4 rounded-3xl bg-white p-4 border border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-slate-200">
-                                                            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-                                                                sub.difficulty === 'hard' ? 'bg-rose-50 text-rose-600' :
-                                                                sub.difficulty === 'medium' ? 'bg-amber-50 text-amber-600' :
-                                                                'bg-emerald-50 text-emerald-600'
-                                                            }`}>
-                                                                <Brain size={20} />
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <h4 className="truncate text-sm font-black text-slate-900">{sub.name}</h4>
-                                                                <div className="flex items-center gap-2 mt-0.5">
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{sub.difficulty} Difficulty</span>
-                                                                    <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 rounded-full">
-                                                                        {sub.creditHours} Credits
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => handleRemoveSubject(idx)}
-                                                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 hover:text-rose-600"
-                                                            >
-                                                                <Plus size={18} className="rotate-45" />
-                                                            </button>
+                                                    <p className="text-sm font-bold">Stack Empty</p>
+                                                    <p className="max-w-[200px] text-xs">Define your subjects to begin schedule orchestration.</p>
+                                                </div>
+                                            ) : (
+                                                planInput.subjects.map((sub, idx) => (
+                                                    <div key={idx} className="group relative flex items-center gap-4 rounded-3xl bg-white p-4 border border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-slate-200">
+                                                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+                                                            sub.difficulty === 'hard' ? 'bg-rose-50 text-rose-600' :
+                                                            sub.difficulty === 'medium' ? 'bg-amber-50 text-amber-600' :
+                                                            'bg-emerald-50 text-emerald-600'
+                                                        }`}>
+                                                            <Brain size={20} />
                                                         </div>
-                                                    ))
-                                                )}
-                                            </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="truncate text-sm font-black text-slate-900">{sub.name}</h4>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{sub.difficulty} Difficulty</span>
+                                                                <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 rounded-full">
+                                                                    {sub.creditHours} Credits
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleRemoveSubject(idx)}
+                                                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 hover:text-rose-600"
+                                                        >
+                                                            <Plus size={18} className="rotate-45" />
+                                                        </button>
+                                                    </div>
+                                                ))
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <div className="card p-5 space-y-3">
-                                    <p className="text-sm font-semibold text-slate-900">Need a break?</p>
-                                    <p className="text-xs text-slate-500">You can go back and edit before generating.</p>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setCurrentStep(1)} className="btn-secondary text-sm">Back</button>
-                                        <button onClick={() => setCurrentStep(3)} className="btn-primary text-sm">Next: Review</button>
+                            <div className="space-y-6">
+                                <div className="rounded-[2.5rem] bg-slate-950 p-8 text-white shadow-2xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-500">
+                                        <Zap size={80} />
+                                    </div>
+                                    <h4 className="text-xl font-black mb-2">Live Configuration</h4>
+                                    <p className="text-slate-400 text-sm mb-6 leading-relaxed">System is calculating your optimal study flow based on {planInput.subjects.length} active modules.</p>
+                                    
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                                <span>Workload Balance</span>
+                                                <span className="text-emerald-400">Optimized</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-emerald-500 w-[85%]" />
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                                <span>AI Confidence</span>
+                                                <span className="text-blue-400">98%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-blue-500 w-[98%]" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
+                                        <button onClick={() => setCurrentStep(1)} className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
+                                            Rollback
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentStep(3)}
+                                            className="px-6 py-3 rounded-2xl bg-white text-slate-950 text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-white/5"
+                                        >
+                                            Review Hub
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1100,77 +1034,6 @@ const StudyPlanPage: React.FC = () => {
                                         ))}
                                     </div>
                                 </div>
-
-                                {/* Sidebar Stats/Plans */}
-                                <div className="space-y-8">
-                                    <div className="rounded-[2.5rem] bg-slate-50 p-8 border border-slate-100">
-                                        <div className="flex items-center justify-between mb-6">
-                                            <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Operational History</h4>
-                                            {isLoadingPlans && <Loader2 size={14} className="animate-spin text-slate-400" />}
-                                        </div>
-                                        
-                                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                            {plans.length === 0 ? (
-                                                <div className="text-center py-8">
-                                                    <p className="text-xs font-bold text-slate-400">No active blueprints</p>
-                                                </div>
-                                            ) : (
-                                                plans.map((plan) => (
-                                                    <button
-                                                        key={plan._id}
-                                                        onClick={() => {
-                                                            setSelectedPlanId(plan._id);
-                                                            setViewMode('schedule');
-                                                        }}
-                                                        className={`w-full group relative rounded-3xl p-5 text-left transition-all border ${
-                                                            selectedPlan?._id === plan._id 
-                                                            ? 'bg-white border-blue-200 shadow-lg shadow-blue-100/50' 
-                                                            : 'bg-transparent border-transparent hover:bg-white hover:border-slate-200'
-                                                        }`}
-                                                    >
-                                                        <p className="text-sm font-black text-slate-900 mb-1 truncate">{plan.title}</p>
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{plan.subjects.length} Modules</span>
-                                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{plan.overallProgress}%</span>
-                                                        </div>
-                                                        <div className="mt-3 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                                                            <div 
-                                                                className="h-full bg-blue-500 transition-all duration-500" 
-                                                                style={{ width: `${plan.overallProgress}%` }}
-                                                            />
-                                                        </div>
-                                                    </button>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {selectedPlan && (
-                                        <div className="rounded-[2.5rem] bg-white p-8 border border-slate-100 shadow-xl shadow-slate-200/50 space-y-6 animate-in slide-in-from-right-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                                                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Blueprint Snapshot</p>
-                                            </div>
-                                            
-                                            <div className="rounded-2xl bg-amber-50 p-4 border border-amber-100">
-                                                <p className="text-xs text-amber-900 leading-relaxed font-medium italic">
-                                                    "{selectedPlan.aiSummary || 'System analysis pending...'}"
-                                                </p>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="p-4 rounded-2xl bg-slate-50">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Total Hours</p>
-                                                    <p className="text-lg font-black text-slate-900">{totalHours.toFixed(1)}h</p>
-                                                </div>
-                                                <div className="p-4 rounded-2xl bg-slate-50">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Subjects</p>
-                                                    <p className="text-lg font-black text-slate-900">{selectedPlan.subjects.length}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
                             </div>
                         </div>
                     )}
@@ -1217,60 +1080,42 @@ const StudyPlanPage: React.FC = () => {
                                             }}
                                             className="flex-1 text-left space-y-4"
                                         >
-                                    {/* Header */}
-                                    <div className="space-y-1">
-                                        <p className="text-base font-bold text-slate-900 truncate">{plan.title}</p>
-                                        <p className="text-[11px] text-slate-500">
-                                            Created {new Date(plan.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </p>
-                                    </div>
+                                            {/* Header */}
+                                            <div className="space-y-1">
+                                                <p className="text-base font-bold text-slate-900 truncate">{plan.title}</p>
+                                                <p className="text-[11px] text-slate-500">
+                                                    Created {new Date(plan.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                </p>
+                                            </div>
 
-                                    {/* Stats row */}
-                                    <div className="grid grid-cols-3 gap-2 text-center">
-                                        <div className="rounded-xl bg-blue-50 p-2">
-                                            <p className="text-[10px] text-slate-500">Days</p>
-                                            <p className="text-sm font-bold text-slate-900">{plan.totalStudyDays}</p>
-                                        </div>
-                                        <div className="rounded-xl bg-emerald-50 p-2">
-                                            <p className="text-[10px] text-slate-500">Hours</p>
-                                            <p className="text-sm font-bold text-slate-900">{planHours.toFixed(1)}</p>
-                                        </div>
-                                        <div className="rounded-xl bg-amber-50 p-2">
-                                            <p className="text-[10px] text-slate-500">Subjects</p>
-                                            <p className="text-sm font-bold text-slate-900">{plan.subjects.length}</p>
-                                        </div>
+                                            {/* Stats row */}
+                                            <div className="grid grid-cols-3 gap-2 text-center">
+                                                <div className="rounded-xl bg-blue-50 p-2">
+                                                    <p className="text-[10px] text-slate-500">Days</p>
+                                                    <p className="text-sm font-bold text-slate-900">{plan.totalStudyDays}</p>
+                                                </div>
+                                                <div className="rounded-xl bg-emerald-50 p-2">
+                                                    <p className="text-[10px] text-slate-500">Hours</p>
+                                                    <p className="text-sm font-bold text-slate-900">{planHours.toFixed(1)}</p>
+                                                </div>
+                                                <div className="rounded-xl bg-amber-50 p-2">
+                                                    <p className="text-[10px] text-slate-500">Subjects</p>
+                                                    <p className="text-sm font-bold text-slate-900">{plan.subjects.length}</p>
+                                                </div>
+                                            </div>
 
-                                        <h3 className="text-lg font-black text-slate-900 mb-1 truncate">{plan.title}</h3>
-                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6">Cognitive Nexus Blueprint</p>
-
-                                        <div className="grid grid-cols-3 gap-3 mb-6">
-                                            <div className="rounded-2xl bg-slate-50 p-3 text-center border border-slate-100">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Days</p>
-                                                <p className="text-sm font-black text-slate-900">{plan.totalStudyDays}</p>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{completedTasks}/{totalTasks} Protocols Verified</span>
+                                                    <span className="text-xs font-black text-blue-600">{plan.overallProgress}%</span>
+                                                </div>
+                                                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden shadow-inner">
+                                                    <div 
+                                                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-1000 ease-out"
+                                                        style={{ width: `${plan.overallProgress}%` }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="rounded-2xl bg-blue-50 p-3 text-center border border-blue-100/50">
-                                                <p className="text-[9px] font-black text-blue-400 uppercase mb-1">Hours</p>
-                                                <p className="text-sm font-black text-blue-700">{planHours.toFixed(1)}</p>
-                                            </div>
-                                            <div className="rounded-2xl bg-emerald-50 p-3 text-center border border-emerald-100/50">
-                                                <p className="text-[9px] font-black text-emerald-400 uppercase mb-1">Subject</p>
-                                                <p className="text-sm font-black text-emerald-700">{plan.subjects.length}</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{completedTasks}/{totalTasks} Protocols Verified</span>
-                                                <span className="text-xs font-black text-blue-600">{plan.overallProgress}%</span>
-                                            </div>
-                                            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden shadow-inner">
-                                                <div 
-                                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-1000 ease-out"
-                                                    style={{ width: `${plan.overallProgress}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
                                         </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan._id); }}
@@ -1549,6 +1394,7 @@ const StudyPlanPage: React.FC = () => {
                     </div>
                 </div>
             )}
+            </>
         </div>
     );
 };
