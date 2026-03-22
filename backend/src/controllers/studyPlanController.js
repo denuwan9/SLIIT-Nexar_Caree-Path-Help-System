@@ -343,7 +343,7 @@ const generateAISummary = (subjects, hoursPerDay, totalDays) => {
 exports.createStudyPlan = async (req, res, next) => {
     try {
         const { title, examStartDate, examEndDate, internshipStartTime, internshipEndTime } = req.body;
-        const subjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : req.body.subjects;
+        const rawSubjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : req.body.subjects;
         const availableHoursPerDay = typeof req.body.availableHoursPerDay === 'string'
             ? parseFloat(req.body.availableHoursPerDay)
             : req.body.availableHoursPerDay;
@@ -355,6 +355,7 @@ exports.createStudyPlan = async (req, res, next) => {
         const start = new Date(examStartDate);
         const end = new Date(examEndDate);
         const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        const hasDocs = Array.isArray(req.files) && req.files.length > 0;
 
         const sessions = generateStudySessions(subjects, examStartDate, examEndDate, hoursPerDay);
         const aiSummary = generateAISummary(subjects, hoursPerDay, totalDays);
@@ -402,8 +403,9 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
         const aiKey = typeof req.body.aiKey === 'string' ? req.body.aiKey.trim() : undefined;
 
         // Try AI-powered generation first
+        const subjectsForAI = hasDocs ? [] : rawSubjects;
         const aiResult = await generateAIStudyPlan({
-            subjects,
+            subjects: subjectsForAI,
             docsText,
             hoursPerDay,
             totalDays,
@@ -442,22 +444,24 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
             aiSummary = aiResult.aiSummary || generateAISummary(subjects, hoursPerDay, totalDays);
 
             // Enrich subjects with extracted topics from AI
-            if (aiResult.extractedTopics) {
-                enrichedSubjects = subjects.map((s) => {
-                    const found = aiResult.extractedTopics.find((t) => t.subjectName?.toLowerCase() === s.name?.toLowerCase());
-                    if (found?.topics?.length) {
-                        return { ...s, syllabusTopics: found.topics.slice(0, 10) };
-                    }
-                    return s;
-                });
+            if (aiResult.extractedTopics && aiResult.extractedTopics.length > 0) {
+                // Build subjects purely from extracted topics when docs are used
+                enrichedSubjects = aiResult.extractedTopics.map((t) => ({
+                    name: t.subjectName || 'Document Subject',
+                    difficulty: 'medium',
+                    weight: 1,
+                    creditHours: 3,
+                    syllabusTopics: (t.topics || []).slice(0, 10),
+                }));
             } else {
-                enrichedSubjects = subjects;
+                enrichedSubjects = subjectsForAI && subjectsForAI.length > 0 ? subjectsForAI : rawSubjects || [];
             }
         } else {
             logger.info('[StudyPlan] AI generation failed, using fallback local generation');
-            sessions = generateStudySessions(subjects, examStartDate, examEndDate, hoursPerDay);
-            aiSummary = generateAISummary(subjects, hoursPerDay, totalDays);
-            enrichedSubjects = subjects;
+            const fallbackSubjects = subjectsForAI && subjectsForAI.length > 0 ? subjectsForAI : rawSubjects || [];
+            sessions = generateStudySessions(fallbackSubjects, examStartDate, examEndDate, hoursPerDay);
+            aiSummary = generateAISummary(fallbackSubjects, hoursPerDay, totalDays);
+            enrichedSubjects = fallbackSubjects;
         }
 
         const plan = await StudyPlan.create({

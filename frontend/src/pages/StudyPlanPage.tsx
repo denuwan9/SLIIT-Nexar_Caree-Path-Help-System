@@ -85,6 +85,12 @@ const StudyPlanPage: React.FC = () => {
     const [justGenerated, setJustGenerated] = useState(false);
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
+    const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const clampToToday = (value: string) => {
+        if (!value) return value;
+        return value < todayISO ? todayISO : value;
+    };
+
     const computeStudyHoursFromInternship = (start?: string, end?: string, fallback?: number) => {
         if (!start || !end) return fallback;
         const [sh, sm] = start.split(':').map(Number);
@@ -328,10 +334,6 @@ const StudyPlanPage: React.FC = () => {
             toast.error('Exam start and end dates are required');
             return;
         }
-        if (planInput.subjects.length === 0) {
-            toast.error('Add at least one subject');
-            return;
-        }
 
         setIsCreating(true);
         try {
@@ -341,11 +343,15 @@ const StudyPlanPage: React.FC = () => {
             const payload: CreateStudyPlanInput = {
                 ...planInput,
                 title: safeTitle,
-                subjects: planInput.subjects,
+                subjects: allFiles.length > 0 ? [] : planInput.subjects,
                 availableHoursPerDay: derivedHours,
             };
 
             const allFiles = [...documents, ...timetableFiles];
+            if (allFiles.length === 0 && planInput.subjects.length === 0) {
+                toast.error('Upload study docs or add at least one subject');
+                return;
+            }
             let created: StudyPlan;
             if (allFiles.length > 0) {
                 const formData = new FormData();
@@ -646,14 +652,16 @@ const StudyPlanPage: React.FC = () => {
                                                 <input
                                                     type="date"
                                                     className="input w-full"
+                                                    min={todayISO}
                                                     value={planInput.examStartDate}
-                                                    onChange={(e) => setPlanInput({ ...planInput, examStartDate: e.target.value })}
+                                                    onChange={(e) => setPlanInput({ ...planInput, examStartDate: clampToToday(e.target.value) })}
                                                 />
                                                 <input
                                                     type="date"
                                                     className="input w-full"
+                                                    min={todayISO}
                                                     value={planInput.examEndDate}
-                                                    onChange={(e) => setPlanInput({ ...planInput, examEndDate: e.target.value })}
+                                                    onChange={(e) => setPlanInput({ ...planInput, examEndDate: clampToToday(e.target.value) })}
                                                 />
                                             </div>
                                             <p className="text-[11px] text-slate-500">We’ll prioritise subjects with closer exam dates.</p>
@@ -818,8 +826,9 @@ const StudyPlanPage: React.FC = () => {
                                             <input
                                                 type="date"
                                                 className="input w-full"
+                                                min={todayISO}
                                                 value={subjectDraft.examDate}
-                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, examDate: e.target.value })}
+                                                onChange={(e) => setSubjectDraft({ ...subjectDraft, examDate: clampToToday(e.target.value) })}
                                             />
                                         </div>
                                         <div className="flex flex-col justify-end">

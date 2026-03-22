@@ -246,26 +246,26 @@ const studyPlanValidator = [
     body('availableHoursPerDay')
         .optional()
         .isFloat({ min: 1, max: 16 }).withMessage('Must be between 1 and 16 hours'),
-    body('subjects')
-        .custom((val, { req }) => {
-            const hasDocs = Array.isArray(req.files) && req.files.length > 0;
+        body('subjects')
+            .custom((val, { req }) => {
+                let parsed;
+                if (Array.isArray(val)) {
+                    parsed = val;
+                } else {
+                    try {
+                        parsed = JSON.parse(val);
+                    } catch {
+                        throw new Error('Subjects must be an array');
+                    }
+                }
+                if (!Array.isArray(parsed)) throw new Error('Subjects must be an array');
 
-            // If documents are uploaded, allow empty subjects (AI will extract topics).
-            if (hasDocs) {
-                if (Array.isArray(val) && val.length === 0) return true;
-                if (val === undefined || val === null || val === '' || val === '[]') return true;
-            }
-
-            // Otherwise, require a non-empty array.
-            if (Array.isArray(val)) return val.length > 0;
-            try {
-                const parsed = JSON.parse(val);
-                if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+                const hasDocs = Array.isArray(req.files) && req.files.length > 0;
+                if (!hasDocs && parsed.length === 0) {
+                    throw new Error('Subjects must be a non-empty array when no study documents are uploaded');
+                }
                 return true;
-            } catch {
-                throw new Error('Subjects must be a non-empty array');
-            }
-        }),
+            }),
     body('subjects.*.name')
         .optional()
         .notEmpty().withMessage('Each subject must have a name'),
