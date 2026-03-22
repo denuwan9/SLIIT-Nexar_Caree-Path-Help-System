@@ -9,7 +9,6 @@ import {
     ChevronRight,
     Clock,
     FileText,
-    KeyRound,
     Loader2,
     Plus,
     Upload,
@@ -63,7 +62,6 @@ const PRIORITY_META: Record<StudyPriority, { label: string; accent: string; tip:
 
 const StudyPlanPage: React.FC = () => {
     const navigate = useNavigate();
-    const [apiKey, setApiKey] = useState('');
     const [documents, setDocuments] = useState<File[]>([]);
     const [timetableFiles, setTimetableFiles] = useState<File[]>([]);
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -73,6 +71,15 @@ const StudyPlanPage: React.FC = () => {
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'builder' | 'plans' | 'schedule'>('builder');
     const [justGenerated, setJustGenerated] = useState(false);
+    const [internshipDaysPerWeek, setInternshipDaysPerWeek] = useState(5);
+    const [internshipHoursPerDay, setInternshipHoursPerDay] = useState(4);
+    const [manualStudyHours, setManualStudyHours] = useState(false);
+
+    const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const clampToToday = (value: string) => {
+        if (!value) return value;
+        return value < todayISO ? todayISO : value;
+    };
 
     const computeStudyHoursFromInternship = (start?: string, end?: string, fallback?: number) => {
         if (!start || !end) return fallback;
@@ -87,6 +94,8 @@ const StudyPlanPage: React.FC = () => {
         return remaining;
     };
 
+    const deriveStudyHoursFromInternshipLoad = (hours: number) => Math.max(2, Math.min(16, 16 - hours));
+
     const prefillDemoPlan = () => {
         const today = new Date();
         const start = new Date(today);
@@ -94,6 +103,9 @@ const StudyPlanPage: React.FC = () => {
         start.setDate(start.getDate() + 3);
         end.setDate(end.getDate() + 21);
 
+        setInternshipDaysPerWeek(5);
+        setInternshipHoursPerDay(4);
+        setManualStudyHours(false);
         setPlanInput({
             title: 'Internship + Finals Sprint',
             examStartDate: start.toISOString().slice(0, 10),
@@ -101,6 +113,7 @@ const StudyPlanPage: React.FC = () => {
             availableHoursPerDay: computeStudyHoursFromInternship('09:00', '13:00', 4) || 4,
             internshipStartTime: '09:00',
             internshipEndTime: '13:00',
+            internshipHoursPerDay: 4,
             subjects: [
                 {
                     name: 'Distributed Systems',
@@ -137,6 +150,7 @@ const StudyPlanPage: React.FC = () => {
         availableHoursPerDay: 4,
         internshipStartTime: '',
         internshipEndTime: '',
+        internshipHoursPerDay: 4,
         subjects: [],
     });
 
@@ -147,6 +161,12 @@ const StudyPlanPage: React.FC = () => {
             return derived ? { ...next, availableHoursPerDay: derived } : next;
         });
     };
+
+    useEffect(() => {
+        if (manualStudyHours) return;
+        const suggested = deriveStudyHoursFromInternshipLoad(internshipHoursPerDay);
+        setPlanInput((prev) => ({ ...prev, availableHoursPerDay: suggested, internshipHoursPerDay }));
+    }, [internshipHoursPerDay, manualStudyHours]);
 
     const [subjectDraft, setSubjectDraft] = useState<StudySubject & { topicsInput?: string }>(
         {
@@ -291,8 +311,8 @@ const StudyPlanPage: React.FC = () => {
                 formData.append('availableHoursPerDay', String(payload.availableHoursPerDay ?? 4));
                 if (payload.internshipStartTime) formData.append('internshipStartTime', payload.internshipStartTime);
                 if (payload.internshipEndTime) formData.append('internshipEndTime', payload.internshipEndTime);
+                if (payload.internshipHoursPerDay !== undefined) formData.append('internshipHoursPerDay', String(payload.internshipHoursPerDay));
                 formData.append('subjects', JSON.stringify(payload.subjects));
-                if (apiKey.trim()) formData.append('aiKey', apiKey.trim());
                 allFiles.forEach((file) => formData.append('studyDocs', file));
 
                 created = await createStudyPlanWithDocs(formData);
@@ -377,11 +397,11 @@ const StudyPlanPage: React.FC = () => {
                             </button>
                         )}
                         <button
-                            onClick={() => navigate('/dashboard')}
+                            onClick={() => navigate('/study')}
                             className="flex items-center justify-center gap-3 rounded-2xl bg-white/5 px-6 py-4 text-sm font-bold text-white transition-all hover:bg-white/10 border border-white/10"
                         >
-                            <ChevronLeft size={18} />
-                            Return to Command
+                            <Plus size={18} />
+                            New Study Plan
                         </button>
                     </div>
                 </div>
@@ -581,94 +601,163 @@ const StudyPlanPage: React.FC = () => {
                                 {/* Configuration Panel */}
                                 <div className="lg:col-span-1 space-y-8">
                                     <div className="group relative overflow-hidden rounded-[2.5rem] bg-white p-8 shadow-xl shadow-slate-200/50 border border-slate-100">
+                                        <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-500/5 blur-3xl" />
                                         <div className="relative space-y-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                                                    <Gauge size={24} />
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                                    <Gauge size={22} />
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-lg font-black text-slate-900">Parameters</h3>
-                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">System Constraints</p>
+                                                    <p className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Study preferences</p>
+                                                    <h3 className="text-lg font-black text-slate-900">Balance study + internship</h3>
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-4">
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-semibold text-slate-500">Plan title</label>
+                                                <input
+                                                    type="text"
+                                                    value={planInput.title}
+                                                    onChange={(e) => setPlanInput({ ...planInput, title: e.target.value })}
+                                                    placeholder="e.g., Semester 6 + Internship"
+                                                    className="w-full rounded-2xl border-slate-200 bg-slate-50 py-3 px-4 text-sm font-semibold text-slate-900 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                                                />
+                                                <p className="text-xs text-slate-500">Keep it short so you can spot the right plan later.</p>
+                                            </div>
+
+                                            <div className="space-y-5">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <p className="text-[11px] font-bold text-slate-600">Internship days per week</p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <input
+                                                                type="range"
+                                                                min={0}
+                                                                max={7}
+                                                                step={1}
+                                                                value={internshipDaysPerWeek}
+                                                                onChange={(e) => setInternshipDaysPerWeek(Number(e.target.value))}
+                                                                className="w-full accent-emerald-500"
+                                                            />
+                                                            <span className="text-sm font-bold text-slate-700 w-8 text-right">{internshipDaysPerWeek}d</span>
+                                                        </div>
+                                                        <p className="text-[11px] text-slate-500">We’ll keep study blocks on your off days.</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] font-bold text-slate-600">Internship hours per day</p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <input
+                                                                type="range"
+                                                                min={0}
+                                                                max={12}
+                                                                step={1}
+                                                                value={internshipHoursPerDay}
+                                                                onChange={(e) => setInternshipHoursPerDay(Number(e.target.value))}
+                                                                className="w-full accent-blue-500"
+                                                            />
+                                                            <span className="text-sm font-bold text-slate-700 w-8 text-right">{internshipHoursPerDay}h</span>
+                                                        </div>
+                                                        <p className="text-[11px] text-slate-500">Used to cap your daily study time.</p>
+                                                    </div>
+                                                </div>
+
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Target Study Hours</label>
-                                                    <div className="relative">
-                                                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                                    <p className="text-[11px] font-bold text-slate-600">Daily study hours</p>
+                                                    <div className="flex items-center gap-2">
                                                         <input
-                                                            type="number"
+                                                            type="range"
+                                                            min={2}
+                                                            max={16}
+                                                            step={1}
                                                             value={planInput.availableHoursPerDay}
-                                                            onChange={(e) => setPlanInput({ ...planInput, availableHoursPerDay: Number(e.target.value) })}
-                                                            className="w-full rounded-2xl border-slate-100 bg-slate-50 py-4 pl-12 pr-4 text-sm font-bold text-slate-900 transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-                                                            placeholder="e.g. 20"
+                                                            onChange={(e) => {
+                                                                setManualStudyHours(true);
+                                                                setPlanInput({ ...planInput, availableHoursPerDay: Number(e.target.value) });
+                                                            }}
+                                                            className="w-full accent-indigo-500"
+                                                        />
+                                                        <span className="text-sm font-bold text-slate-700 w-10 text-right">{planInput.availableHoursPerDay}h</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-500">Derived from internship load. Adjust only if you want to override.</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-xs font-black uppercase tracking-wider text-slate-500">Exam window</p>
+                                                        <p className="text-[11px] text-slate-500">We’ll prioritize subjects with closer exam dates.</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            const today = new Date();
+                                                            const startDate = today.toISOString().slice(0, 10);
+                                                            const endDate = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+                                                            setPlanInput((prev) => ({ ...prev, examStartDate: startDate, examEndDate: endDate }));
+                                                        }}
+                                                        className="rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-100"
+                                                    >
+                                                        Quick fill
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 border border-slate-200">
+                                                        <Calendar size={14} className="text-slate-500" />
+                                                        <input
+                                                            type="date"
+                                                            min={todayISO}
+                                                            value={planInput.examStartDate}
+                                                            onChange={(e) => setPlanInput({ ...planInput, examStartDate: clampToToday(e.target.value) })}
+                                                            className="flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 border border-slate-200">
+                                                        <Calendar size={14} className="text-slate-500" />
+                                                        <input
+                                                            type="date"
+                                                            min={todayISO}
+                                                            value={planInput.examEndDate}
+                                                            onChange={(e) => setPlanInput({ ...planInput, examEndDate: clampToToday(e.target.value) })}
+                                                            className="flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none"
                                                         />
                                                     </div>
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 text-purple-600">Internship Window</label>
+                                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                                        <Shield size={14} className="text-purple-500" />
+                                                        Internship time range (optional)
+                                                    </div>
                                                     <div className="grid grid-cols-2 gap-3">
-                                                        <div className="relative">
+                                                        <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 border border-slate-200">
+                                                            <Clock size={14} className="text-slate-500" />
                                                             <input
                                                                 type="time"
                                                                 value={planInput.internshipStartTime}
                                                                 onChange={(e) => handleInternshipTimeChange('internshipStartTime', e.target.value)}
-                                                                className="w-full rounded-2xl border-slate-100 bg-slate-50 py-4 px-4 text-xs font-bold text-slate-900 focus:border-purple-500"
+                                                                className="flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none"
                                                             />
                                                         </div>
-                                                        <div className="relative">
+                                                        <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 border border-slate-200">
+                                                            <Clock size={14} className="text-slate-500" />
                                                             <input
                                                                 type="time"
                                                                 value={planInput.internshipEndTime}
                                                                 onChange={(e) => handleInternshipTimeChange('internshipEndTime', e.target.value)}
-                                                                className="w-full rounded-2xl border-slate-100 bg-slate-50 py-4 px-4 text-xs font-bold text-slate-900 focus:border-purple-500"
+                                                                className="flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none"
                                                             />
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 rounded-xl bg-purple-50 p-3">
-                                                        <Shield size={14} className="text-purple-600" />
-                                                        <span className="text-[10px] font-bold text-purple-700">Internship hours are protected from study sessions.</span>
-                                                    </div>
+                                                    <p className="text-[11px] text-slate-500">We’ll keep study blocks outside this window.</p>
                                                 </div>
 
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Exam Window</label>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        <input
-                                                            type="date"
-                                                            value={planInput.examStartDate}
-                                                            onChange={(e) => setPlanInput({ ...planInput, examStartDate: e.target.value })}
-                                                            className="w-full rounded-2xl border-slate-100 bg-slate-50 py-3 px-3 text-xs font-bold text-slate-900 focus:border-blue-500"
-                                                        />
-                                                        <input
-                                                            type="date"
-                                                            value={planInput.examEndDate}
-                                                            onChange={(e) => setPlanInput({ ...planInput, examEndDate: e.target.value })}
-                                                            className="w-full rounded-2xl border-slate-100 bg-slate-50 py-3 px-3 text-xs font-bold text-slate-900 focus:border-blue-500"
-                                                        />
-                                                    </div>
+                                                <div className="grid grid-cols-2 gap-3 text-[11px] font-bold text-slate-700">
+                                                    <div className="rounded-xl bg-white px-3 py-2 border border-slate-200">{internshipDaysPerWeek} days/week</div>
+                                                    <div className="rounded-xl bg-white px-3 py-2 border border-slate-200">{planInput.availableHoursPerDay}h study/day</div>
+                                                    <div className="rounded-xl bg-white px-3 py-2 border border-slate-200 col-span-2">Exams {planInput.examStartDate || '----'} → {planInput.examEndDate || '----'}</div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <div className="rounded-[2.5rem] bg-slate-950 p-8 shadow-2xl space-y-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
-                                                <KeyRound size={20} />
-                                            </div>
-                                            <h4 className="font-black text-white">Neural Key</h4>
-                                        </div>
-                                        <input
-                                            type="password"
-                                            placeholder="Enter Groq API Key"
-                                            value={apiKey}
-                                            onChange={(e) => setApiKey(e.target.value)}
-                                            className="w-full rounded-2xl border-white/5 bg-white/5 py-4 px-4 text-sm font-medium text-white placeholder:text-slate-600 focus:border-blue-500 focus:ring-0"
-                                        />
-                                        <p className="text-[10px] text-slate-500 leading-relaxed font-medium">Your key is used only for local session orchestration and is never stored on our servers.</p>
                                     </div>
                                 </div>
 
@@ -1278,17 +1367,40 @@ const StudyPlanPage: React.FC = () => {
                                                                     )}
                                                                 </div>
 
-                                                                <div className="lg:w-48 space-y-2">
-                                                                    <button
-                                                                        onClick={() => handleStatusChange(session._id, idx, isComplete ? 'pending' : 'completed')}
-                                                                        className={`w-full py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all ${
-                                                                            isComplete 
-                                                                            ? 'bg-slate-100 text-slate-400 hover:bg-slate-200' 
-                                                                            : 'bg-slate-950 text-white shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-95'
-                                                                        }`}
-                                                                    >
-                                                                        {isComplete ? 'Reopen' : 'Verify'}
-                                                                    </button>
+                                                                <div className="lg:w-52 space-y-2">
+                                                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</div>
+                                                                    <div className="grid grid-cols-3 gap-2">
+                                                                        <button
+                                                                            onClick={() => handleStatusChange(session._id, idx, 'pending')}
+                                                                            className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.18em] transition-all ${
+                                                                                currentStatus === 'pending'
+                                                                                    ? 'bg-slate-900 text-white shadow-lg shadow-slate-400/20'
+                                                                                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                                                                            }`}
+                                                                        >
+                                                                            Pending
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleStatusChange(session._id, idx, 'in-progress')}
+                                                                            className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.18em] transition-all ${
+                                                                                isInProgress
+                                                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-300/30'
+                                                                                    : 'bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-600'
+                                                                            }`}
+                                                                        >
+                                                                            Progress
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleStatusChange(session._id, idx, 'completed')}
+                                                                            className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.18em] transition-all ${
+                                                                                isComplete
+                                                                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200/50'
+                                                                                    : 'bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
+                                                                            }`}
+                                                                        >
+                                                                            Done
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
