@@ -72,121 +72,141 @@ const SettingsTab: React.FC<Props> = ({ profile, setProfile }) => {
     };
 
     return (
-        <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-6 duration-700 pb-20">
             {error && (
-                <div className="flex items-center gap-3 p-5 rounded-3xl bg-rose-50 text-rose-600 border border-rose-100 text-[13px] font-bold">
-                    <AlertCircle size={18} /> {error}
+                <div className="group relative overflow-hidden flex items-center gap-4 p-6 rounded-[2rem] bg-rose-50 text-rose-600 border border-rose-100 text-sm font-black uppercase tracking-widest shadow-xl shadow-rose-100/20">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-100%] animate-[shimmer_2s_infinite]" />
+                    <AlertCircle size={20} className="relative transition-transform group-hover:scale-110" /> 
+                    <span className="relative">{error}</span>
                 </div>
             )}
 
-            {/* Career Goals */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
-                <div className="mb-8">
-                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3 uppercase tracking-widest text-[14px]">
-                        <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white">
-                            <Target size={20} />
-                        </div> 
-                        North Star Metrics
-                    </h2>
-                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">Define the heights you want to reach in your career.</p>
+            {/* Career Goals - North Star Metrics */}
+            <div className="group relative overflow-hidden bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100 transition-all hover:shadow-2xl">
+                <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl group-hover:bg-blue-500/10 transition-colors" />
+                
+                <div className="relative flex items-center gap-6 mb-10">
+                    <div className="p-4 rounded-3xl bg-blue-600 text-white shadow-lg shadow-blue-200 transition-transform group-hover:scale-110">
+                        <Target size={24} />
+                    </div> 
+                    <div>
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">North Star Metrics</h2>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">Strategic Career Mapping</p>
+                    </div>
                 </div>
 
-                <form onSubmit={goalsForm.handleSubmit(onSaveGoals)} className="space-y-6 p-8 rounded-[2rem] bg-slate-50 border border-slate-100/50 shadow-inner">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Target Roles</label>
+                <form onSubmit={goalsForm.handleSubmit(onSaveGoals)} className="relative space-y-8 p-10 rounded-[2rem] bg-slate-50 border border-slate-100 shadow-inner">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block ml-1">Target Designations</label>
                             <input 
                                 type="text" 
                                 {...goalsForm.register('targetRoles')} 
-                                placeholder="e.g. Frontend Developer, Full Stack Engineer" 
-                                className="input-field h-12 bg-white text-[13px]" 
+                                placeholder="e.g. Frontend Architect, AI Research Lead" 
+                                className={`w-full bg-white border rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-100/50 focus:border-blue-400 outline-none transition-all placeholder:text-slate-300 ${
+                                    goalsForm.formState.errors.targetRoles ? 'border-rose-300 bg-rose-50/10' : 'border-slate-100'
+                                }`} 
                             />
+                            {goalsForm.formState.errors.targetRoles && (
+                                <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mt-2 ml-1">{goalsForm.formState.errors.targetRoles.message}</p>
+                            )}
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Preferred Industries</label>
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block ml-1">Preferred Domains</label>
                             <input 
                                 type="text" 
                                 {...goalsForm.register('preferredIndustries')} 
-                                placeholder="e.g. Fintech, Healthcare, EdTech" 
-                                className="input-field h-12 bg-white text-[13px]" 
+                                placeholder="e.g. Fintech, DeepTech, Sustainable Energy" 
+                                className={`w-full bg-white border rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-100/50 focus:border-blue-400 outline-none transition-all placeholder:text-slate-300 ${
+                                    goalsForm.formState.errors.preferredIndustries ? 'border-rose-300 bg-rose-50/10' : 'border-slate-100'
+                                }`} 
                             />
+                            {goalsForm.formState.errors.preferredIndustries && (
+                                <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mt-2 ml-1">{goalsForm.formState.errors.preferredIndustries.message}</p>
+                            )}
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Career Objective Summary</label>
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block ml-1">Career Objective Protocol</label>
                         <textarea 
                             {...goalsForm.register('careerObjective')} 
-                            placeholder="What are you ultimately looking to achieve in your career?" 
-                            className={`input-field bg-white min-h-[120px] resize-none py-4 text-[13px] ${goalsForm.formState.errors.careerObjective ? 'border-rose-500' : ''}`} 
+                            placeholder="What is your ultimate professional impact?" 
+                            className={`w-full bg-white border rounded-2xl px-6 py-5 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-100/50 focus:border-blue-400 outline-none transition-all placeholder:text-slate-300 min-h-[160px] resize-none leading-relaxed ${
+                                goalsForm.formState.errors.careerObjective ? 'border-rose-300 bg-rose-50/10' : 'border-slate-100'
+                            }`} 
                         />
-                        {goalsForm.formState.errors.careerObjective && <p className="text-[10px] font-bold text-rose-500">{goalsForm.formState.errors.careerObjective.message}</p>}
+                        {goalsForm.formState.errors.careerObjective && (
+                            <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mt-2 ml-1">{goalsForm.formState.errors.careerObjective.message}</p>
+                        )}
                     </div>
 
-                    <div className="flex justify-end pt-4">
-                        <button type="submit" disabled={loadingGoals} className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
-                            {loadingGoals ? <Loader2 size={16} className="animate-spin" /> : <Save size={18} />} Update Goals
+                    <div className="flex justify-end pt-4 border-t border-slate-200/50">
+                        <button 
+                            type="submit" 
+                            disabled={loadingGoals} 
+                            className="group/btn px-10 py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 disabled:opacity-50 transition-all flex items-center gap-3"
+                        >
+                            {loadingGoals ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} className="group-hover/btn:rotate-12 transition-transform" />}
+                            {loadingGoals ? 'Processing...' : 'Update Strategy'}
                         </button>
                     </div>
                 </form>
             </div>
 
-            {/* Social Links */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50">
-                <div className="mb-8">
-                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3 uppercase tracking-widest text-[14px]">
-                        <div className="w-10 h-10 rounded-2xl bg-slate-800 flex items-center justify-center text-white">
-                            <LinkIcon size={20} />
-                        </div> 
-                        Digital Identity
-                    </h2>
-                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">Sync your professional footprints across the web.</p>
+            {/* Social Links - Digital Identity */}
+            <div className="group relative overflow-hidden bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100 transition-all hover:shadow-2xl">
+                <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-slate-900/5 blur-3xl group-hover:bg-slate-900/10 transition-colors" />
+                
+                <div className="relative flex items-center gap-6 mb-10">
+                    <div className="p-4 rounded-3xl bg-slate-900 text-white shadow-lg shadow-slate-300 transition-transform group-hover:scale-110">
+                        <LinkIcon size={24} />
+                    </div> 
+                    <div>
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Digital Identity</h2>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">Professional Web Presence</p>
+                    </div>
                 </div>
 
-                <form onSubmit={socialForm.handleSubmit(onSaveSocial)} className="space-y-6 p-8 rounded-[2rem] bg-slate-50 border border-slate-100/50 shadow-inner">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">LinkedIn Profile</label>
-                            <input 
-                                type="url" 
-                                {...socialForm.register('linkedin')} 
-                                placeholder="https://linkedin.com/in/..." 
-                                className={`input-field h-12 bg-white text-[13px] ${socialForm.formState.errors.linkedin ? 'border-rose-500' : ''}`} 
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">GitHub Presence</label>
-                            <input 
-                                type="url" 
-                                {...socialForm.register('github')} 
-                                placeholder="https://github.com/..." 
-                                className={`input-field h-12 bg-white text-[13px] ${socialForm.formState.errors.github ? 'border-rose-500' : ''}`} 
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Personal Portfolio</label>
-                            <input 
-                                type="url" 
-                                {...socialForm.register('portfolio')} 
-                                placeholder="https://yourname.com" 
-                                className={`input-field h-12 bg-white text-[13px] ${socialForm.formState.errors.portfolio ? 'border-rose-500' : ''}`} 
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">StackOverflow</label>
-                            <input 
-                                type="url" 
-                                {...socialForm.register('stackoverflow')} 
-                                placeholder="https://stackoverflow.com/..." 
-                                className={`input-field h-12 bg-white text-[13px] ${socialForm.formState.errors.stackoverflow ? 'border-rose-500' : ''}`} 
-                            />
-                        </div>
+                <form onSubmit={socialForm.handleSubmit(onSaveSocial)} className="relative space-y-8 p-10 rounded-[2rem] bg-slate-50 border border-slate-100 shadow-inner">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {[
+                            { name: 'linkedin', label: 'LinkedIn Relay', placeholder: 'https://linkedin.com/in/...' },
+                            { name: 'github', label: 'GitHub Repository', placeholder: 'https://github.com/...' },
+                            { name: 'portfolio', label: 'Dossier / Portfolio', placeholder: 'https://yourname.com' },
+                            { name: 'stackoverflow', label: 'StackOverflow Intel', placeholder: 'https://stackoverflow.com/...' },
+                        ].map((field) => (
+                            <div key={field.name} className="space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block ml-1">{field.label}</label>
+                                <div className="relative">
+                                    <input 
+                                        type="url" 
+                                        {...socialForm.register(field.name as keyof SocialLinksInput)} 
+                                        placeholder={field.placeholder} 
+                                        className={`w-full bg-white border rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-slate-200 focus:border-slate-800 outline-none transition-all placeholder:text-slate-300 ${
+                                            socialForm.formState.errors[field.name as keyof SocialLinksInput] ? 'border-rose-300 bg-rose-50/10' : 'border-slate-100'
+                                        }`} 
+                                    />
+                                    <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-200 group-hover:text-blue-500 transition-colors">
+                                        <LinkIcon size={16} />
+                                    </div>
+                                </div>
+                                {socialForm.formState.errors[field.name as keyof SocialLinksInput] && (
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mt-2 ml-1">{socialForm.formState.errors[field.name as keyof SocialLinksInput]?.message}</p>
+                                )}
+                            </div>
+                        ))}
                     </div>
 
-                    <div className="flex justify-end pt-4">
-                        <button type="submit" disabled={loadingSocial} className="px-8 py-3.5 bg-slate-800 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-slate-200 hover:bg-black transition-all flex items-center gap-2">
-                            {loadingSocial ? <Loader2 size={16} className="animate-spin" /> : <Save size={18} />} Sync Identity
+                    <div className="flex justify-end pt-4 border-t border-slate-200/50">
+                        <button 
+                            type="submit" 
+                            disabled={loadingSocial} 
+                            className="group/btn px-10 py-5 bg-slate-950 text-white rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-slate-900/40 hover:bg-black hover:scale-[1.02] active:scale-95 disabled:opacity-50 transition-all flex items-center gap-3"
+                        >
+                            {loadingSocial ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} className="group-hover/btn:rotate-12 transition-transform" />}
+                            {loadingSocial ? 'Processing...' : 'Sync Identity'}
                         </button>
                     </div>
                 </form>
