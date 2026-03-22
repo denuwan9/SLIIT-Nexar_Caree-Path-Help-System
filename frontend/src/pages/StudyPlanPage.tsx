@@ -84,6 +84,7 @@ const StudyPlanPage: React.FC = () => {
     const [viewMode, setViewMode] = useState<'builder' | 'plans' | 'schedule'>('builder');
     const [justGenerated, setJustGenerated] = useState(false);
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
+    const [titleError, setTitleError] = useState<string | null>(null);
 
     const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const clampToToday = (value: string) => {
@@ -330,6 +331,13 @@ const StudyPlanPage: React.FC = () => {
     };
 
     const handleCreatePlan = async () => {
+        if (!planInput.title.trim()) {
+            setTitleError('The title is required');
+            toast.error('Add a plan title');
+            return;
+        }
+        setTitleError(null);
+
         if (!planInput.examStartDate || !planInput.examEndDate) {
             toast.error('Exam start and end dates are required');
             return;
@@ -634,7 +642,11 @@ const StudyPlanPage: React.FC = () => {
                                                     className="input w-full"
                                                     placeholder="e.g., Semester 6 + Internship"
                                                     value={planInput.title}
-                                                    onChange={(e) => setPlanInput({ ...planInput, title: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const next = e.target.value;
+                                                        setPlanInput({ ...planInput, title: next });
+                                                        if (next.trim()) setTitleError(null);
+                                                    }}
                                                 />
                                                 <button
                                                     type="button"
@@ -644,7 +656,11 @@ const StudyPlanPage: React.FC = () => {
                                                     Quick fill
                                                 </button>
                                             </div>
-                                            <p className="text-[11px] text-slate-500">Keep it short so you can spot the right plan later.</p>
+                                            {titleError ? (
+                                                <p className="text-[11px] font-semibold text-red-600">The title is required</p>
+                                            ) : (
+                                                <p className="text-[11px] text-slate-500">Keep it short so you can spot the right plan later.</p>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold text-slate-600">Exam window</label>
