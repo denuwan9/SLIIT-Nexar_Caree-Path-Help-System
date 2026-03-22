@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Zap, CheckCircle2, ChevronRight, RefreshCcw, Bot, Terminal, Clock, Sparkles, Users } from 'lucide-react';
+import { Mic, Calendar, Zap, CheckCircle2, ChevronRight, RefreshCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // ─── Question Bank ─────────────────────────────────────────────────────────────
@@ -127,6 +127,7 @@ function generateQuestions(role: string, focusType: string, count: number): stri
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function MockInterviewPage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'ai' | 'real'>('ai');
   const [targetRole, setTargetRole] = useState('Full Stack Developer (MERN)');
   const [focus, setFocus] = useState('All');
   const [numQuestions, setNumQuestions] = useState(5);
@@ -164,274 +165,205 @@ export default function MockInterviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] font-main selection:bg-blue-100 selection:text-blue-900">
-      
-      {/* Immersive Header */}
-      {!isInterviewing && (
-        <div className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-10 sticky top-0 z-50 shadow-sm transition-all duration-300">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 max-w-7xl mx-auto">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-1">
-                  <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                  <div className="w-2 h-2 rounded-full bg-indigo-300 animate-pulse delay-75" />
-                  <div className="w-2 h-2 rounded-full bg-blue-100 animate-pulse delay-150" />
-                </div>
-                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.4em]">Simulator Neutralized</span>
-              </div>
-              
-              <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-[#0F172A] flex flex-wrap items-center gap-x-4">
-                Mock <span className="text-indigo-600">Simulator</span>
-              </h1>
-              <p className="text-slate-400 text-sm font-medium max-w-lg">
-                High-fidelity practice environment. Calibrate your performance across technical and behavioral benchmarks.
-              </p>
-            </div>
+    <div className="min-h-screen bg-slate-50 font-main">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200 px-8 py-6 sticky top-0 z-20 shadow-sm">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 mb-2">
+            <Mic className="text-cobalt-sliit" size={28} />
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">
+              Mock Interview
+            </h1>
+          </div>
+          <p className="text-slate-500 text-sm mb-6">
+            Practice with role-specific questions or book a real session with an interviewer.
+          </p>
 
-            <div className="flex p-1.5 bg-slate-100/50 rounded-[2rem] border border-slate-100 shadow-inner overflow-x-auto hide-scrollbar">
+          {!isInterviewing && (
+            <div className="flex gap-6 border-b border-slate-200">
+              <button
+                onClick={() => setActiveTab('ai')}
+                className={`pb-3 text-sm font-bold uppercase tracking-wider transition-colors relative ${
+                  activeTab === 'ai' ? 'text-cobalt-sliit' : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Mic size={16} /> AI Simulator
+                </div>
+                {activeTab === 'ai' && (
+                  <motion.div layoutId="activeTab" className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-cobalt-sliit" />
+                )}
+              </button>
               <button
                 onClick={() => navigate('/interviews')}
-                className="flex items-center gap-3 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all bg-white text-slate-400 border border-slate-100 hover:text-blue-600 hover:border-blue-100 hover:shadow-lg shadow-slate-100"
+                className={`pb-3 text-sm font-bold uppercase tracking-wider transition-colors relative ${
+                  activeTab === 'real' ? 'text-cobalt-sliit' : 'text-slate-400 hover:text-slate-600'
+                }`}
               >
-                <Calendar size={14} /> Book Human Interview
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} /> Book Real Session
+                </div>
               </button>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
-      <main className="max-w-7xl mx-auto p-6 md:p-12 pb-32">
+      <main className="max-w-4xl mx-auto p-4 md:p-8">
         <AnimatePresence mode="wait">
-          {!isInterviewing && (
-            <motion.div 
-              key="setup" 
-              initial={{ opacity: 0, y: 30 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.95 }} 
-              className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/50 border border-slate-50 max-w-4xl mx-auto overflow-hidden relative"
-            >
-              <div className="absolute top-0 right-0 w-80 h-80 bg-slate-50 rounded-bl-full pointer-events-none -z-0 opacity-40" />
-              
-              <div className="relative z-10">
-                <div className="bg-[#0F172A] p-10 md:p-14 text-white relative overflow-hidden">
-                  <div className="absolute top-[-50%] right-[-10%] w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-                  <div className="flex items-center gap-6 mb-6">
-                    <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/10 shadow-2xl">
-                       <Bot size={32} className="text-blue-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-3xl font-black tracking-tight uppercase">Simulation Architect</h2>
-                      <p className="text-blue-200/60 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Configure your performance benchmarks</p>
-                    </div>
-                  </div>
-                </div>
+          {activeTab === 'ai' && !isInterviewing && (
+            <motion.div key="setup" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 p-8 text-white relative overflow-hidden">
+                <div className="absolute top-[-50%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+                <h2 className="text-2xl font-black flex items-center gap-3">
+                  <Mic size={24} /> AI Mock Interview Simulator
+                </h2>
+                <p className="text-indigo-100 mt-2 text-sm font-medium">Practice with role-specific questions. Get instant feedback.</p>
+              </div>
 
-                <div className="p-10 md:p-14 space-y-12">
-                  <div className="grid md:grid-cols-2 gap-12">
-                     <div className="space-y-4">
-                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Target Occupation</label>
-                        <div className="relative">
-                          <select
-                            value={targetRole}
-                            onChange={(e) => setTargetRole(e.target.value)}
-                            className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-inner appearance-none"
-                          >
-                            {Object.keys(QUESTION_BANK).map(role => (
-                              <option key={role} value={role}>{role}</option>
-                            ))}
-                          </select>
-                          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                             <ChevronRight size={20} className="rotate-90" />
-                          </div>
-                        </div>
-                     </div>
-
-                     <div className="space-y-4">
-                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Question Volume: <span className="text-indigo-600">{numQuestions}</span></label>
-                        <div className="relative pt-4">
-                          <input
-                            type="range"
-                            min="1"
-                            max="10"
-                            value={numQuestions}
-                            onChange={(e) => setNumQuestions(parseInt(e.target.value))}
-                            className="w-full h-3 bg-slate-100 rounded-full appearance-none cursor-pointer accent-indigo-600 shadow-inner"
-                          />
-                          <div className="flex justify-between text-[10px] font-black text-slate-300 mt-4 uppercase tracking-widest">
-                            <span>Precision Strike (1)</span>
-                            <span>Endurance Run (10)</span>
-                          </div>
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Competency Focus Areas</label>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      {['All', 'Technical', 'Behavioral', 'Situational'].map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => setFocus(f)}
-                          className={`py-4 px-6 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] border-2 transition-all duration-500
-                            ${focus === f
-                              ? 'border-indigo-500 bg-[#0F172A] text-white shadow-xl shadow-slate-200'
-                              : 'border-slate-50 bg-[#F8FAFC] text-slate-400 hover:border-indigo-200 hover:text-indigo-600'
-                            }`}
-                        >
-                          {f}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="pt-10 border-t border-slate-50 flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-slate-300">
-                       <Terminal size={18} />
-                       <p className="text-[10px] font-black uppercase tracking-widest">Awaiting Command Initialization</p>
-                    </div>
-                    <button 
-                      onClick={handleStartInterview}
-                      className="px-12 py-5 bg-[#0F172A] text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-600 hover:scale-[1.05] active:scale-95 transition-all duration-500 shadow-2xl shadow-indigo-100 flex items-center gap-3"
+              <div className="p-8 space-y-8">
+                {/* Target Role */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-slate-900 mb-2">Select Target Role <span className="text-rose-500">*</span></label>
+                  <div className="relative">
+                    <select
+                      value={targetRole}
+                      onChange={(e) => setTargetRole(e.target.value)}
+                      className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-cobalt-sliit focus:ring-1 focus:ring-cobalt-sliit transition-all"
                     >
-                      <Zap size={18} className="text-blue-400" /> Initialize Simulation
-                    </button>
+                      {Object.keys(QUESTION_BANK).map(role => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
                   </div>
                 </div>
+
+                {/* Interview Focus */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-slate-900 mb-3">Interview Focus</label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {['All', 'Technical', 'Behavioral', 'Situational'].map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setFocus(f)}
+                        className={`py-2 px-4 rounded-xl text-sm font-bold border-2 transition-all ${
+                          focus === f
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                            : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Number of Questions */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-slate-900 mb-4">
+                    Number of Questions: <span className="text-indigo-600">{numQuestions}</span>
+                  </label>
+                  <div className="relative pt-1 pb-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={numQuestions}
+                      onChange={(e) => setNumQuestions(parseInt(e.target.value))}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+                    <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-2 px-1">
+                      <span>1</span>
+                      <span>10</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <button 
+                  onClick={handleStartInterview}
+                  className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-sm hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
+                >
+                  <Zap size={18} fill="currentColor" /> Start Interview
+                </button>
               </div>
             </motion.div>
           )}
 
-          {/* ACTIVE SIMULATION STATE */}
+          {/* ACTIVE INTERVIEW STATE */}
           {isInterviewing && !isFinished && (
-            <motion.div 
-              key="interview" 
-              initial={{ opacity: 0, scale: 0.9, y: 50 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              className="bg-white rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(15,23,42,0.15)] border border-slate-50 overflow-hidden min-h-[650px] flex flex-col max-w-6xl mx-auto relative"
-            >
-              {/* Simulator HUD */}
-              <div className="bg-[#0F172A] px-10 py-8 flex items-center justify-between text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-500/5 to-transparent pointer-events-none" />
-                <div className="flex items-center gap-6 relative z-10">
-                  <div className="flex items-center gap-3 bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.8)]" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-400">Recording</span>
-                  </div>
-                  <div className="h-8 w-[1px] bg-slate-800" />
-                  <div className="flex items-center gap-3 text-slate-400">
-                     <Clock size={16} />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Nexus Uptime: Active</span>
-                  </div>
+            <motion.div key="interview" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
+              {/* Header */}
+              <div className="bg-slate-900 px-6 py-4 flex items-center justify-between text-white border-b-4 border-indigo-500">
+                <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                  Recording
                 </div>
-                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 relative z-10">
-                  Sequence <span className="text-white text-lg ml-2">{currentQIndex + 1}</span> <span className="mx-2 text-slate-700">/</span> {questions.length}
+                <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                  Question <span className="text-white">{currentQIndex + 1}</span> of {questions.length}
                 </div>
               </div>
 
-              {/* Simulation Environment */}
-              <div className="flex-1 p-10 md:p-20 flex flex-col relative w-full">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:32px_32px] opacity-30 pointer-events-none" />
-                
-                <motion.div key={currentQIndex} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="relative z-10 w-full flex flex-col flex-grow">
-                   <div className="max-w-4xl mx-auto w-full text-center mb-16">
-                     <div className="flex items-center justify-center gap-3 mb-6">
-                       <span className="h-[1px] w-12 bg-slate-100" />
-                       <p className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.4em]">Simulator Prompt</p>
-                       <span className="h-[1px] w-12 bg-slate-100" />
-                     </div>
-                     <h3 className="text-3xl md:text-5xl font-black text-[#0F172A] leading-tight tracking-tight px-4">
+              {/* Question Body */}
+              <div className="flex-1 p-8 sm:p-12 flex flex-col relative max-w-5xl mx-auto w-full">
+                <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] pointer-events-none" />
+                <motion.div key={currentQIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="z-10 w-full flex flex-col flex-grow items-center">
+                   <div className="max-w-3xl mb-8 text-center">
+                     <p className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] mb-4">Prompt</p>
+                     <h3 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
                        {questions[currentQIndex]}
                      </h3>
                    </div>
                    
-                   <div className="flex-grow w-full max-w-4xl mx-auto flex flex-col relative group">
-                     <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-50 to-blue-50 rounded-[2.5rem] opacity-0 group-focus-within:opacity-100 transition-opacity duration-700 -z-0" />
-                     
-                     <div className="relative z-10 flex flex-col flex-grow">
-                        <div className="flex justify-between items-center mb-4 px-2">
-                           <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">User Input Node</label>
-                           <div className="flex gap-2">
-                              <span className="w-2 h-2 rounded-full bg-slate-100" />
-                              <span className="w-2 h-2 rounded-full bg-slate-100" />
-                              <span className="w-2 h-2 rounded-full bg-slate-100" />
-                           </div>
-                        </div>
-                        <textarea
-                          autoFocus
-                          value={answers[currentQIndex] || ''}
-                          onChange={(e) => {
-                            const newAnswers = [...answers];
-                            newAnswers[currentQIndex] = e.target.value;
-                            setAnswers(newAnswers);
-                          }}
-                          placeholder="Initialize response sequence..."
-                          className="w-full flex-grow min-h-[250px] p-10 text-lg md:text-xl border-2 border-slate-50 bg-white/80 backdrop-blur-xl rounded-[2.2rem] resize-none focus:outline-none focus:border-indigo-400 focus:shadow-2xl focus:shadow-indigo-100/50 shadow-xl shadow-slate-100/50 transition-all text-[#0F172A] placeholder:text-slate-200 font-bold leading-relaxed scrollbar-hide"
-                        />
-                     </div>
+                   <div className="w-full max-w-3xl flex-grow flex flex-col">
+                     <label className="text-left text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1">Your Answer</label>
+                     <textarea
+                       autoFocus
+                       value={answers[currentQIndex] || ''}
+                       onChange={(e) => {
+                         const newAnswers = [...answers];
+                         newAnswers[currentQIndex] = e.target.value;
+                         setAnswers(newAnswers);
+                       }}
+                       placeholder="Type your answer here..."
+                       className="w-full flex-grow min-h-[160px] p-5 text-sm md:text-base border-2 border-slate-200 rounded-xl resize-none focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 bg-white/80 backdrop-blur-sm transition-all text-slate-800 placeholder:text-slate-400 font-medium"
+                     />
                    </div>
                 </motion.div>
               </div>
 
-              {/* Simulator controls */}
-              <div className="px-10 py-10 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center z-10">
-                <button 
-                  onClick={handleEndInterview} 
-                  className="px-8 py-4 text-[10px] font-black text-slate-400 hover:text-rose-600 uppercase tracking-[0.3em] transition-all hover:bg-rose-50 rounded-2xl border border-transparent hover:border-rose-100"
-                >
-                  Terminate Sequence
+              {/* Footer Controls */}
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-between items-center z-10">
+                <button onClick={handleEndInterview} className="text-xs font-bold text-slate-400 hover:text-rose-500 uppercase tracking-widest transition-colors py-2 px-4 rounded-lg hover:bg-rose-50">
+                  End Early
                 </button>
-                <div className="flex gap-4">
-                  <button 
-                    onClick={handleNextQuestion} 
-                    className="px-12 py-5 bg-[#0F172A] text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-3 hover:bg-indigo-600 hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-slate-300"
-                  >
-                    {currentQIndex === questions.length - 1 ? 'Execute Evaluation' : 'Next Sequence'} <ChevronRight size={18} />
-                  </button>
-                </div>
+                <button onClick={handleNextQuestion} className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-md">
+                  {currentQIndex === questions.length - 1 ? 'Finish Interview' : 'Next Question'} <ChevronRight size={16} />
+                </button>
               </div>
             </motion.div>
           )}
 
           {/* FINISHED STATE */}
           {isFinished && (
-            <motion.div 
-              key="finished" 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200 border border-slate-100 p-16 md:p-24 text-center max-w-4xl mx-auto relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-blue-500" />
-              <div className="relative z-10">
-                <div className="w-28 h-28 bg-emerald-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-xl shadow-emerald-100 border border-emerald-100">
-                  <CheckCircle2 size={56} className="text-emerald-500" />
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black text-[#0F172A] uppercase tracking-tight mb-4">Simulation Complete</h2>
-                <div className="flex items-center justify-center gap-4 mb-10">
-                   <div className="px-5 py-2 bg-blue-50 rounded-xl text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 flex items-center gap-2">
-                     <Sparkles size={14} /> Performance Logged
-                   </div>
-                   <div className="px-5 py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-100 flex items-center gap-2">
-                     <Users size={14} /> Analytics Syncing
-                   </div>
-                </div>
-                <p className="text-slate-400 mb-12 max-w-md mx-auto text-lg font-medium leading-relaxed">
-                  Sequence benchmarks have been recorded. Maintain simulation frequency to optimize your professional throughput.
-                </p>
-                
-                <div className="flex flex-col sm:flex-row justify-center gap-6">
-                  <button 
-                    onClick={handleEndInterview} 
-                    className="px-12 py-5 bg-[#0F172A] text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-600 hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-slate-200"
-                  >
-                    <RefreshCcw size={18} /> Re-Initialize
-                  </button>
-                  <button 
-                    onClick={() => navigate('/interviews')} 
-                    className="px-12 py-5 bg-white border-2 border-slate-100 text-[#0F172A] rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:border-blue-500 hover:text-blue-600 transition-all flex items-center justify-center gap-2"
-                  >
-                    Return to Nexus <ChevronRight size={18} />
-                  </button>
-                </div>
+            <motion.div key="finished" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-12 text-center">
+              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 size={40} className="text-emerald-500" />
+              </div>
+              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight mb-2">Interview Complete</h2>
+              <p className="text-slate-500 mb-8 max-w-md mx-auto text-sm">
+                Awesome effort! You have successfully completed the mock interview simulation. Keep practicing to hone your skills.
+              </p>
+              
+              <div className="flex justify-center gap-4">
+                <button onClick={handleEndInterview} className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-md">
+                  <RefreshCcw size={16} /> Try Again
+                </button>
               </div>
             </motion.div>
           )}

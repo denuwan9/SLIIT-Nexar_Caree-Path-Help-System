@@ -8,7 +8,6 @@ interface AuthContextType extends AuthState {
     signup: (data: SignupInput) => Promise<any>;
     logout: () => void;
     checkAuth: () => Promise<void>;
-    updateUser: (data: Partial<import('../../types/auth').User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,22 +93,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const updateUser = (data: Partial<import('../../types/auth').User>) => {
-        setState((prev) => {
-            if (!prev.user) return prev;
-            return {
-                ...prev,
-                user: { ...prev.user, ...data },
-            };
-        });
-    };
-
     useEffect(() => {
         checkAuth();
     }, []);
 
     return (
-        <AuthContext.Provider value={{ ...state, login, signup, logout, checkAuth, updateUser }}>
+        <AuthContext.Provider value={{ ...state, login, signup, logout, checkAuth }}>
             {children}
         </AuthContext.Provider>
     );

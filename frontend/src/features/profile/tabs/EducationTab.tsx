@@ -76,33 +76,30 @@ const EducationTab: React.FC<Props> = ({ profile, setProfile }) => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-amber-500 flex items-center justify-center text-white">
-                            <BookOpen size={20} />
-                        </div> 
-                        Education
+                    <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+                        <BookOpen size={20} className="text-amber-500" /> Education
                     </h2>
-                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">Academic background, degrees, and scholarly achievements.</p>
+                    <p className="text-sm font-bold text-slate-500 mt-1">Degrees, diplomas, and certifications.</p>
                 </div>
                 {!isAdding && (
-                    <button onClick={() => setIsAdding(true)} className="px-6 py-3 bg-amber-600 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-amber-200 hover:bg-amber-700 transition-all flex items-center gap-2">
-                        <Plus size={18} /> Add Entry
+                    <button onClick={() => setIsAdding(true)} className="btn-primary py-2 px-4 shadow-sm text-sm flex items-center gap-2 bg-amber-600 hover:bg-amber-700 ring-amber-500">
+                        <Plus size={16} /> Add Entry
                     </button>
                 )}
             </div>
 
             {error && (
-                <div className="flex items-center gap-3 p-5 rounded-3xl bg-rose-50 text-rose-600 border border-rose-100 text-[13px] font-bold">
-                    <AlertCircle size={18} /> {error}
+                <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 text-red-600 border border-red-100 text-sm font-bold">
+                    <AlertCircle size={16} /> {error}
                 </div>
             )}
 
             {isAdding && (
-                <form onSubmit={handleSubmit(onSubmit)} className="p-8 rounded-[2.5rem] bg-slate-50/50 border border-slate-200/60 animate-in slide-in-from-top-4 duration-500 shadow-inner">
-                    <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-xl font-black text-[#0F172A] tracking-tight">Add Academic Background</h3>
-                        <button type="button" onClick={() => setIsAdding(false)} className="p-2 text-[#94A3B8] hover:text-[#0F172A] hover:bg-white rounded-xl transition-all">
-                            <X size={24} />
+                <form onSubmit={handleSubmit(onSubmit)} className="p-6 rounded-3xl bg-slate-50 border border-slate-200 animate-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-black text-slate-900">Add Academic Background</h3>
+                        <button type="button" onClick={() => setIsAdding(false)} className="p-1 text-slate-400 hover:text-slate-900 transition-colors">
+                            <X size={20} />
                         </button>
                     </div>
 
@@ -208,57 +205,41 @@ const EducationTab: React.FC<Props> = ({ profile, setProfile }) => {
                 </form>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {profile.education?.length === 0 && !isAdding && (
-                    <div className="text-center py-20 px-8 rounded-[2.5rem] border-2 border-dashed border-slate-100 bg-slate-50/50 relative overflow-hidden group">
-                        <div className="relative z-10 flex flex-col items-center">
-                            <div className="w-16 h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center text-[#94A3B8] mb-6 group-hover:scale-110 transition-transform">
-                                <GraduationCap size={32} />
-                            </div>
-                            <h3 className="text-xl font-black text-[#0F172A] tracking-tight">Academic Journey</h3>
-                            <p className="text-sm font-medium text-[#64748B] mt-2 max-w-sm mx-auto leading-relaxed">
-                                Your degrees and certifications are the foundation of your career roadmap. Add them to help the AI better understand your expertise level.
-                            </p>
-                            <button onClick={() => setIsAdding(true)} className="mt-8 px-8 py-3.5 bg-amber-600 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-amber-200 hover:bg-amber-700 transition-all">
-                                Add Education
-                            </button>
-                        </div>
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-[100px] opacity-30 -z-0"></div>
+                    <div className="text-center py-12 px-4 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50">
+                        <GraduationCap size={32} className="mx-auto text-slate-300 mb-3" />
+                        <h3 className="text-sm font-black text-slate-600">No education added</h3>
+                        <p className="text-xs font-bold text-slate-400 mt-1 max-w-sm mx-auto">Add your degrees and academic achievements so AI can tailor roles to your level.</p>
+                        <button onClick={() => setIsAdding(true)} className="btn-secondary mt-4 py-2 px-4 text-xs">Add Education</button>
                     </div>
                 )}
 
                 {([...profile.education || []]).sort((a, b) => b.startYear - a.startYear).map(edu => (
-                    <div key={edu._id} className="group relative p-8 rounded-[2.5rem] border border-slate-100 bg-white hover:border-amber-200 hover:shadow-xl hover:shadow-amber-100/30 transition-all duration-500">
-                        <button onClick={() => handleRemove(edu._id!)} className="absolute top-6 right-6 p-2.5 text-[#94A3B8] hover:text-rose-500 hover:bg-rose-50 rounded-2xl opacity-0 group-hover:opacity-100 transition-all">
-                            <X size={18} />
+                    <div key={edu._id} className="group relative p-6 rounded-3xl border border-slate-100 bg-white hover:border-amber-200 hover:shadow-md hover:shadow-amber-500/5 transition-all">
+                        <button onClick={() => handleRemove(edu._id!)} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
+                            <X size={16} />
                         </button>
 
-                        <div className="flex flex-col sm:flex-row gap-6 items-start">
-                            <div className="w-16 h-16 rounded-[1.5rem] bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0 group-hover:bg-amber-600 group-hover:text-white transition-all duration-500">
-                                <GraduationCap size={28} />
+                        <div className="flex gap-4 items-start">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 border border-amber-100 flex items-center justify-center shrink-0">
+                                <GraduationCap size={24} />
                             </div>
-                            <div className="flex-1 space-y-4">
+                            <div className="flex-1 space-y-1.5 pr-8">
                                 <div>
-                                    <h3 className="text-2xl font-black text-[#0F172A] tracking-tight leading-tight">{edu.institution}</h3>
-                                    <p className="text-lg font-bold text-[#475569]">{edu.degree} in {edu.field}</p>
+                                    <h3 className="text-lg font-black text-slate-900 leading-tight">{edu.institution}</h3>
+                                    <p className="text-sm font-bold text-slate-700">{edu.degree} in {edu.field}</p>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] font-bold text-[#94A3B8]">
-                                    <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100/50">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-slate-500 pt-1">
+                                    <span className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50">
                                         {edu.startYear} — {edu.isCurrent ? 'Present' : edu.endYear}
                                     </span>
-                                    {edu.gpa && (
-                                        <span className="text-amber-600 bg-amber-50 px-4 py-1.5 rounded-xl border border-amber-100 font-black">
-                                            GPA: {edu.gpa.toFixed(2)}
-                                        </span>
-                                    )}
+                                    {edu.gpa && <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded font-black">GPA: {edu.gpa.toFixed(2)}</span>}
                                 </div>
                                 {edu.description && (
-                                    <div className="relative">
-                                        <p className="text-[14px] font-medium text-[#64748B] leading-relaxed whitespace-pre-wrap pl-4 border-l-2 border-slate-100 group-hover:border-amber-400 transition-colors">
-                                            {edu.description}
-                                        </p>
-                                    </div>
+                                    <p className="text-sm font-medium text-slate-600 leading-relaxed pt-2">
+                                        {edu.description}
+                                    </p>
                                 )}
                             </div>
                         </div>

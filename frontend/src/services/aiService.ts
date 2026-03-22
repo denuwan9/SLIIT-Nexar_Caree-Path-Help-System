@@ -3,7 +3,6 @@
  * Axios service functions for all 4 AI backend endpoints.
  */
 
-import axios from 'axios';
 import api from '../api/axios';
 import type { ChatMessage, CareerRoadmap, SkillGapResult, ResumeAnalysisResult } from '../types/ai';
 
@@ -42,14 +41,10 @@ export const extractTextFromFile = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('resume', file);
     
-    const res = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/ai/extract-text`, 
-        formData,
-        {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-        }
-    );
+    const res = await api.post('/ai/extract-text', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
     return res.data.data.text as string;
 };
