@@ -247,7 +247,16 @@ const studyPlanValidator = [
         .optional()
         .isFloat({ min: 1, max: 16 }).withMessage('Must be between 1 and 16 hours'),
     body('subjects')
-        .custom((val) => {
+        .custom((val, { req }) => {
+            const hasDocs = Array.isArray(req.files) && req.files.length > 0;
+
+            // If documents are uploaded, allow empty subjects (AI will extract topics).
+            if (hasDocs) {
+                if (Array.isArray(val) && val.length === 0) return true;
+                if (val === undefined || val === null || val === '' || val === '[]') return true;
+            }
+
+            // Otherwise, require a non-empty array.
             if (Array.isArray(val)) return val.length > 0;
             try {
                 const parsed = JSON.parse(val);
@@ -258,6 +267,7 @@ const studyPlanValidator = [
             }
         }),
     body('subjects.*.name')
+        .optional()
         .notEmpty().withMessage('Each subject must have a name'),
 ];
 

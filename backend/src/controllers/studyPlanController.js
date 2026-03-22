@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const OpenAI = require('openai');
+const pdfParse = require('pdf-parse');
 const StudyPlan = require('../models/StudyPlan');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
@@ -30,10 +31,10 @@ const computeStudyHoursPerDay = ({ availableHoursPerDay, internshipStartTime, in
 /**
  * Get the Groq AI client using environment key
  */
-const getGroqClient = () => {
-    const apiKey = process.env.GROQ_API_KEY;
+const getGroqClient = (apiKeyOverride) => {
+    const apiKey = apiKeyOverride || process.env.GROQ_API_KEY;
     if (!apiKey) {
-        logger.warn('[StudyPlan] GROQ_API_KEY not set. AI features will not work.');
+        logger.warn('[StudyPlan] GROQ_API_KEY not set and no aiKey provided. AI features will not work.');
         return null;
     }
     return new OpenAI({
@@ -42,25 +43,43 @@ const getGroqClient = () => {
     });
 };
 
-const readDocumentsToText = (files = []) => {
-    const blobs = [];
-    for (const file of files) {
-        const fullPath = file.path || path.join(process.cwd(), file.destination || '', file.filename || '');
-        const mime = file.mimetype || '';
-        const ext = path.extname(file.originalname || '').toLowerCase();
+const readDocumentsToText = async (files = []) => {
+    const blobs = await Promise.all(
+        files.map(async (file) => {
+            const fullPath = file.path || path.join(process.cwd(), file.destination || '', file.filename || '');
+            const mime = file.mimetype || '';
+            const ext = path.extname(file.originalname || '').toLowerCase();
 
-        const canRead = mime.startsWith('text/') || ['.txt', '.md', '.json', '.csv'].includes(ext);
-        if (canRead && fs.existsSync(fullPath)) {
-            try {
-                const content = fs.readFileSync(fullPath, 'utf8');
-                blobs.push(`FILE: ${file.originalname}\n${content}`);
-            } catch (err) {
-                blobs.push(`FILE: ${file.originalname} (unreadable: ${err.message})`);
+            if (!fs.existsSync(fullPath)) {
+                return `FILE: ${file.originalname} (missing on disk)`;
             }
-        } else {
-            blobs.push(`FILE: ${file.originalname} (binary/unsupported type — PDF, image, or other)`);
-        }
-    }
+
+            const isPlainText = mime.startsWith('text/') || ['.txt', '.md', '.json', '.csv'].includes(ext);
+
+            if (ext === '.pdf') {
+                try {
+                    const buffer = fs.readFileSync(fullPath);
+                    const parsed = await pdfParse(buffer);
+                    const body = parsed.text || '(no text extracted)';
+                    return `FILE: ${file.originalname}\n${body}`;
+                } catch (err) {
+                    return `FILE: ${file.originalname} (pdf unreadable: ${err.message})`;
+                }
+            }
+
+            if (isPlainText) {
+                try {
+                    const content = fs.readFileSync(fullPath, 'utf8');
+                    return `FILE: ${file.originalname}\n${content}`;
+                } catch (err) {
+                    return `FILE: ${file.originalname} (unreadable: ${err.message})`;
+                }
+            }
+
+            return `FILE: ${file.originalname} (binary/unsupported type — ${ext || mime || 'unknown'})`;
+        })
+    );
+
     return blobs.join('\n\n');
 };
 
@@ -70,31 +89,39 @@ const readDocumentsToText = (files = []) => {
  * Uses Groq AI to deeply analyze documents and generate a comprehensive study plan.
  * Produces detailed daily sessions with specific tasks, instructions, and study techniques.
  */
-const generateAIStudyPlan = async ({ subjects, docsText, hoursPerDay, totalDays, examStartDate, examEndDate, internshipStartTime, internshipEndTime }) => {
-    const client = getGroqClient();
+const generateAIStudyPlan = async ({ subjects, docsText, hoursPerDay, totalDays, examStartDate, examEndDate, internshipStartTime, internshipEndTime, aiKey }) => {
+    const client = getGroqClient(aiKey);
     if (!client) return null;
 
     const subjectsJson = JSON.stringify(subjects, null, 2);
 
-    const systemPrompt = `You are an expert academic study planner for university students. Your job is to analyze uploaded study materials and create a detailed, practical study plan.
+    const systemPrompt = `You are an intelligent academic study planner.
+
+A student has uploaded study materials (PDFs, lecture notes, or documents). Your job is to:
+1) Carefully analyze the uploaded material content and file names. The documents are the source of truth.
+2) Identify main topics, subtopics, key concepts, and important definitions/formulas/theories from the documents.
+3) Break the content into SMALL, ACTIONABLE STUDY TASKS that are document-specific.
 
 IMPORTANT RULES:
-1. Analyze the uploaded documents carefully. Extract actual chapter names, lecture topics, key concepts, and exam-relevant content from the documents.
-2. If documents are binary/unreadable (PDF, images), still use the FILE NAMES to infer the subject and topics.
-3. Create SPECIFIC study tasks — not generic ones. Each task should reference actual topics from the documents.
-4. Schedule study blocks OUTSIDE of internship hours (${internshipStartTime || 'N/A'} to ${internshipEndTime || 'N/A'}).
-5. Vary task types: reading, summarizing, practice problems, revision flashcards, self-testing, mind-mapping, past paper practice.
-6. Give each task a clear, actionable instruction telling the student exactly what to do.
-7. Prioritize harder subjects and topics closer to exam dates.
-8. Include break recommendations and study technique tips.
+- Do NOT generate generic tasks like "read" or "study". Tasks must be specific to the document content.
+- Tasks must feel like real work (e.g., "Understand TCP 3-way handshake", not "Read networking").
+- Avoid repeating the same type of task; mix reading, practice, summarizing, testing, revising.
+- No duplicate tasks; keep logical order (basic → advanced); break large topics into smaller steps.
+- If documents are binary/unreadable (PDF, images), still use FILE NAMES to infer subjects/topics.
+- Ignore subject names that do not appear in the documents; align subjects/topics to the docs instead.
+- Schedule study blocks OUTSIDE internship hours (${internshipStartTime || 'N/A'} to ${internshipEndTime || 'N/A'}).
+- Vary task types: reading, summarizing, practice problems, revision flashcards, self-testing, mind-mapping, past paper practice.
+- Give each task a clear, actionable instruction telling the student exactly what to do.
+- Prioritize harder subjects and topics closer to exam dates.
+- Include break recommendations and study technique tips.
 
 Return ONLY valid JSON. No markdown, no explanation.`;
 
-    const userPrompt = `SUBJECTS:
-${subjectsJson}
-
-UPLOADED DOCUMENTS (analyze these for topics):
+    const userPrompt = `UPLOADED DOCUMENTS (analyze and extract all subjects/topics from these):
 ${docsText.slice(0, 15000)}
+
+ORIGINAL SUBJECT HINTS (use only if they match document-derived topics):
+${subjectsJson}
 
 CONSTRAINTS:
 - Exam period: ${examStartDate} to ${examEndDate} (${totalDays} days)
@@ -371,7 +398,8 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
         const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
         // Read docs and generate AI-powered study plan
-        const docsText = readDocumentsToText(req.files || []);
+        const docsText = await readDocumentsToText(req.files || []);
+        const aiKey = typeof req.body.aiKey === 'string' ? req.body.aiKey.trim() : undefined;
 
         // Try AI-powered generation first
         const aiResult = await generateAIStudyPlan({
@@ -383,6 +411,7 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
             examEndDate,
             internshipStartTime,
             internshipEndTime,
+            aiKey,
         });
 
         let sessions, aiSummary, enrichedSubjects;
