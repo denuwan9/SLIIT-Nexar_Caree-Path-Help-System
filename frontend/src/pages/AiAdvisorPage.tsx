@@ -61,29 +61,6 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id'];
 
-// ── Tab Button ────────────────────────────────────────────────────────────
-const TabButton: React.FC<{
-    tab: typeof TABS[number];
-    isActive: boolean;
-    onClick: () => void;
-}> = ({ tab, isActive, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`
-            group flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider
-            transition-all duration-300 whitespace-nowrap
-            ${isActive
-                ? `bg-gradient-to-r ${tab.gradient} text-white shadow-lg scale-[1.02]`
-                : 'text-slate-500 hover:bg-white/60 hover:text-slate-800 bg-white/30'
-            }
-        `}
-    >
-        <tab.icon size={14} className={!isActive ? 'opacity-60' : ''} />
-        <span className="hidden sm:inline">{tab.label}</span>
-        <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
-    </button>
-);
-
 // ── Page Component ────────────────────────────────────────────────────────
 const AiAdvisorPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabId>('chat');
@@ -92,58 +69,57 @@ const AiAdvisorPage: React.FC = () => {
     const ActiveComponent = current.component;
 
     return (
-        <div className="space-y-5 pb-8">
-            {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-3 mb-1.5">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg">
-                            <Sparkles size={18} className="text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-black text-slate-900 tracking-tight">Nexar AI Advisor</h1>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Powered by Groq AI — Profile Loaded</p>
+        <div className="w-full pb-10 text-[#0F172A] font-sans">
+            <div className="flex flex-col gap-8">
+                
+                {/* ─── Premium Page Header ─── */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100/50 relative overflow-hidden group">
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-4 mb-3">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0F172A] to-slate-700 flex items-center justify-center shadow-xl shadow-slate-200 group-hover:scale-110 transition-transform duration-500">
+                                <Sparkles size={22} className="text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-black text-[#0F172A] tracking-tight">Nexar AI Intelligence</h1>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600">Enterprise Grok-1.5 Layer — Sync Active</p>
+                                </div>
                             </div>
                         </div>
+                        <p className="text-[13px] font-bold text-[#64748B] ml-16 max-w-2xl leading-relaxed">
+                            {current.description}. Our AI benchmarks your profile against global standards to provide hyper-personalised career strategy.
+                        </p>
                     </div>
-                    <p className="text-sm text-slate-400 ml-12">{current.description}</p>
+
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-bl-[120px] -z-0 opacity-40 group-hover:scale-110 transition-transform duration-700"></div>
                 </div>
 
-                {/* Feature Cards (compact) */}
-                <div className="hidden lg:flex gap-2">
-                    {TABS.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl transition-all duration-300 text-center
-                                ${tab.id === activeTab
-                                    ? `bg-gradient-to-br ${tab.gradient} text-white shadow-md`
-                                    : 'bg-white/40 text-slate-500 hover:bg-white/60 border border-white/50'
-                                }`}
-                        >
-                            <tab.icon size={16} />
-                            <span className="text-[9px] font-black uppercase tracking-widest leading-none">{tab.label.split(' ')[0]}</span>
-                        </button>
-                    ))}
+                {/* ─── Premium Horizontal Navigation ─── */}
+                <div className="bg-white rounded-[2rem] p-2 shadow-sm border border-slate-100/50 flex flex-wrap gap-1.5 overflow-x-auto scrollbar-hide">
+                    {TABS.map((tab) => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-3 px-6 py-4 rounded-2xl text-[13px] font-black uppercase tracking-widest transition-all duration-400 whitespace-nowrap ${isActive
+                                    ? 'bg-[#0F172A] text-white shadow-xl shadow-slate-200 scale-[1.02]'
+                                    : 'text-[#64748B] hover:bg-slate-50 hover:text-[#0F172A]'
+                                    }`}
+                            >
+                                <Icon size={16} className={isActive ? 'text-white' : 'text-[#94A3B8]'} />
+                                <span>{tab.label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
-            </div>
 
-            {/* Tab Navigation (mobile & tablet) */}
-            <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide bg-white/30 backdrop-blur-sm p-1.5 rounded-2xl border border-white/50">
-                {TABS.map(tab => (
-                    <TabButton
-                        key={tab.id}
-                        tab={tab}
-                        isActive={activeTab === tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                    />
-                ))}
-            </div>
-
-                <div key={activeTab} className="animate-in fade-in duration-300">
-                <ActiveComponent />
+                {/* ─── Content Area ─── */}
+                <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <ActiveComponent />
+                </div>
             </div>
         </div>
     );

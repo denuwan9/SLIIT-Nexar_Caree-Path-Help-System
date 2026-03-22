@@ -100,17 +100,33 @@ export const softSkillSchema = z.object({
 });
 
 export const careerGoalsSchema = z.object({
-  targetRoles: z.string().optional().or(z.literal('')),
-  preferredIndustries: z.string().optional().or(z.literal('')),
-  careerObjective: z.string().max(600, 'Career objective too long').optional().or(z.literal('')),
+  targetRoles: z.string().min(1, 'At least one target role is required').max(200, 'Too many roles specified'),
+  preferredIndustries: z.string().min(1, 'At least one industry is required').max(200, 'Too many industries specified'),
+  careerObjective: z.string()
+    .min(10, 'Career objective should be at least 10 characters')
+    .max(600, 'Career objective must be under 600 characters'),
 });
 
 export const socialLinksSchema = z.object({
-  linkedin: z.string().url('Invalid URL format').optional().or(z.literal('')),
-  github: z.string().url('Invalid URL format').optional().or(z.literal('')),
-  portfolio: z.string().url('Invalid URL format').optional().or(z.literal('')),
-  twitter: z.string().url('Invalid URL format').optional().or(z.literal('')),
-  stackoverflow: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  linkedin: z.string()
+    .url('Invalid URL format')
+    .regex(/linkedin\.com/, 'Must be a valid LinkedIn URL')
+    .optional().or(z.literal('')),
+  github: z.string()
+    .url('Invalid URL format')
+    .regex(/github\.com/, 'Must be a valid GitHub URL')
+    .optional().or(z.literal('')),
+  portfolio: z.string()
+    .url('Invalid URL format')
+    .optional().or(z.literal('')),
+  twitter: z.string()
+    .url('Invalid URL format')
+    .regex(/(twitter\.com|x\.com)/, 'Must be a valid Twitter/X URL')
+    .optional().or(z.literal('')),
+  stackoverflow: z.string()
+    .url('Invalid URL format')
+    .regex(/stackoverflow\.com/, 'Must be a valid StackOverflow URL')
+    .optional().or(z.literal('')),
 });
 
 export type ProfileInfoInput = z.infer<typeof profileInfoSchema>;

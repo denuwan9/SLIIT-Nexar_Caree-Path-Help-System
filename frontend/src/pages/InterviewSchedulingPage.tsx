@@ -4,7 +4,7 @@ import { useAuth } from '../components/auth/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Clock, Users, CheckCircle2, Bot, ChevronRight,
-  Search, Plus, Trash2, Briefcase, BarChart3, Settings2
+  Search, Plus, Trash2, Briefcase, BarChart3, Settings2, AlertCircle, RotateCcw, Zap
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
@@ -14,25 +14,29 @@ import {
 import type { IInterviewEvent, IMyBooking, IEventStats, ICompany, ISlot } from '../services/interviewService';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// UTILITY COMPONENTS
+// PREMIUM UI COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap
-      ${active ? 'bg-white text-cobalt-sliit shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+    className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-500 whitespace-nowrap
+      ${active 
+        ? 'bg-[#0F172A] text-white shadow-xl shadow-slate-200 translate-y-[-2px]' 
+        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100/80 hover:translate-y-[-1px]'}`}
   >
-    <Icon size={14} className={active ? "text-cobalt-sliit" : ""} />
+    <Icon size={14} className={active ? "text-blue-400" : ""} />
     {label}
   </button>
 );
 
 const StatCard = ({ title, value, icon: Icon, color }: any) => (
-  <div className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col items-center text-center">
-    <div className={`p-3 rounded-xl ${color} mb-3`}><Icon size={24} /></div>
-    <span className="text-3xl font-black text-slate-900 leading-none mb-1">{value}</span>
-    <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">{title}</span>
+  <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-100 transition-all duration-500 group flex flex-col items-center text-center">
+    <div className={`p-4 rounded-2xl ${color} mb-4 group-hover:scale-110 transition-transform duration-500 shadow-lg shadow-current/10`}>
+      <Icon size={24} />
+    </div>
+    <span className="text-4xl font-black text-[#0F172A] leading-none mb-2 tracking-tight">{value}</span>
+    <span className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400 group-hover:text-slate-600 transition-colors uppercase">{title}</span>
   </div>
 );
 
@@ -82,65 +86,92 @@ function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
     }
   };
 
-  if (loading) return <div className="text-center p-12 text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">Scanning Nexus...</div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center p-20 gap-4">
+      <div className="w-12 h-12 border-4 border-[#0F172A]/5 border-t-[#0F172A] rounded-full animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Syncing Nexus Events...</p>
+    </div>
+  );
 
   if (selectedEvent) {
     return (
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto space-y-6">
-        <button onClick={() => { setSelectedEvent(null); setBookingCompany(null); setBookingSlot(null); }} className="text-xs font-bold text-slate-500 hover:text-cobalt-sliit uppercase flex items-center gap-1 transition-colors">
-          &larr; Back to Events
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto space-y-8 pb-20">
+        <button onClick={() => { setSelectedEvent(null); setBookingCompany(null); setBookingSlot(null); }} className="group flex items-center gap-3 text-[11px] font-black text-slate-400 hover:text-[#0F172A] uppercase tracking-widest transition-all">
+          <div className="w-8 h-8 rounded-full border border-slate-100 flex items-center justify-center group-hover:border-slate-300 transition-colors">
+            <ChevronRight size={14} className="rotate-180" />
+          </div>
+          Back to Events Timeline
         </button>
 
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+        <div className="bg-white p-10 md:p-14 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-bl-full -z-0 opacity-50" />
+          
           <div className="relative z-10">
-             <div className="flex items-start justify-between mb-6">
-               <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-2 py-1 bg-cobalt-sliit/10 text-cobalt-sliit text-[10px] font-black uppercase rounded block w-fit tracking-wider">
+             <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12">
+               <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-3 mb-6">
+                    <span className="px-4 py-1.5 bg-[#0F172A] text-white text-[10px] font-black uppercase rounded-xl block w-fit tracking-[0.2em] shadow-lg shadow-slate-200">
                       {selectedEvent.eventType.replace('-', ' ')}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border border-slate-200 px-2 py-1 rounded">
-                      {new Date(selectedEvent.eventDate).toLocaleDateString()}
+                    <span className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-4 py-1.5 rounded-xl border border-slate-100">
+                      <Calendar size={12} className="text-blue-500" />
+                      {new Date(selectedEvent.eventDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{selectedEvent.title}</h2>
-                  <p className="text-slate-500 text-sm mt-2">{selectedEvent.description || 'No description provided.'}</p>
+                  <h2 className="text-4xl md:text-5xl font-black text-[#0F172A] uppercase tracking-tight leading-[1.1] mb-6">{selectedEvent.title}</h2>
+                  <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-2xl">{selectedEvent.description || 'Access unique professional opportunities through this curated interview event.'}</p>
                </div>
-               <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Max Bookings</p>
-                  <p className="text-3xl font-black text-slate-900 leading-none">{selectedEvent.maxBookingsPerStudent}</p>
+               <div className="bg-[#0F172A] p-8 rounded-[2rem] text-center min-w-[180px] shadow-2xl shadow-slate-300 transform hover:scale-105 transition-transform duration-500">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-3">Slot Allowance</p>
+                  <p className="text-5xl font-black text-white leading-none mb-2">{selectedEvent.maxBookingsPerStudent}</p>
+                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Per Student</p>
                </div>
              </div>
 
              {selectedEvent.eventType === 'career-day' && !bookingCompany ? (
-               <div className="mt-8">
-                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-4">Step 1: Select a Company</h3>
-                 <div className="grid md:grid-cols-2 gap-4">
+               <div className="mt-12 animate-in fade-in slide-in-from-bottom-5 duration-700">
+                 <div className="flex items-center gap-3 mb-8">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                      <Users size={18} className="text-[#0F172A]" />
+                    </div>
+                    <h3 className="text-xl font-black text-[#0F172A] uppercase tracking-tight">Step 1: Select Your Target Organization</h3>
+                 </div>
+                 <div className="grid md:grid-cols-2 gap-6">
                    {selectedEvent.companies?.map(comp => (
-                     <div key={comp._id} onClick={() => setBookingCompany(comp)} className="p-4 border-2 border-slate-100 rounded-xl cursor-pointer hover:border-cobalt-sliit transition-colors hover:shadow-md group/card">
-                       <div className="flex justify-between items-start mb-2">
-                         <h4 className="font-black text-slate-800 uppercase">{comp.name}</h4>
-                         <span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded block">
-                           {comp.slots.filter(s => s.status === 'available').length} SLOTS
-                         </span>
+                     <div key={comp._id} onClick={() => setBookingCompany(comp)} className="p-6 bg-white border border-slate-100 rounded-[2rem] cursor-pointer hover:border-[#0F172A] hover:shadow-xl hover:shadow-slate-100 transition-all duration-500 group/card relative overflow-hidden">
+                       <div className="relative z-10">
+                        <div className="flex justify-between items-start mb-4">
+                          <h4 className="text-lg font-black text-[#0F172A] uppercase tracking-tight group-hover/card:text-blue-600 transition-colors">{comp.name}</h4>
+                          <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg border border-emerald-100 uppercase tracking-widest">
+                            {comp.slots.filter(s => s.status === 'available').length} Available
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-500 font-medium line-clamp-2 leading-relaxed">{comp.description || 'No description provided by organization.'}</p>
                        </div>
-                       <p className="text-xs text-slate-500 line-clamp-2">{comp.description}</p>
+                       <div className="absolute bottom-0 right-0 w-16 h-16 bg-slate-50 rounded-tl-full opacity-50 group-hover/card:scale-110 transition-transform" />
                      </div>
                    ))}
                  </div>
                </div>
              ) : (
-               <div className="mt-8">
-                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
-                      {selectedEvent.eventType === 'career-day' ? `Step 2: Select Time for ${bookingCompany?.name}` : 'Select Time Slot'}
-                    </h3>
+               <div className="mt-12 animate-in fade-in slide-in-from-bottom-5 duration-700">
+                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                        <Clock size={18} className="text-[#0F172A]" />
+                      </div>
+                      <h3 className="text-xl font-black text-[#0F172A] uppercase tracking-tight">
+                        {selectedEvent.eventType === 'career-day' ? `Step 2: Reserve Time with ${bookingCompany?.name}` : 'Reserve Your Interview Slot'}
+                      </h3>
+                    </div>
                     {selectedEvent.eventType === 'career-day' && (
-                      <button onClick={() => { setBookingCompany(null); setBookingSlot(null); }} className="text-xs text-slate-500 hover:text-rose-500 underline font-semibold">Change Company</button>
+                      <button onClick={() => { setBookingCompany(null); setBookingSlot(null); }} className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-[0.2em] flex items-center gap-2 transition-colors transition-all hover:translate-x-[-4px]">
+                        <RotateCcw size={12} /> Reset Organization
+                      </button>
                     )}
                  </div>
 
-                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                    {(selectedEvent.eventType === 'career-day' ? bookingCompany?.slots : selectedEvent.slots)?.map(slot => {
                      const isAvailable = slot.status === 'available';
                      const isSelected = bookingSlot?._id === slot._id;
@@ -149,14 +180,14 @@ function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
                          key={slot._id}
                          disabled={!isAvailable}
                          onClick={() => setBookingSlot(slot)}
-                         className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1
-                           ${!isAvailable ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed' :
-                             isSelected ? 'border-cobalt-sliit bg-cobalt-sliit/5 text-cobalt-sliit scale-105 shadow-md' :
-                             'border-slate-200 hover:border-cobalt-sliit hover:text-cobalt-sliit bg-white'}`}
+                         className={`p-5 rounded-2xl border-2 transition-all duration-500 flex flex-col items-center justify-center gap-2 group
+                           ${!isAvailable ? 'border-slate-50 bg-slate-50 opacity-40 cursor-not-allowed' :
+                             isSelected ? 'border-[#0F172A] bg-[#0F172A] text-white scale-105 shadow-xl shadow-slate-300' :
+                             'border-slate-100 hover:border-blue-400 hover:shadow-lg bg-white'}`}
                        >
-                         <Clock size={16} className={isSelected ? 'text-cobalt-sliit' : 'text-slate-400'} />
-                         <span className="text-xs font-bold">{new Date(slot.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                         <span className={`text-[9px] uppercase font-black ${isAvailable ? 'text-emerald-500' : 'text-slate-400'}`}>
+                         <Clock size={16} className={isSelected ? 'text-blue-400' : 'text-slate-300 group-hover:text-[#0F172A] transition-colors'} />
+                         <span className="text-sm font-black tracking-tight">{new Date(slot.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                         <span className={`text-[9px] font-black uppercase tracking-widest ${isAvailable ? (isSelected ? 'text-blue-200' : 'text-emerald-500') : 'text-slate-400'}`}>
                            {slot.status}
                          </span>
                        </button>
@@ -165,20 +196,25 @@ function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
                  </div>
 
                  {bookingSlot && (
-                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-8 p-6 bg-slate-50 rounded-xl border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
-                     <div>
-                       <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Confirm Selection</p>
-                       <p className="font-black text-slate-900 text-lg">
-                         {new Date(bookingSlot.startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {new Date(bookingSlot.endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                       </p>
-                       {bookingCompany && <p className="text-sm font-semibold text-cobalt-sliit mt-1">with {bookingCompany.name}</p>}
+                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-12 p-8 bg-[#F8FAFC] rounded-[2.5rem] border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl shadow-slate-100">
+                     <div className="flex items-center gap-6">
+                       <div className="w-16 h-16 rounded-[1.5rem] bg-white border border-slate-100 flex items-center justify-center shadow-sm">
+                          <CheckCircle2 size={32} className="text-[#0F172A]" />
+                       </div>
+                       <div>
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Selected Schedule</p>
+                         <p className="font-black text-[#0F172A] text-2xl tracking-tight">
+                           {new Date(bookingSlot.startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} — {new Date(bookingSlot.endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                         </p>
+                         {bookingCompany && <p className="text-sm font-bold text-blue-600 mt-1 uppercase tracking-wider">with {bookingCompany.name}</p>}
+                       </div>
                      </div>
                      <button
                        onClick={handleBook}
                        disabled={bookingProgress}
-                       className="px-8 py-3 bg-cobalt-sliit text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-colors shadow-lg disabled:opacity-50 w-full md:w-auto"
+                       className="px-10 py-5 bg-[#0F172A] text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] hover:bg-slate-800 hover:scale-105 hover:shadow-2xl active:scale-95 transition-all duration-500 shadow-xl shadow-slate-200 disabled:opacity-50 w-full md:w-auto"
                      >
-                       {bookingProgress ? 'Processing...' : 'Confirm Booking'}
+                       {bookingProgress ? 'Finalizing...' : 'Initialize Booking'}
                      </button>
                    </motion.div>
                  )}
@@ -191,45 +227,53 @@ function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
       {events.length === 0 ? (
-        <div className="text-center p-12 bg-white rounded-2xl border border-slate-200">
-          <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">No Events Currently</h3>
-          <p className="text-slate-500 text-sm mt-2">Check back later for upcoming career fairs or interview sessions.</p>
+        <div className="text-center p-20 bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-50">
+          <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+            <Briefcase className="w-10 h-10 text-slate-300" />
+          </div>
+          <h3 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight mb-2">Nexus Offline</h3>
+          <p className="text-slate-500 font-medium max-w-sm mx-auto">No upcoming recruitment windows or professional events detected at this time.</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {events.map((ev) => (
-            <div key={ev._id} className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col hover:border-cobalt-sliit hover:shadow-xl transition-all group">
-              <div className="flex justify-between items-start mb-4">
-                <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-wider rounded ${ev.eventType === 'career-day' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                  {ev.eventType.replace('-', ' ')}
-                </span>
-                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                  <Calendar size={12} /> {new Date(ev.eventDate).toLocaleDateString()}
-                </span>
-              </div>
-              <h3 className="text-lg font-black text-slate-900 leading-tight mb-2 group-hover:text-cobalt-sliit transition-colors line-clamp-2">{ev.title}</h3>
-              <p className="text-slate-500 text-xs line-clamp-2 mb-4 flex-grow">{ev.description || 'No description available.'}</p>
+            <div key={ev._id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 flex flex-col hover:border-blue-100 hover:shadow-2xl hover:shadow-slate-100 transition-all duration-500 group relative overflow-hidden h-full">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full -z-0 opacity-40 group-hover:scale-125 transition-transform duration-700" />
               
-              <div className="grid grid-cols-2 gap-2 mb-6">
-                <div className="bg-slate-50 p-2 rounded-lg text-center border border-slate-100">
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">Time</p>
-                  <p className="text-xs font-black text-slate-800">{ev.startTime} - {ev.endTime}</p>
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-8">
+                  <span className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-sm ${ev.eventType === 'career-day' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+                    {ev.eventType.replace('-', ' ')}
+                  </span>
+                  <span className="text-[10px] font-black text-slate-400 flex items-center gap-2 uppercase tracking-widest bg-slate-50/50 px-3 py-1 rounded-lg">
+                    <Calendar size={12} className="text-blue-400" /> 
+                    {new Date(ev.eventDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                  </span>
                 </div>
-                <div className="bg-emerald-50 p-2 rounded-lg text-center border border-emerald-100">
-                  <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-widest mb-1">Available</p>
-                  <p className="text-xs font-black text-emerald-700">{ev.availableSlots} Slots</p>
+                
+                <h3 className="text-2xl font-black text-[#0F172A] leading-tight mb-4 group-hover:text-blue-600 transition-colors line-clamp-2 uppercase tracking-tight">{ev.title}</h3>
+                <p className="text-slate-500 text-sm font-medium line-clamp-2 mb-8 flex-grow leading-relaxed">{ev.description || 'Access unique professional opportunities through Nexus.'}</p>
+                
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                  <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50 group-hover:bg-white transition-colors">
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em] mb-2">Window</p>
+                    <p className="text-xs font-black text-[#0F172A]">{ev.startTime} — {ev.endTime}</p>
+                  </div>
+                  <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50 group-hover:bg-white transition-colors">
+                    <p className="text-[9px] text-blue-400 font-black uppercase tracking-[0.2em] mb-2">Availability</p>
+                    <p className="text-xs font-black text-blue-700">{ev.availableSlots} Slots Left</p>
+                  </div>
                 </div>
-              </div>
 
-              <button
-                onClick={() => setSelectedEvent(ev)}
-                className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-xs uppercase hover:bg-cobalt-sliit transition-colors tracking-wider"
-              >
-                View Details
-              </button>
+                <button
+                  onClick={() => setSelectedEvent(ev)}
+                  className="w-full py-4 bg-[#0F172A] text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] hover:bg-blue-600 hover:scale-[1.02] active:scale-95 transition-all duration-500 shadow-xl shadow-slate-200"
+                >
+                  Enter Nexus Detail
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -259,56 +303,70 @@ function StudentMyBookings() {
     if (!window.confirm('Are you sure you want to cancel this booking?')) return;
     try {
       await cancelBooking(eventId, slotId, companyId || undefined);
-      toast.success('Booking cancelled.');
+      toast.success('Your interview slot has been released.');
       fetchBookings();
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to cancel');
     }
   };
 
-  if (loading) return <div className="text-center p-12 text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">Scanning Nexus...</div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center p-20 gap-4">
+      <div className="w-12 h-12 border-4 border-[#0F172A]/5 border-t-[#0F172A] rounded-full animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Syncing Scheduled Slots...</p>
+    </div>
+  );
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
       {bookings.length === 0 ? (
-        <div className="text-center p-12 bg-white rounded-2xl border border-slate-200">
-          <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">No Bookings Yet</h3>
-          <p className="text-slate-500 text-sm mt-2">Browse events and book your interview slots to see them here.</p>
+        <div className="text-center p-20 bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-50">
+          <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+            <Calendar className="w-10 h-10 text-slate-300" />
+          </div>
+          <h3 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight mb-2">Portfolio Clear</h3>
+          <p className="text-slate-500 font-medium max-w-sm mx-auto">You haven't reserved any interview windows yet. Head to Browse Events to start.</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {bookings.map((b) => (
-            <div key={b.slotId} className="bg-white p-6 rounded-2xl border border-slate-200 flex flex-col shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-cobalt-sliit/5 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform" />
+            <div key={b.slotId} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 flex flex-col shadow-sm hover:shadow-2xl hover:shadow-slate-100 transition-all duration-500 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform -z-0 opacity-40" />
               
-              <div className="flex justify-between items-start mb-4 relative z-10">
-                <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-wider rounded flex items-center gap-1">
-                  <CheckCircle2 size={10} /> {b.slotStatus}
-                </span>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 border border-slate-100 rounded uppercase tracking-wider">
-                  {new Date(b.eventDate).toLocaleDateString()}
-                </span>
-              </div>
-              
-              <h3 className="text-sm font-black text-slate-900 mb-1 leading-tight">{b.eventTitle}</h3>
-              <p className="text-xs text-slate-500 mb-4">{b.companyName}</p>
-              
-              <div className="mt-auto p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-slate-700">
-                  <Clock size={16} className="text-cobalt-sliit" />
-                  <span className="text-sm font-black">
-                    {new Date(b.startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {new Date(b.endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-6">
+                  <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl flex items-center gap-2 border border-emerald-100 shadow-sm">
+                    <CheckCircle2 size={12} /> {b.slotStatus}
+                  </span>
+                  <span className="text-[10px] font-black text-slate-400 bg-slate-50/50 px-3 py-1 border border-slate-100/50 rounded-lg uppercase tracking-widest">
+                    {new Date(b.eventDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
                   </span>
                 </div>
-              </div>
+                
+                <h3 className="text-xl font-black text-[#0F172A] mb-2 leading-tight uppercase tracking-tight group-hover:text-blue-600 transition-colors">{b.eventTitle}</h3>
+                <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-8">{b.companyName || 'General Session'}</p>
+                
+                <div className="mt-auto p-5 bg-[#F8FAFC] rounded-2xl border border-slate-100 flex items-center justify-between mb-8 shadow-inner">
+                  <div className="flex items-center gap-3 text-[#0F172A]">
+                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-100">
+                      <Clock size={18} className="text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Time Slot</p>
+                      <p className="text-sm font-black tracking-tight">
+                        {new Date(b.startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} — {new Date(b.endTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-              <button
-                onClick={() => handleCancel(b.eventId, b.slotId, b.companyId)}
-                className="w-full py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-rose-500 hover:text-white transition-colors"
-              >
-                Cancel Booking
-              </button>
+                <button
+                  onClick={() => handleCancel(b.eventId, b.slotId, b.companyId)}
+                  className="w-full py-4 bg-white border border-rose-100 text-rose-500 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all duration-500 shadow-sm active:scale-95"
+                >
+                  Terminate Booking
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -328,21 +386,69 @@ function AdminDashboard() {
     getEventStats().then(setStats).catch(() => toast.error('Failed to load stats'));
   }, []);
 
-  if (!stats) return <div className="text-center p-12 text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">Syncing...</div>;
+  if (!stats) return (
+    <div className="flex flex-col items-center justify-center p-20 gap-4">
+      <div className="w-12 h-12 border-4 border-[#0F172A]/5 border-t-blue-500 rounded-full animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Aggregating Nexus Analytics...</p>
+    </div>
+  );
+
+  const utilization = Math.round((stats.totalBookings / (stats.totalSlots || 1)) * 100);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard title="Total Events" value={stats.totalEvents} icon={Calendar} color="bg-blue-50 text-blue-600" />
-          <StatCard title="Published" value={stats.publishedEvents} icon={CheckCircle2} color="bg-emerald-50 text-emerald-600" />
-          <StatCard title="Total Slots" value={stats.totalSlots} icon={Clock} color="bg-amber-50 text-amber-600" />
-          <StatCard title="Bookings" value={stats.totalBookings} icon={Users} color="bg-purple-50 text-purple-600" />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
+       <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <StatCard title="Nexus Events" value={stats.totalEvents} icon={Calendar} color="bg-blue-50 text-blue-600" />
+          <StatCard title="Live Windows" value={stats.publishedEvents} icon={CheckCircle2} color="bg-emerald-50 text-emerald-600" />
+          <StatCard title="Total Capacity" value={stats.totalSlots} icon={Clock} color="bg-amber-50 text-amber-600" />
+          <StatCard title="Active Reservations" value={stats.totalBookings} icon={Users} color="bg-purple-50 text-purple-600" />
        </div>
-       <div className="bg-white p-8 rounded-2xl border border-slate-200">
-          <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4">System Overview</h2>
-          <p className="text-sm text-slate-500">
-            Current system load indicates {Math.round((stats.totalBookings / (stats.totalSlots || 1)) * 100)}% slot utilization across all configured events.
-          </p>
+
+       <div className="bg-white p-10 md:p-14 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-bl-full pointer-events-none opacity-50 -z-0" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-[#0F172A] flex items-center justify-center shadow-xl shadow-slate-300">
+                <BarChart3 size={24} className="text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight">Ecosystem Intelligence</h2>
+                <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Real-time recruitment throughput</p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div>
+                <p className="text-slate-500 text-lg font-medium leading-relaxed mb-8">
+                  Nexus is currently operating at <span className="text-[#0F172A] font-black">{utilization}% utilization</span>. 
+                  Optimization protocols suggest opening more slots if utilization exceeds 85% to ensure student accessibility.
+                </p>
+                <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden shadow-inner">
+                  <motion.div 
+                    initial={{ width: 0 }} 
+                    animate={{ width: `${utilization}%` }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    className={`h-full rounded-full shadow-lg ${utilization > 80 ? 'bg-rose-500' : 'bg-blue-600'}`}
+                  />
+                </div>
+              </div>
+              <div className="bg-[#F8FAFC] p-8 rounded-[2rem] border border-slate-100 flex flex-col items-center justify-center text-center">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Core Suggestion</p>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-lg ${utilization < 30 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                  {utilization < 30 ? <AlertCircle size={32} /> : <CheckCircle2 size={32} />}
+                </div>
+                <h4 className="text-lg font-black text-[#0F172A] uppercase tracking-tight mb-2">
+                  {utilization < 30 ? 'Awaiting Momentum' : 'Healthy Engagement'}
+                </h4>
+                <p className="text-xs text-slate-500 font-medium">
+                  {utilization < 30 
+                    ? 'Encourage students to browse active events through Nexus notifications.' 
+                    : 'The ecosystem is showing robust interaction patterns today.'}
+                </p>
+              </div>
+            </div>
+          </div>
        </div>
     </motion.div>
   );
@@ -350,6 +456,7 @@ function AdminDashboard() {
 
 function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [eventType, setEventType] = useState<'career' | 'normal'>('career');
   
   const [formData, setFormData] = useState({
@@ -375,39 +482,59 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     setLoading(true);
 
-    try {
-      // 1. Required field validations
-      if (!formData.title.trim()) return toast.error('Event title is required');
-      if (!formData.eventDate) return toast.error('Event date is required');
+    const nameRegex = /^[A-Za-z\s]+$/;
 
-      // 2. Date cannot be in the past
+    try {
+      let currentErrors: {[key: string]: string} = {};
+
+      if (!formData.title.trim()) currentErrors.title = 'Event title is required';
+      else if (!nameRegex.test(formData.title.trim())) currentErrors.title = 'Operational Title can only contain characters';
+      
+      if (!formData.eventDate) currentErrors.eventDate = 'Event date is required';
+
+      if (Object.keys(currentErrors).length > 0) {
+        setErrors(currentErrors);
+        setLoading(false);
+        return toast.error('Please correct errors in the form');
+      }
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const selectedDate = new Date(formData.eventDate);
       if (selectedDate < today) return toast.error('Event date cannot be in the past');
 
-      // 3 & 4. Specific validations for Event Types
       if (eventType === 'career') {
         if (!formData.startTime || !formData.endTime) return toast.error('Start and End times are required');
-        
-        // End time must be after start time
-        if (formData.endTime <= formData.startTime) {
-          return toast.error('End time must be after start time');
-        }
-
-        // 5. Company count must be between 2–20
+        if (formData.endTime <= formData.startTime) return toast.error('End time must be after start time');
         if (companies.length < 2) return toast.error('At least 2 companies required');
         if (companies.length > 20) return toast.error('Maximum 20 companies allowed');
 
-        // 6. Prevent duplicate company names
-        const companyNames = companies.map(c => c.name.trim());
-        if (companyNames.some(name => !name)) return toast.error('All companies must have names');
+        let companyErrors: {[key: string]: string} = {};
+        const companyNames = companies.map((c, idx) => {
+          const name = c.name.trim();
+          if (!name) companyErrors[`company_${idx}_name`] = 'Organization name required';
+          else if (!nameRegex.test(name)) companyErrors[`company_${idx}_name`] = 'Characters only';
+          
+          if (!c.description.trim()) companyErrors[`company_${idx}_desc`] = 'Description required';
+          
+          return name;
+        });
+
+        if (Object.keys(companyErrors).length > 0) {
+          setErrors(prev => ({ ...prev, ...companyErrors }));
+          setLoading(false);
+          return toast.error('Missing organization details');
+        }
         
         const uniqueNames = new Set(companyNames.map(n => n.toLowerCase()));
-        if (uniqueNames.size !== companyNames.length) {
-          return toast.error('Duplicate company names are not allowed');
+        if (uniqueNames.size !== companyNames.length) return toast.error('Duplicate company names are not allowed');
+
+        if (companies.some(c => c.interviewers.some(i => !i.name.trim() || !i.expertise.trim()))) {
+          setLoading(false);
+          return toast.error('All interviewer details must be completed');
         }
 
         const payloadCompanies = companies.map(c => ({
@@ -417,10 +544,19 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
         }));
 
         await createCareerDayEvent({ ...formData, companies: payloadCompanies });
-        toast.success('Career Day event created (Draft)');
+        toast.success('Nexus Event Initialized (Draft)');
       } else {
-        if (!formData.startTime) return toast.error('Start time is required');
-        if (!formData.companyName.trim()) return toast.error('Company name is required');
+        let normalErrors: {[key: string]: string} = {};
+        if (!formData.startTime) normalErrors.startTime = 'Start time required';
+        if (!formData.companyName.trim()) normalErrors.companyName = 'Company name required';
+        else if (!nameRegex.test(formData.companyName.trim())) normalErrors.companyName = 'Characters only';
+        
+        if (Object.keys(normalErrors).length > 0) {
+          setErrors(prev => ({ ...prev, ...normalErrors }));
+          setLoading(false);
+          return toast.error('Form incomplete');
+        }
+
         if (formData.maxCandidates < 1) return toast.error('Max candidates must be at least 1');
 
         await createNormalDayEvent({
@@ -432,172 +568,227 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
           slotDurationMinutes: formData.slotDurationMinutes,
           maxCandidates: formData.maxCandidates
         });
-        toast.success('Event created (Draft)');
+        toast.success('Quick Event Initialized (Draft)');
       }
       onCreated();
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to create event');
+      toast.error(e.response?.data?.message || 'Failed to initialize event');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-slate-200 rounded-2xl shadow-sm max-w-4xl mx-auto overflow-hidden">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-slate-50 rounded-[3rem] shadow-2xl shadow-slate-200/50 max-w-5xl mx-auto overflow-hidden relative">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-bl-full -z-0 opacity-40" />
       
-      {/* Header aligned with UI screenshot */}
-      <div className="p-8 border-b border-slate-100">
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Create New Event</h2>
-        <p className="text-slate-500 text-sm mt-1">Fill in all required fields. Time slots are auto-generated after creation.</p>
-      </div>
+      <div className="relative z-10">
+        <div className="p-10 md:p-14 border-b border-slate-50 bg-[#F8FAFC]/50 backdrop-blur-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#0F172A] flex items-center justify-center shadow-xl shadow-slate-300">
+              <Plus size={24} className="text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black text-[#0F172A] tracking-tight uppercase">Event Architect</h2>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Configure recruitment infrastructure</p>
+            </div>
+          </div>
+        </div>
 
-      <form onSubmit={handleSubmit} className="p-8 space-y-8">
-        
-        {/* Top Grid */}
-        <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
-           
-           {/* Event Type */}
-           <div className="md:col-span-2">
-             <label className="block text-xs font-black text-slate-900 mb-2">Event Type *</label>
-             <select 
-               value={eventType} onChange={(e) => setEventType(e.target.value as any)}
-               className="w-full md:w-1/2 appearance-none bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cobalt-sliit focus:ring-1 focus:ring-cobalt-sliit"
-             >
-               <option value="career">🏢 Career Day (Multi-Company)</option>
-               <option value="normal">⚡ Normal Day (Single Company)</option>
-             </select>
-           </div>
-
-           <div>
-             <label className="block text-xs font-black text-slate-900 mb-2">Event Title *</label>
-             <input required type="text" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g., Spring Tech Hiring Drive 2026" />
-           </div>
-
-           <div>
-             <label className="block text-xs font-black text-slate-900 mb-2">Event Date *</label>
-             <input required type="date" min={new Date().toISOString().split('T')[0]} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.eventDate} onChange={e => setFormData({...formData, eventDate: e.target.value})} />
-           </div>
-
-           <div>
-             <label className="block text-xs font-black text-slate-900 mb-2">Start Time *</label>
-             <div className="relative">
-               <input required type="time" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
-             </div>
-           </div>
-
-           {eventType === 'normal' ? (
-             <div>
-               <label className="block text-xs font-black text-slate-900 mb-2">Company Name *</label>
-               <input required type="text" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="e.g., Amazon, Meta" />
-             </div>
-           ) : (
-             <div>
-               <label className="block text-xs font-black text-slate-900 mb-2">End Time *</label>
-               <div className="relative">
-                 <input required type="time" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} />
+        <form onSubmit={handleSubmit} className="p-10 md:p-14 space-y-12">
+          
+          <div className="grid md:grid-cols-2 gap-x-12 gap-y-10">
+             
+             <div className="md:col-span-2">
+               <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Recruitment Protocol</label>
+               <div className="flex gap-4">
+                  {['career', 'normal'].map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setEventType(type as any)}
+                      className={`flex-1 py-4 px-6 rounded-2xl border-2 transition-all duration-500 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3
+                        ${eventType === type 
+                          ? 'bg-[#0F172A] border-[#0F172A] text-white shadow-xl shadow-slate-200' 
+                          : 'bg-white border-slate-100 text-slate-400 hover:border-blue-200 hover:text-blue-600'}`}
+                    >
+                      {type === 'career' ? <Briefcase size={16} /> : <Zap size={16} />}
+                      {type === 'career' ? 'Career Day' : 'Normal Day'}
+                    </button>
+                  ))}
                </div>
              </div>
-           )}
 
-           <div>
-             <label className="block text-xs font-black text-slate-900 mb-2">Slot Duration (minutes) *</label>
-             <select className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.slotDurationMinutes} onChange={e => setFormData({...formData, slotDurationMinutes: parseInt(e.target.value)})}>
-                <option value={15}>15 min — Quick</option>
-                <option value={30}>30 min — Standard</option>
-                <option value={45}>45 min — Extended</option>
-                <option value={60}>60 min — Deep Dive</option>
-             </select>
-           </div>
-
-           {eventType === 'career' ? (
-             <div className="md:col-span-1">
-               <label className="block text-xs font-black text-slate-900 mb-2">Max Interview Attempts Per Student *</label>
-               <input required type="number" min="1" max="5" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.maxBookingsPerStudent} onChange={e => setFormData({...formData, maxBookingsPerStudent: parseInt(e.target.value)})} />
-               <p className="text-[10px] text-slate-400 mt-2">How many different companies a student can book (1-5)</p>
+             <div className="md:col-span-2 space-y-2">
+               <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Operational Title</label>
+               <input 
+                 required type="text" 
+                 className={`w-full bg-[#F8FAFC] border-2 rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner ${errors.title ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`} 
+                 value={formData.title} 
+                 onChange={e => {
+                   setFormData({...formData, title: e.target.value});
+                   if (errors.title) setErrors(prev => { const n = {...prev}; delete n.title; return n; });
+                 }} 
+                 placeholder="e.g., NEXUS SPRING DRIVE 2026" 
+               />
+               {errors.title && <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-2 flex items-center gap-1"><AlertCircle size={10} /> {errors.title}</p>}
              </div>
-           ) : (
-             <div className="md:col-span-1">
-               <label className="block text-xs font-black text-slate-900 mb-2">Max Candidates (Cap) *</label>
-               <input required type="number" min="1" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-cobalt-sliit" value={formData.maxCandidates} onChange={e => setFormData({...formData, maxCandidates: parseInt(e.target.value)})} />
-               <p className="text-[10px] text-slate-400 mt-2">Maximum students allowed to book</p>
+
+             <div className="space-y-2">
+               <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Scheduled Date</label>
+               <input 
+                 required type="date" 
+                 min={new Date().toISOString().split('T')[0]} 
+                 className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner" 
+                 value={formData.eventDate} onChange={e => setFormData({...formData, eventDate: e.target.value})} 
+               />
              </div>
-           )}
-        </div>
 
-        {/* Company Array for Career Day */}
-        {eventType === 'career' && (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mt-6">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-lg font-black text-slate-900 tracking-tight">Companies & Interviewers</h3>
-                <p className="text-xs text-slate-500">Minimum 2, Maximum 20 companies</p>
-              </div>
-              <span className="px-3 py-1 bg-rose-50 text-rose-500 font-bold text-xs rounded-full">
-                {companies.length} / 20
-              </span>
-            </div>
-
-            <div className="space-y-6">
-              {companies.map((c, i) => (
-                <div key={i} className="bg-white border border-slate-200 p-6 rounded-xl relative group hover:border-cobalt-sliit/50 transition-colors">
-                  {companies.length > 2 && (
-                    <button type="button" onClick={() => setCompanies(companies.filter((_, idx) => idx !== i))} className="absolute top-4 right-4 text-slate-300 hover:text-rose-500 transition-colors">
-                      <Trash2 size={18} />
-                    </button>
+             <div className="space-y-2">
+               <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Deployment Window</label>
+               <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    required type="time" 
+                    className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner" 
+                    value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} 
+                  />
+                  {eventType === 'career' ? (
+                    <input 
+                      required type="time" 
+                      className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner" 
+                      value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} 
+                    />
+                  ) : (
+                    <div className="bg-slate-50 rounded-2xl flex items-center justify-center text-[10px] font-black text-slate-300 uppercase tracking-widest border-2 border-transparent">
+                      Auto-Ending
+                    </div>
                   )}
-                  
-                  <h4 className="text-xs font-black text-slate-900 mb-4">Company {i + 1}</h4>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-500 mb-1">Company Name *</label>
-                      <input required placeholder="e.g., Google, Amazon, Meta" type="text" className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-cobalt-sliit" value={c.name} onChange={e => { const updated = [...companies]; updated[i].name = e.target.value; setCompanies(updated); }} />
-                    </div>
+               </div>
+             </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-500 mb-2 mt-4">Interviewers</label>
-                      <div className="space-y-3">
-                        {c.interviewers.map((inv, iIdx) => (
-                          <div key={iIdx} className="grid grid-cols-2 gap-3">
-                            <input 
-                              required
-                              placeholder="Interviewer Name *" type="text" 
-                              className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-cobalt-sliit" 
-                              value={inv.name} onChange={e => updateInterviewer(i, iIdx, 'name', e.target.value)} 
-                            />
-                            <input 
-                              required
-                              placeholder="Expertise (e.g., React) *" type="text" 
-                              className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-cobalt-sliit" 
-                              value={inv.expertise} onChange={e => updateInterviewer(i, iIdx, 'expertise', e.target.value)} 
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      <button type="button" onClick={() => addInterviewer(i)} className="text-xs font-bold text-cobalt-sliit mt-3 bg-blue-50 px-3 py-1.5 rounded-lg border border-dashed border-cobalt-sliit/30 hover:bg-blue-100 transition-colors">
-                        + Add Interviewer
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+             {eventType === 'normal' && (
+               <div className="md:col-span-1 space-y-2">
+                 <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Host Organization</label>
+                 <input 
+                   required type="text" 
+                   className={`w-full bg-[#F8FAFC] border-2 rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner ${errors.companyName ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`} 
+                   value={formData.companyName} 
+                   onChange={e => {
+                     setFormData({...formData, companyName: e.target.value});
+                     if (errors.companyName) setErrors(prev => { const n = {...prev}; delete n.companyName; return n; });
+                   }} 
+                   placeholder="e.g., GLOBAL DYNAMICS" 
+                 />
+                 {errors.companyName && <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-2 flex items-center gap-1"><AlertCircle size={10} /> {errors.companyName}</p>}
+               </div>
+             )}
 
-            {companies.length < 20 && (
-              <button type="button" onClick={() => setCompanies([...companies, { name: '', description: '', interviewers: [{name: '', expertise: ''}] }])} className="w-full py-3 mt-6 border-2 border-dashed border-slate-200 rounded-xl text-sm font-bold text-slate-500 hover:border-cobalt-sliit hover:text-cobalt-sliit transition-colors">
-                + Add Another Company
-              </button>
-            )}
+             <div className="space-y-2">
+               <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Slot Quantization</label>
+               <select className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner appearance-none" value={formData.slotDurationMinutes} onChange={e => setFormData({...formData, slotDurationMinutes: parseInt(e.target.value)})}>
+                  <option value={15}>15 MIN — BLITZ</option>
+                  <option value={30}>30 MIN — STANDARD</option>
+                  <option value={45}>45 MIN — EXTENDED</option>
+                  <option value={60}>60 MIN — DEEP DIVE</option>
+               </select>
+             </div>
+
+             <div className="space-y-2">
+               <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                 {eventType === 'career' ? 'Concurrency Limit' : 'Reservation Cap'}
+               </label>
+               <input required type="number" min="1" max={eventType === 'career' ? 5 : 500} className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner" value={eventType === 'career' ? formData.maxBookingsPerStudent : formData.maxCandidates} onChange={e => setFormData({...formData, [eventType === 'career' ? 'maxBookingsPerStudent' : 'maxCandidates']: parseInt(e.target.value)})} />
+             </div>
           </div>
-        )}
 
-        {/* Submit */}
-        <div className="pt-6 border-t border-slate-100 flex justify-end">
-          <button type="submit" disabled={loading} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm tracking-wider hover:bg-indigo-700 transition-colors shadow-md disabled:opacity-50 min-w-[200px]">
-            {loading ? 'Processing...' : 'Create Event'}
-          </button>
-        </div>
-      </form>
+          {eventType === 'career' && (
+            <div className="space-y-8 animate-in fade-in duration-700">
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                      <Users size={20} className="text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-black text-[#0F172A] uppercase tracking-tight">Organization Manifest</h3>
+                  </div>
+                  <span className="px-4 py-1.5 bg-slate-100 text-slate-500 font-black text-[10px] rounded-full uppercase tracking-widest">
+                    {companies.length} / 20 NODES
+                  </span>
+               </div>
+
+               <div className="space-y-6">
+                 {companies.map((c, i) => (
+                   <div key={i} className="bg-white border border-slate-100 p-8 rounded-[2.5rem] relative group hover:border-blue-400 hover:shadow-2xl hover:shadow-slate-100 transition-all duration-500 overflow-hidden shadow-xl shadow-slate-100">
+                     {companies.length > 2 && (
+                       <button type="button" onClick={() => setCompanies(companies.filter((_, idx) => idx !== i))} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors z-10">
+                         <Trash2 size={24} />
+                       </button>
+                     )}
+                     
+                     <div className="grid md:grid-cols-12 gap-8 items-start relative z-10">
+                        <div className="md:col-span-5 space-y-4">
+                           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Node {i + 1} Metadata</label>
+                           <input 
+                             required placeholder="Organization Name" type="text" 
+                             className={`w-full bg-[#F8FAFC] border-2 rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner ${errors[`company_${i}_name`] ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`} 
+                             value={c.name} 
+                             onChange={e => { 
+                               const updated = [...companies]; updated[i].name = e.target.value; setCompanies(updated); 
+                               if (errors[`company_${i}_name`]) setErrors(prev => { const n = {...prev}; delete n[`company_${i}_name`]; return n; });
+                             }} 
+                           />
+                           {errors[`company_${i}_name`] && <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10} /> {errors[`company_${i}_name`]}</p>}
+                           <textarea 
+                             required placeholder="Service Description / Focus Areas" 
+                             className={`w-full bg-[#F8FAFC] border-2 rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner min-h-[100px] resize-none ${errors[`company_${i}_desc`] ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`} 
+                             value={c.description} 
+                             onChange={e => { 
+                               const updated = [...companies]; updated[i].description = e.target.value; setCompanies(updated); 
+                               if (errors[`company_${i}_desc`]) setErrors(prev => { const n = {...prev}; delete n[`company_${i}_desc`]; return n; });
+                             }} 
+                           />
+                           {errors[`company_${i}_desc`] && <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10} /> {errors[`company_${i}_desc`]}</p>}
+                        </div>
+
+                        <div className="md:col-span-7 space-y-4">
+                           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Personnel</label>
+                           <div className="space-y-3">
+                             {c.interviewers.map((inv, iIdx) => (
+                               <div key={iIdx} className="flex gap-2">
+                                 <input required placeholder="Name" type="text" className="flex-1 bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 transition-all shadow-sm" value={inv.name} onChange={e => updateInterviewer(i, iIdx, 'name', e.target.value)} />
+                                 <input required placeholder="Expertise" type="text" className="flex-1 bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs font-bold text-[blue-600] focus:outline-none focus:border-blue-400 transition-all shadow-sm" value={inv.expertise} onChange={e => updateInterviewer(i, iIdx, 'expertise', e.target.value)} />
+                               </div>
+                             ))}
+                           </div>
+                           <button type="button" onClick={() => addInterviewer(i)} className="w-full py-3 bg-blue-50 text-blue-600 font-black text-[10px] rounded-xl uppercase tracking-widest hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
+                             <Plus size={14} /> Add Personnel
+                           </button>
+                        </div>
+                     </div>
+                     <div className="absolute top-0 left-0 w-2 h-full bg-blue-400" />
+                   </div>
+                 ))}
+               </div>
+
+               {companies.length < 20 && (
+                 <button type="button" onClick={() => setCompanies([...companies, { name: '', description: '', interviewers: [{name: '', expertise: ''}] }])} className="w-full py-6 bg-[#F8FAFC] border-2 border-dashed border-slate-200 rounded-[2rem] text-xs font-black text-slate-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all duration-500 uppercase tracking-widest flex items-center justify-center gap-3">
+                   <Plus size={18} /> Integrate New Organization Node
+                 </button>
+               )}
+            </div>
+          )}
+
+          <div className="pt-12 border-t border-slate-50 flex items-center justify-between">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest max-w-xs leading-relaxed">Ensure all parameters comply with Nexus recruitment standards before initialization.</p>
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="px-12 py-5 bg-[#0F172A] text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-600 hover:scale-[1.05] active:scale-95 transition-all duration-500 shadow-2xl shadow-slate-300 disabled:opacity-50 min-w-[240px]"
+            >
+              {loading ? 'Initializing Nexus...' : 'Initialize Nexus Event'}
+            </button>
+          </div>
+        </form>
+      </div>
     </motion.div>
   );
 }
@@ -620,66 +811,100 @@ function AdminManageEvents() {
   const handlePublish = async (id: string) => {
     try {
       await publishEvent(id);
-      toast.success('Event published! Students can now book slots.');
+      toast.success('Event officially synchronized with Nexus. Students can now book slots.');
       fetchEvents();
     } catch { toast.error('Failed to publish'); }
   };
 
   const handleCancel = async (id: string) => {
-    if (!window.confirm('Cancel this entire event? This cannot be undone.')) return;
+    if (!window.confirm('Terminate this Nexus entry? Active reservations will be voided.')) return;
     try {
       await cancelEvent(id);
-      toast.success('Event cancelled.');
+      toast.success('Event termination protocol complete.');
       fetchEvents();
     } catch { toast.error('Failed to cancel'); }
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm("Permanently delete the event " + title + "? This cannot be undone.")) return;
+    if (!window.confirm("Permanently purge " + title + " from Nexus records? This is irreversible.")) return;
     try {
       await deleteEvent(id);
-      toast.success('Event permanently deleted.');
+      toast.success('Nexus record purged.');
       fetchEvents();
     } catch { toast.error('Failed to delete event'); }
   };
 
-  if (loading) return <div className="text-center p-12 text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">Scanning Nexus...</div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center p-20 gap-4">
+      <div className="w-12 h-12 border-4 border-[#0F172A]/5 border-t-amber-500 rounded-full animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Accessing Data Nodes...</p>
+    </div>
+  );
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      {events.map(ev => (
-        <div key={ev._id} className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col md:flex-row gap-6 justify-between items-center hover:border-slate-300 transition-colors">
-          <div className="flex-1 w-full relative">
-            <div className="flex items-center gap-3 mb-2">
-              <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded border ${ev.status === 'published' ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : ev.status === 'cancelled' ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-amber-200 bg-amber-50 text-amber-600'}`}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      {events.length === 0 ? (
+        <div className="text-center p-20 bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-50">
+          <h3 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight mb-2">No Records</h3>
+          <p className="text-slate-500 font-medium">Create a new recruitment window to populate Nexus.</p>
+        </div>
+      ) : events.map(ev => (
+        <div key={ev._id} className="bg-white border border-slate-50 rounded-[2rem] p-8 flex flex-col md:flex-row gap-8 justify-between items-center hover:border-slate-100 hover:shadow-2xl hover:shadow-slate-50 transition-all duration-500 relative overflow-hidden group">
+          <div className="flex-1 w-full relative z-10">
+            <div className="flex items-center gap-4 mb-4">
+              <span className={`px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl border-2 ${ev.status === 'published' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : ev.status === 'cancelled' ? 'border-rose-100 bg-rose-50 text-rose-600' : 'border-amber-100 bg-amber-50 text-amber-600'}`}>
                 {ev.status}
               </span>
-              <span className="text-[10px] font-bold text-slate-500 border border-slate-200 px-2 py-0.5 rounded">{ev.eventType.replace('-', ' ')}</span>
+              <span className="text-[10px] font-black text-slate-400 border border-slate-100 bg-slate-50/50 px-3 py-1 rounded-lg uppercase tracking-widest">{ev.eventType.replace('-', ' ')}</span>
             </div>
-            <h3 className="text-lg font-black text-slate-900 leading-tight mb-1">{ev.title}</h3>
-            <p className="text-xs text-slate-500 font-semibold mb-2">{new Date(ev.eventDate).toLocaleDateString()} | {ev.startTime} - {ev.endTime}</p>
-            <div className="flex gap-4 text-[10px] uppercase font-bold text-slate-400">
-               <span>{ev.totalSlots} Total Slots</span>
-               <span className="text-cobalt-sliit">{ev.totalBookings} Booked</span>
+            <h3 className="text-2xl font-black text-[#0F172A] leading-tight mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{ev.title}</h3>
+            <p className="text-sm text-slate-500 font-bold mb-6 flex items-center gap-2">
+              <Calendar size={14} className="text-blue-500" />
+              {new Date(ev.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              <span className="text-slate-200">|</span>
+              <Clock size={14} className="text-blue-500" />
+              {ev.startTime} — {ev.endTime}
+            </p>
+            <div className="flex gap-8 text-[11px] uppercase font-black tracking-[0.1em]">
+               <div className="flex items-center gap-2 text-slate-400">
+                  <div className="w-2 h-2 rounded-full bg-slate-200" />
+                  {ev.totalSlots} Total Slots
+               </div>
+               <div className="flex items-center gap-2 text-blue-600">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  {ev.totalBookings} Active Reservations
+               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-3 w-full md:w-auto relative z-10">
             {ev.status === 'draft' && (
-              <button onClick={() => handlePublish(ev._id)} className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-emerald-700">Publish</button>
+              <button 
+                onClick={() => handlePublish(ev._id)} 
+                className="flex-1 md:flex-none px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-100"
+              >
+                Synchronize
+              </button>
             )}
             {ev.status !== 'cancelled' && (
-              <button onClick={() => handleCancel(ev._id)} className="flex-1 md:flex-none px-4 py-2 bg-amber-50 text-amber-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-amber-500 hover:text-white transition-colors">Cancel</button>
+              <button 
+                onClick={() => handleCancel(ev._id)} 
+                className="flex-1 md:flex-none px-6 py-3 bg-white border-2 border-amber-100 text-amber-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white hover:border-amber-500 hover:scale-105 active:scale-95 transition-all"
+              >
+                Terminate
+              </button>
             )}
-            <button onClick={() => handleDelete(ev._id, ev.title)} className="p-2 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Delete Permanently">
-              <Trash2 size={18} />
+            <button 
+              onClick={() => handleDelete(ev._id, ev.title)} 
+              className="p-4 text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 rounded-2xl transition-all border border-transparent" 
+              title="Purge Record"
+            >
+              <Trash2 size={24} />
             </button>
           </div>
+          <div className="absolute bottom-0 right-0 w-32 h-32 bg-slate-50 rounded-tl-full -z-0 opacity-40 group-hover:scale-110 transition-transform duration-700" />
         </div>
       ))}
-      {events.length === 0 && (
-         <div className="text-center p-12 text-slate-500 font-bold uppercase tracking-widest text-xs">No Events Found</div>
-      )}
     </motion.div>
   );
 }
@@ -696,50 +921,68 @@ export default function InterviewSchedulingPage() {
   const [activeTab, setActiveTab] = useState(isAdmin ? 'dashboard' : 'browse');
 
   return (
-    <div className="min-h-screen bg-slate-50 font-main">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-8 py-6 sticky top-0 z-20 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 max-w-7xl mx-auto">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-black text-cobalt-sliit uppercase tracking-[0.3em]">Module Active</span>
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-success animate-pulse" />
+    <div className="min-h-screen bg-[#FDFDFD] font-main selection:bg-blue-100 selection:text-blue-900">
+      {/* Immersive Header */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-10 sticky top-0 z-50 shadow-sm transition-all duration-300">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 max-w-7xl mx-auto">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-1">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-blue-300 animate-pulse delay-75" />
+                <div className="w-2 h-2 rounded-full bg-blue-100 animate-pulse delay-150" />
+              </div>
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em]">Nexus Network Active</span>
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 mt-2 flex items-center gap-3">
+            
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-[#0F172A] flex flex-wrap items-center gap-x-4">
             {isAdmin ? (
               <>
-                Admin interview <span className="text-cobalt-sliit">scheduling</span>
+                Central <span className="text-blue-600">Command</span> <span className="text-slate-200">/</span> Interviews
               </>
             ) : (
               <>
-                Interview <span className="text-cobalt-sliit">Scheduling</span>
+                Recruitment <span className="text-blue-600">Nexus</span>
               </>
             )}
             </h1>
+            <p className="text-slate-400 text-sm font-medium max-w-lg">
+              {isAdmin 
+                ? "Orchestrating high-impact recruitment windows and professional student engagement."
+                : "Your professional gateway to high-tier industry placements and recruitment windows."}
+            </p>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl overflow-x-auto hide-scrollbar">
+          {/* Precision Navigation Tabs */}
+          <div className="flex p-1.5 bg-slate-100/50 rounded-[2rem] border border-slate-100 shadow-inner overflow-x-auto hide-scrollbar w-full lg:w-auto">
             {!isAdmin ? (
               <>
                 <TabButton active={activeTab === 'browse'} onClick={() => setActiveTab('browse')} icon={Search} label="Browse Events" />
-                <TabButton active={activeTab === 'my-bookings'} onClick={() => setActiveTab('my-bookings')} icon={Calendar} label="My Bookings" />
+                <TabButton active={activeTab === 'my-bookings'} onClick={() => setActiveTab('my-bookings')} icon={Calendar} label="My Portfolio" />
               </>
             ) : (
               <>
-                <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={BarChart3} label="Dashboard" />
-                <TabButton active={activeTab === 'create-event'} onClick={() => setActiveTab('create-event')} icon={Plus} label="Create Event" />
-                <TabButton active={activeTab === 'manage'} onClick={() => setActiveTab('manage')} icon={Settings2} label="Manage Events" />
+                <TabButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={BarChart3} label="Analytics" />
+                <TabButton active={activeTab === 'create-event'} onClick={() => setActiveTab('create-event')} icon={Plus} label="Architect" />
+                <TabButton active={activeTab === 'manage'} onClick={() => setActiveTab('manage')} icon={Settings2} label="Governance" />
               </>
             )}
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto p-4 md:p-8">
+      {/* Dynamic Evolution Area */}
+      <main className="max-w-7xl mx-auto p-6 md:p-12 pb-32">
         <AnimatePresence mode="wait">
-          {!isAdmin && activeTab === 'browse' && <StudentBrowseEvents key="student-browse" onBookSuccess={() => setActiveTab('my-bookings')} />}
+          {!isAdmin && activeTab === 'browse' && (
+            <StudentBrowseEvents 
+              key="student-browse" 
+              onBookSuccess={() => {
+                toast.success('Synchronization payload received. Redirecting to portfolio.');
+                setActiveTab('my-bookings');
+              }} 
+            />
+          )}
           {!isAdmin && activeTab === 'my-bookings' && <StudentMyBookings key="student-bookings" />}
 
           {isAdmin && activeTab === 'dashboard' && <AdminDashboard key="admin-dashboard" />}
@@ -748,23 +991,23 @@ export default function InterviewSchedulingPage() {
         </AnimatePresence>
       </main>
 
-      {/* Floating Action Button for Mock Interview */}
+      {/* Bot Interface Access */}
       {!isAdmin && (
         <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          whileHover={{ scale: 1.05 }}
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          whileHover={{ scale: 1.05, y: -5 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate('/mock-interview')}
-          className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl p-4 shadow-xl shadow-indigo-500/20 flex items-center gap-3 hover:shadow-2xl hover:shadow-indigo-500/40 transition-all z-50 group"
+          className="fixed bottom-10 right-10 bg-[#0F172A] text-white rounded-[2rem] p-6 shadow-2xl shadow-blue-900/40 flex items-center gap-5 hover:bg-blue-600 transition-all duration-500 z-50 group border border-blue-500/20"
         >
-          <div className="bg-white/20 p-2 rounded-xl group-hover:bg-white/30 transition-colors">
-            <Bot size={24} className="text-white" />
+          <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all duration-500 shadow-xl border border-white/10">
+            <Bot size={32} className="text-white group-hover:rotate-12 transition-transform duration-500" />
           </div>
-          <div className="text-left pr-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-100 opacity-80 mb-0.5">Next Step</p>
-            <p className="text-sm font-bold leading-none flex items-center gap-1">
-              Mock Interview <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+          <div className="text-left pr-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-300 opacity-80 mb-1">Advanced Step</p>
+            <p className="text-lg font-black tracking-tight flex items-center gap-2 uppercase">
+              Mock Sim <ChevronRight size={20} className="group-hover:translate-x-2 transition-transform duration-500" />
             </p>
           </div>
         </motion.button>

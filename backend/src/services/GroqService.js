@@ -14,10 +14,10 @@ const OpenAI = require('openai');
 const logger = require('../utils/logger');
 
 // ── Models ───────────────────────────────────────────────────────────────
-// llama3-70b-8192  → reasoning model, great for open-ended chat
-// llama3-8b-8192  → stable instruction-following model, use for JSON outputs
-const CHAT_MODEL = 'llama-3.3-70b-versatile';
-const JSON_MODEL = 'llama-3.3-70b-versatile'; // supports response_format: json_object
+// llama-3.1-8b-instant  → lightning fast, high rate limits, great for chat/JSON
+// llama-3.3-70b-versatile → heavy-duty reasoning, but strict quota limits (TPD)
+const CHAT_MODEL = 'llama-3.1-8b-instant';
+const JSON_MODEL = 'llama-3.1-8b-instant'; // supports response_format: json_object
 
 // ── Singleton state ──────────────────────────────────────────────────────
 let instance = null;
@@ -161,9 +161,18 @@ ${profileJson}
      * TASK 02 — Conversational Advisor Chat
      */
     async generateCareerAdvice(studentProfile, userMessage, history = []) {
+        // Sanitize history: OpenAI/Groq is strict — messages MUST ONLY have role & content.
+        // Frontend might send 'timestamp', 'id', etc. which causes 400/500 errors.
+        const sanitizedHistory = (Array.isArray(history) ? history : [])
+            .slice(-10)
+            .map(m => ({
+                role: m.role === 'assistant' ? 'assistant' : 'user',
+                content: String(m.content || '')
+            }));
+
         const messages = [
             { role: 'system', content: this._buildSystemPrompt(studentProfile) },
-            ...history.slice(-10),
+            ...sanitizedHistory,
             { role: 'user', content: userMessage },
         ];
 

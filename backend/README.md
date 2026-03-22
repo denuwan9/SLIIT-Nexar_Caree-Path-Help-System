@@ -4,6 +4,8 @@ Production-ready **Node.js + Express** REST API for the Career Path Simulator Sy
 
 ## 📁 Folder Structure
 
+
+
 ```
 backend/
 ├── src/

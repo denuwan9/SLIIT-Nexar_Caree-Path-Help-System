@@ -84,30 +84,33 @@ const ExperienceTab: React.FC<Props> = ({ profile, setProfile }) => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-                        <Briefcase size={20} className="text-purple-500" /> Work Experience
+                    <h2 className="text-2xl font-black tracking-tight text-[#0F172A] flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-[#0F172A] flex items-center justify-center text-white">
+                            <Briefcase size={20} />
+                        </div> 
+                        Work Experience
                     </h2>
-                    <p className="text-sm font-bold text-slate-500 mt-1">Internships, part-time jobs, and volunteering.</p>
+                    <p className="text-[13px] font-bold text-[#64748B] mt-1 ml-13">Internships, part-time jobs, and volunteering milestones.</p>
                 </div>
                 {!isAdding && (
-                    <button onClick={() => setIsAdding(true)} className="btn-primary py-2 px-4 shadow-sm text-sm flex items-center gap-2">
-                        <Plus size={16} /> Add Role
+                    <button onClick={() => setIsAdding(true)} className="px-6 py-3 bg-[#0F172A] text-white rounded-2xl font-black text-[13px] shadow-lg shadow-slate-200 hover:bg-black transition-all flex items-center gap-2">
+                        <Plus size={18} /> Add New Role
                     </button>
                 )}
             </div>
 
             {error && (
-                <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 text-red-600 border border-red-100 text-sm font-bold">
-                    <AlertCircle size={16} /> {error}
+                <div className="flex items-center gap-3 p-5 rounded-3xl bg-rose-50 text-rose-600 border border-rose-100 text-[13px] font-bold">
+                    <AlertCircle size={18} /> {error}
                 </div>
             )}
 
             {isAdding && (
-                <form onSubmit={handleSubmit(onSubmit)} className="p-6 rounded-3xl bg-slate-50 border border-slate-200 animate-in slide-in-from-top-4 duration-300">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="font-black text-slate-900">Add New Role</h3>
-                        <button type="button" onClick={() => { setIsAdding(false); reset(); }} className="p-1 text-slate-400 hover:text-slate-900 transition-colors">
-                            <X size={20} />
+                <form onSubmit={handleSubmit(onSubmit)} className="p-8 rounded-[2.5rem] bg-slate-50/50 border border-slate-200/60 animate-in slide-in-from-top-4 duration-500 shadow-inner">
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-xl font-black text-[#0F172A] tracking-tight">Expand Experience</h3>
+                        <button type="button" onClick={() => { setIsAdding(false); reset(); }} className="p-2 text-[#94A3B8] hover:text-[#0F172A] hover:bg-white rounded-xl transition-all">
+                            <X size={24} />
                         </button>
                     </div>
 
@@ -217,40 +220,56 @@ const ExperienceTab: React.FC<Props> = ({ profile, setProfile }) => {
                 </form>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-6">
                 {profile.experience?.length === 0 && !isAdding && (
-                    <div className="text-center py-12 px-4 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50">
-                        <Briefcase size={32} className="mx-auto text-slate-300 mb-3" />
-                        <h3 className="text-sm font-black text-slate-600">No experience added</h3>
-                        <p className="text-xs font-bold text-slate-400 mt-1 max-w-sm mx-auto">Add your internships or full-time roles to help the AI understand your practical background.</p>
-                        <button onClick={() => setIsAdding(true)} className="btn-secondary mt-4 py-2 px-4 text-xs">Add First Role</button>
+                    <div className="text-center py-20 px-8 rounded-[2.5rem] border-2 border-dashed border-slate-100 bg-slate-50/50 relative overflow-hidden group">
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="w-16 h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center text-slate-300 mb-6 group-hover:scale-110 transition-transform">
+                                <Briefcase size={32} />
+                            </div>
+                            <h3 className="text-xl font-black text-[#0F172A] tracking-tight">No Experience Yet</h3>
+                            <p className="text-sm font-medium text-[#64748B] mt-2 max-w-sm mx-auto leading-relaxed">
+                                NEXAR's AI advisor works best when it knows your background. Add internships, part-time roles, or volunteering to see tailored strategy suggestions.
+                            </p>
+                            <button onClick={() => setIsAdding(true)} className="mt-8 px-8 py-3.5 bg-[#0F172A] text-white rounded-2xl font-black text-[13px] shadow-lg shadow-slate-200 hover:bg-black transition-all">
+                                Add First Role
+                            </button>
+                        </div>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-bl-[100px] opacity-30 -z-0"></div>
                     </div>
                 )}
 
                 {([...profile.experience || []]).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()).map(exp => (
-                    <div key={exp._id} className="group relative p-6 rounded-3xl border border-slate-100 bg-white hover:border-purple-200 hover:shadow-md hover:shadow-purple-500/5 transition-all">
-                        <button onClick={() => handleRemove(exp._id!)} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
-                            <X size={16} />
+                    <div key={exp._id} className="group relative p-8 rounded-[2.5rem] border border-slate-100 bg-white hover:border-[#0F172A]/10 hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-500">
+                        <button onClick={() => handleRemove(exp._id!)} className="absolute top-6 right-6 p-2.5 text-[#94A3B8] hover:text-rose-500 hover:bg-rose-50 rounded-2xl opacity-0 group-hover:opacity-100 transition-all">
+                            <X size={18} />
                         </button>
 
-                        <div className="flex gap-4 items-start">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center shrink-0">
-                                <Briefcase size={20} className="text-slate-400" />
+                        <div className="flex flex-col sm:flex-row gap-6 items-start">
+                            <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-[#0F172A] transition-colors duration-500">
+                                <Briefcase size={26} className="text-[#94A3B8] group-hover:text-white transition-colors duration-500" />
                             </div>
-                            <div className="flex-1 space-y-2 pr-8">
+                            <div className="flex-1 space-y-4">
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-900 leading-tight">{exp.title}</h3>
-                                    <p className="text-sm font-bold text-slate-600">{exp.company}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <h3 className="text-2xl font-black text-[#0F172A] tracking-tight leading-tight">{exp.title}</h3>
+                                        {exp.isCurrent && (
+                                            <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-100">Active Role</span>
+                                        )}
+                                    </div>
+                                    <p className="text-lg font-bold text-[#475569]">{exp.company}</p>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-slate-400">
-                                    <span className="flex items-center gap-1.5"><Calendar size={14} /> {formatDate(exp.startDate)} — {exp.isCurrent ? 'Present' : formatDate(exp.endDate)}</span>
-                                    {exp.location && <span className="flex items-center gap-1.5"><MapPin size={14} /> {exp.location}{exp.isRemote ? ' (Remote)' : ''}</span>}
-                                    <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500">{exp.type}</span>
+                                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] font-bold text-[#94A3B8]">
+                                    <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100/50"><Calendar size={15} className="text-indigo-500" /> {formatDate(exp.startDate)} — {exp.isCurrent ? 'Present' : formatDate(exp.endDate)}</span>
+                                    {exp.location && <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100/50"><MapPin size={15} className="text-rose-500" /> {exp.location}{exp.isRemote ? ' (Remote)' : ''}</span>}
+                                    <span className="px-3 py-1.5 rounded-xl bg-[#0F172A] text-[10px] font-black uppercase tracking-widest text-white">{exp.type}</span>
                                 </div>
                                 {exp.description && (
-                                    <p className="text-sm font-medium text-slate-600 leading-relaxed pt-2 whitespace-pre-wrap">
-                                        {exp.description}
-                                    </p>
+                                    <div className="relative">
+                                        <p className="text-[14px] font-medium text-[#64748B] leading-relaxed whitespace-pre-wrap pl-4 border-l-2 border-slate-100 group-hover:border-[#0F172A] transition-colors">
+                                            {exp.description}
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         </div>
