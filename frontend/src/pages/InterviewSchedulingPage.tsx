@@ -483,8 +483,11 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
     e.preventDefault();
     setLoading(true);
 
+    const nameRegex = /^[A-Za-z\s]+$/;
+
     try {
       if (!formData.title.trim()) return toast.error('Event title is required');
+      if (!nameRegex.test(formData.title.trim())) return toast.error('Operational Title can only contain characters');
       if (!formData.eventDate) return toast.error('Event date is required');
 
       const today = new Date();
@@ -500,9 +503,15 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
 
         const companyNames = companies.map(c => c.name.trim());
         if (companyNames.some(name => !name)) return toast.error('All companies must have names');
+        if (companyNames.some(name => !nameRegex.test(name))) return toast.error('Organization names can only contain characters');
         
         const uniqueNames = new Set(companyNames.map(n => n.toLowerCase()));
         if (uniqueNames.size !== companyNames.length) return toast.error('Duplicate company names are not allowed');
+
+        if (companies.some(c => !c.description.trim())) return toast.error('All companies must have a description');
+        if (companies.some(c => c.interviewers.some(i => !i.name.trim() || !i.expertise.trim()))) {
+          return toast.error('All interviewer details (name and expertise) must be completed');
+        }
 
         const payloadCompanies = companies.map(c => ({
           name: c.name,
@@ -515,6 +524,9 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
       } else {
         if (!formData.startTime) return toast.error('Start time is required');
         if (!formData.companyName.trim()) return toast.error('Company name is required');
+        
+        if (!nameRegex.test(formData.companyName.trim())) return toast.error('Company name can only contain characters');
+        
         if (formData.maxCandidates < 1) return toast.error('Max candidates must be at least 1');
 
         await createNormalDayEvent({
@@ -670,7 +682,7 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                         <div className="md:col-span-5 space-y-4">
                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Node {i + 1} Metadata</label>
                            <input required placeholder="Organization Name" type="text" className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner" value={c.name} onChange={e => { const updated = [...companies]; updated[i].name = e.target.value; setCompanies(updated); }} />
-                           <textarea placeholder="Service Description / Focus Areas" className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner min-h-[100px] resize-none" value={c.description} onChange={e => { const updated = [...companies]; updated[i].description = e.target.value; setCompanies(updated); }} />
+                           <textarea required placeholder="Service Description / Focus Areas" className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner min-h-[100px] resize-none" value={c.description} onChange={e => { const updated = [...companies]; updated[i].description = e.target.value; setCompanies(updated); }} />
                         </div>
 
                         <div className="md:col-span-7 space-y-4">
