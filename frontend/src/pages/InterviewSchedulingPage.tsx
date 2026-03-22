@@ -456,6 +456,7 @@ function AdminDashboard() {
 
 function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [eventType, setEventType] = useState<'career' | 'normal'>('career');
   
   const [formData, setFormData] = useState({
@@ -481,14 +482,24 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     setLoading(true);
 
     const nameRegex = /^[A-Za-z\s]+$/;
 
     try {
-      if (!formData.title.trim()) return toast.error('Event title is required');
-      if (!nameRegex.test(formData.title.trim())) return toast.error('Operational Title can only contain characters');
-      if (!formData.eventDate) return toast.error('Event date is required');
+      let currentErrors: {[key: string]: string} = {};
+
+      if (!formData.title.trim()) currentErrors.title = 'Event title is required';
+      else if (!nameRegex.test(formData.title.trim())) currentErrors.title = 'Operational Title can only contain characters';
+      
+      if (!formData.eventDate) currentErrors.eventDate = 'Event date is required';
+
+      if (Object.keys(currentErrors).length > 0) {
+        setErrors(currentErrors);
+        setLoading(false);
+        return toast.error('Please correct errors in the form');
+      }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -501,16 +512,29 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
         if (companies.length < 2) return toast.error('At least 2 companies required');
         if (companies.length > 20) return toast.error('Maximum 20 companies allowed');
 
-        const companyNames = companies.map(c => c.name.trim());
-        if (companyNames.some(name => !name)) return toast.error('All companies must have names');
-        if (companyNames.some(name => !nameRegex.test(name))) return toast.error('Organization names can only contain characters');
+        let companyErrors: {[key: string]: string} = {};
+        const companyNames = companies.map((c, idx) => {
+          const name = c.name.trim();
+          if (!name) companyErrors[`company_${idx}_name`] = 'Organization name required';
+          else if (!nameRegex.test(name)) companyErrors[`company_${idx}_name`] = 'Characters only';
+          
+          if (!c.description.trim()) companyErrors[`company_${idx}_desc`] = 'Description required';
+          
+          return name;
+        });
+
+        if (Object.keys(companyErrors).length > 0) {
+          setErrors(prev => ({ ...prev, ...companyErrors }));
+          setLoading(false);
+          return toast.error('Missing organization details');
+        }
         
         const uniqueNames = new Set(companyNames.map(n => n.toLowerCase()));
         if (uniqueNames.size !== companyNames.length) return toast.error('Duplicate company names are not allowed');
 
-        if (companies.some(c => !c.description.trim())) return toast.error('All companies must have a description');
         if (companies.some(c => c.interviewers.some(i => !i.name.trim() || !i.expertise.trim()))) {
-          return toast.error('All interviewer details (name and expertise) must be completed');
+          setLoading(false);
+          return toast.error('All interviewer details must be completed');
         }
 
         const payloadCompanies = companies.map(c => ({
@@ -522,11 +546,17 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
         await createCareerDayEvent({ ...formData, companies: payloadCompanies });
         toast.success('Nexus Event Initialized (Draft)');
       } else {
-        if (!formData.startTime) return toast.error('Start time is required');
-        if (!formData.companyName.trim()) return toast.error('Company name is required');
+        let normalErrors: {[key: string]: string} = {};
+        if (!formData.startTime) normalErrors.startTime = 'Start time required';
+        if (!formData.companyName.trim()) normalErrors.companyName = 'Company name required';
+        else if (!nameRegex.test(formData.companyName.trim())) normalErrors.companyName = 'Characters only';
         
-        if (!nameRegex.test(formData.companyName.trim())) return toast.error('Company name can only contain characters');
-        
+        if (Object.keys(normalErrors).length > 0) {
+          setErrors(prev => ({ ...prev, ...normalErrors }));
+          setLoading(false);
+          return toast.error('Form incomplete');
+        }
+
         if (formData.maxCandidates < 1) return toast.error('Max candidates must be at least 1');
 
         await createNormalDayEvent({
@@ -593,9 +623,15 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Operational Title</label>
                <input 
                  required type="text" 
-                 className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner" 
-                 value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g., NEXUS SPRING DRIVE 2026" 
+                 className={`w-full bg-[#F8FAFC] border-2 rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner ${errors.title ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`} 
+                 value={formData.title} 
+                 onChange={e => {
+                   setFormData({...formData, title: e.target.value});
+                   if (errors.title) setErrors(prev => { const n = {...prev}; delete n.title; return n; });
+                 }} 
+                 placeholder="e.g., NEXUS SPRING DRIVE 2026" 
                />
+               {errors.title && <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-2 flex items-center gap-1"><AlertCircle size={10} /> {errors.title}</p>}
              </div>
 
              <div className="space-y-2">
@@ -633,7 +669,17 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
              {eventType === 'normal' && (
                <div className="md:col-span-1 space-y-2">
                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Host Organization</label>
-                 <input required type="text" className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner" value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="e.g., GLOBAL DYNAMICS" />
+                 <input 
+                   required type="text" 
+                   className={`w-full bg-[#F8FAFC] border-2 rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner ${errors.companyName ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`} 
+                   value={formData.companyName} 
+                   onChange={e => {
+                     setFormData({...formData, companyName: e.target.value});
+                     if (errors.companyName) setErrors(prev => { const n = {...prev}; delete n.companyName; return n; });
+                   }} 
+                   placeholder="e.g., GLOBAL DYNAMICS" 
+                 />
+                 {errors.companyName && <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-2 flex items-center gap-1"><AlertCircle size={10} /> {errors.companyName}</p>}
                </div>
              )}
 
@@ -681,8 +727,26 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                      <div className="grid md:grid-cols-12 gap-8 items-start relative z-10">
                         <div className="md:col-span-5 space-y-4">
                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Node {i + 1} Metadata</label>
-                           <input required placeholder="Organization Name" type="text" className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner" value={c.name} onChange={e => { const updated = [...companies]; updated[i].name = e.target.value; setCompanies(updated); }} />
-                           <textarea required placeholder="Service Description / Focus Areas" className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner min-h-[100px] resize-none" value={c.description} onChange={e => { const updated = [...companies]; updated[i].description = e.target.value; setCompanies(updated); }} />
+                           <input 
+                             required placeholder="Organization Name" type="text" 
+                             className={`w-full bg-[#F8FAFC] border-2 rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner ${errors[`company_${i}_name`] ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`} 
+                             value={c.name} 
+                             onChange={e => { 
+                               const updated = [...companies]; updated[i].name = e.target.value; setCompanies(updated); 
+                               if (errors[`company_${i}_name`]) setErrors(prev => { const n = {...prev}; delete n[`company_${i}_name`]; return n; });
+                             }} 
+                           />
+                           {errors[`company_${i}_name`] && <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10} /> {errors[`company_${i}_name`]}</p>}
+                           <textarea 
+                             required placeholder="Service Description / Focus Areas" 
+                             className={`w-full bg-[#F8FAFC] border-2 rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner min-h-[100px] resize-none ${errors[`company_${i}_desc`] ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`} 
+                             value={c.description} 
+                             onChange={e => { 
+                               const updated = [...companies]; updated[i].description = e.target.value; setCompanies(updated); 
+                               if (errors[`company_${i}_desc`]) setErrors(prev => { const n = {...prev}; delete n[`company_${i}_desc`]; return n; });
+                             }} 
+                           />
+                           {errors[`company_${i}_desc`] && <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10} /> {errors[`company_${i}_desc`]}</p>}
                         </div>
 
                         <div className="md:col-span-7 space-y-4">
