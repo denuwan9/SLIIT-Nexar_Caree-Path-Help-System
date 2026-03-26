@@ -16,25 +16,141 @@ import {
     Wand2,
     Brain,
     Layout,
-    ListTodo,
     Zap,
     Shield,
     Flame,
-    Gauge,
     Sparkles,
     Activity,
     ArrowLeft,
     Info,
+    Play,
+    Pause,
+    Square,
+    Timer,
 } from 'lucide-react';
-import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, markStudySubjectComplete, updateSubjectStatus } from '../services/studyPlanService';
+import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, updateSubjectStatus } from '../services/studyPlanService';
 import type {
     CreateStudyPlanInput,
     StudyPlan,
-    StudySubject,
     StudyPriority,
     StudyTaskStatus,
-    StudyDifficulty,
 } from '../types/studyPlan';
+
+type TaskTimer = {
+    seconds: number;
+    isRunning: boolean;
+    startedAt: number | null;
+    finishedAt?: number | null;
+    lastUpdatedAt?: number | null;
+};
+
+type TimerMap = Record<string, TaskTimer>;
+
+const TIMER_MAP_KEY = 'studyPlanTaskTimers';
+
+function formatTimer(totalSeconds: number) {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    if (hrs > 0) {
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+const formatHours = (hours?: number | null, digits = 1) => {
+    const safe = Number.isFinite(hours || 0) ? Number(hours) : 0;
+    return safe.toFixed(digits);
+};
+
+const formatClockTime = (timestamp?: number | null) => {
+    if (!timestamp) return '--:--';
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+};
+
+const TimerPanel: React.FC<{
+    title: string;
+    timerState: TaskTimer;
+    progressPct: number | null;
+    onStart: () => void;
+    onPause: () => void;
+    onReset: () => void;
+}> = ({ title, timerState, progressPct, onStart, onPause, onReset }) => {
+    return (
+        <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-3 animate-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-xs font-black text-blue-700 uppercase tracking-widest break-all">
+                        <Timer size={14} />
+                        <span className="break-all leading-snug">{title}</span>
+                    </div>
+                    <span
+                        className="text-[11px] font-semibold text-slate-500"
+                        title={`Task started at ${formatClockTime(timerState.startedAt)}`}
+                    >
+                        Started at {formatClockTime(timerState.startedAt)}
+                    </span>
+                    {timerState.finishedAt && (
+                        <span className="text-[11px] font-semibold text-emerald-600" title={`Task finished at ${formatClockTime(timerState.finishedAt)}`}>
+                            Finished at {formatClockTime(timerState.finishedAt)}
+                        </span>
+                    )}
+                </div>
+                <div className="text-right">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Elapsed Time</p>
+                    <span className="font-mono text-2xl font-black text-slate-900">
+                        {formatTimer(timerState.seconds)}
+                    </span>
+                </div>
+            </div>
+
+            {progressPct !== null && (
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                        <span>Progress</span>
+                        <span>{progressPct}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white shadow-inner overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all" style={{ width: `${progressPct}%` }} />
+                    </div>
+                </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+                {!timerState.isRunning ? (
+                    <button
+                        onClick={onStart}
+                        className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white shadow-md shadow-emerald-200 hover:bg-emerald-700 transition"
+                    >
+                        <Play size={14} />
+                        Start
+                    </button>
+                ) : (
+                    <button
+                        onClick={onPause}
+                        className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white shadow-md shadow-amber-200 hover:bg-amber-600 transition"
+                    >
+                        <Pause size={14} />
+                        Pause
+                    </button>
+                )}
+
+                <button
+                    onClick={onReset}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-800 transition"
+                >
+                    <Square size={12} />
+                    Reset
+                </button>
+
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Time spent: {formatTimer(timerState.seconds)}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 const PRIORITY_META: Record<StudyPriority, { label: string; accent: string; tip: string; icon: any }> = {
     critical: {
@@ -81,6 +197,88 @@ const StudyPlanPage: React.FC = () => {
     const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([]);
     const [workStartTime, setWorkStartTime] = useState('09:00');
     const [workEndTime, setWorkEndTime] = useState('17:00');
+    const [timers, setTimers] = useState<TimerMap>({});
+    const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
+    const [openTrackerId, setOpenTrackerId] = useState<string | null>(null);
+    const [hydrated, setHydrated] = useState(false);
+
+    const persistTimers = (nextTimers: TimerMap, activeId: string | null) => {
+        if (!hydrated) return; // avoid clobbering before hydration
+        try {
+            localStorage.setItem(TIMER_MAP_KEY, JSON.stringify({ timers: nextTimers, activeTimerId: activeId }));
+        } catch (err) {
+            console.error('Failed to persist timers', err);
+        }
+    };
+
+    const snapshotAndPersist = (activeId: string | null, source: 'tick' | 'unload' = 'tick') => {
+        setTimers((prev) => {
+            const now = Date.now();
+            const next: TimerMap = {};
+            Object.entries(prev).forEach(([id, t]) => {
+                if (t.isRunning && t.startedAt) {
+                    const last = t.lastUpdatedAt || t.startedAt;
+                    const elapsed = Math.max(0, Math.floor((now - last) / 1000));
+                    next[id] = { ...t, seconds: t.seconds + elapsed, lastUpdatedAt: now };
+                } else {
+                    next[id] = { ...t, lastUpdatedAt: t.lastUpdatedAt || now };
+                }
+            });
+            persistTimers(next, activeId);
+            return source === 'unload' ? prev : next; // keep state when unloading
+        });
+    };
+
+    useEffect(() => {
+        const stored = localStorage.getItem(TIMER_MAP_KEY);
+        if (!stored) return;
+        try {
+            const parsed = JSON.parse(stored);
+            const savedTimers: TimerMap = parsed.timers || {};
+            const now = Date.now();
+            const adjusted: TimerMap = {};
+            Object.entries(savedTimers).forEach(([id, t]) => {
+                if (t.isRunning && t.startedAt) {
+                    const last = t.lastUpdatedAt || t.startedAt;
+                    const elapsed = Math.max(0, Math.floor((now - last) / 1000));
+                    adjusted[id] = { ...t, seconds: t.seconds + elapsed, startedAt: t.startedAt, lastUpdatedAt: now };
+                } else {
+                    adjusted[id] = { ...t, lastUpdatedAt: t.lastUpdatedAt || t.startedAt || now };
+                }
+            });
+            setTimers(adjusted);
+            const runningId = parsed.activeTimerId && adjusted[parsed.activeTimerId]?.isRunning ? parsed.activeTimerId : null;
+            setActiveTimerId(runningId);
+        } catch (err) {
+            console.error('Failed to restore timers', err);
+        }
+        setHydrated(true);
+    }, []);
+
+    useEffect(() => {
+        if (!hydrated) return;
+        persistTimers(timers, activeTimerId);
+    }, [timers, activeTimerId, hydrated]);
+
+    useEffect(() => {
+        if (!activeTimerId) return;
+        const interval = setInterval(() => {
+            snapshotAndPersist(activeTimerId, 'tick');
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [activeTimerId]);
+
+    useEffect(() => {
+        const handleVisibility = () => {
+            snapshotAndPersist(activeTimerId, 'unload');
+        };
+        window.addEventListener('beforeunload', handleVisibility);
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            window.removeEventListener('beforeunload', handleVisibility);
+            document.removeEventListener('visibilitychange', handleVisibility);
+        };
+    }, [activeTimerId]);
 
     const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const clampToToday = (value: string) => {
@@ -178,15 +376,6 @@ const StudyPlanPage: React.FC = () => {
     });
     const [manualHoursOverride, setManualHoursOverride] = useState(false);
 
-    const handleInternshipTimeChange = (field: 'internshipStartTime' | 'internshipEndTime', value: string) => {
-        setManualHoursOverride(false);
-        setPlanInput((prev) => {
-            const next = { ...prev, [field]: value };
-            const derived = computeDerivedAvailability(next);
-            return { ...next, availableHoursPerDay: derived };
-        });
-    };
-
     const handleInternshipLoadChange = (field: 'internshipHoursPerDay' | 'internshipDaysPerWeek', value: number) => {
         setManualHoursOverride(false);
         setPlanInput((prev) => {
@@ -201,18 +390,6 @@ const StudyPlanPage: React.FC = () => {
         const suggested = computeDerivedAvailability({ ...planInput });
         setPlanInput((prev) => ({ ...prev, availableHoursPerDay: suggested }));
     }, [planInput.internshipHoursPerDay, manualHoursOverride]);
-
-    const [subjectDraft, setSubjectDraft] = useState<StudySubject & { topicsInput?: string }>(
-        {
-            name: '',
-            creditHours: 3,
-            difficulty: 'medium',
-            examDate: '',
-            weight: 1,
-            syllabusTopics: [],
-            topicsInput: '',
-        }
-    );
 
     const derivedAvailableHours = useMemo(() => {
         if (manualHoursOverride && planInput.availableHoursPerDay) return planInput.availableHoursPerDay;
@@ -331,36 +508,6 @@ const StudyPlanPage: React.FC = () => {
         }
     };
 
-    const handleAddSubject = () => {
-        if (!subjectDraft.name.trim()) {
-            toast.error('Add a subject name first');
-            return;
-        }
-
-        const topics = subjectDraft.topicsInput
-            ? subjectDraft.topicsInput.split(',').map((t) => t.trim()).filter(Boolean)
-            : [];
-
-        const newSubject: StudySubject = {
-            name: subjectDraft.name.trim(),
-            creditHours: Number(subjectDraft.creditHours) || 3,
-            difficulty: subjectDraft.difficulty,
-            examDate: subjectDraft.examDate || undefined,
-            weight: Number(subjectDraft.weight) || 1,
-            syllabusTopics: topics,
-        };
-
-        setPlanInput((prev) => ({ ...prev, subjects: [...prev.subjects, newSubject] }));
-        setSubjectDraft({ name: '', creditHours: 3, difficulty: 'medium', examDate: '', weight: 1, syllabusTopics: [], topicsInput: '' });
-    };
-
-    const handleRemoveSubject = (idx: number) => {
-        setPlanInput((prev) => ({
-            ...prev,
-            subjects: prev.subjects.filter((_, i) => i !== idx),
-        }));
-    };
-
     const handleCreatePlan = async () => {
         if (!planInput.title.trim()) {
             setTitleError('The title is required');
@@ -394,7 +541,8 @@ const StudyPlanPage: React.FC = () => {
             const payload: CreateStudyPlanInput = {
                 ...planInput,
                 title: safeTitle,
-                subjects: allFiles.length > 0 ? [] : planInput.subjects,
+                // Keep user-entered subjects as hints even when uploading docs so AI can blend both
+                subjects: planInput.subjects,
                 availableHoursPerDay: derivedHours,
             };
 
@@ -472,6 +620,64 @@ const StudyPlanPage: React.FC = () => {
     };
 
     const totalHours = selectedPlan?.sessions?.reduce((s, sess) => s + (sess.totalStudyHours || 0), 0) || 0;
+
+    const handleStartTimer = (taskId: string, sessionId?: string, subjectIdx?: number) => {
+        setTimers((prev) => {
+            const next: TimerMap = { ...prev };
+            if (activeTimerId && activeTimerId !== taskId && next[activeTimerId]) {
+                next[activeTimerId] = { ...next[activeTimerId], isRunning: false };
+            }
+            const current = next[taskId] || { seconds: 0, isRunning: false, startedAt: null };
+            const startedAt = current.startedAt ?? Date.now();
+            next[taskId] = { ...current, isRunning: true, startedAt, finishedAt: null, lastUpdatedAt: Date.now() };
+            persistTimers(next, taskId);
+            return next;
+        });
+        setActiveTimerId(taskId);
+        setOpenTrackerId(taskId);
+        if (sessionId && typeof subjectIdx === 'number') {
+            handleStatusChange(sessionId, subjectIdx, 'in-progress');
+        }
+    };
+
+    const handlePauseTimer = (taskId: string) => {
+        setTimers((prev) => {
+            const current = prev[taskId];
+            if (!current) return prev;
+            const next = { ...prev, [taskId]: { ...current, isRunning: false, lastUpdatedAt: Date.now() } };
+            persistTimers(next, activeTimerId === taskId ? null : activeTimerId);
+            return next;
+        });
+        if (activeTimerId === taskId) setActiveTimerId(null);
+    };
+
+    const handleResetTimer = (taskId: string) => {
+        setTimers((prev) => {
+            const current = prev[taskId];
+            if (!current) return prev;
+            const next = { ...prev, [taskId]: { ...current, seconds: 0, isRunning: false, startedAt: null, finishedAt: null, lastUpdatedAt: Date.now() } };
+            persistTimers(next, activeTimerId === taskId ? null : activeTimerId);
+            return next;
+        });
+        if (activeTimerId === taskId) setActiveTimerId(null);
+    };
+
+    const handleCompleteTask = async (sessionId: string, subjectIdx: number, taskId: string) => {
+        const now = Date.now();
+        await handleStatusChange(sessionId, subjectIdx, 'completed');
+        setTimers((prev) => {
+            const current = prev[taskId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null, lastUpdatedAt: null };
+            const lastTick = current.lastUpdatedAt || current.startedAt || now;
+            const extra = current.isRunning && current.startedAt ? Math.max(0, Math.floor((now - lastTick) / 1000)) : 0;
+            const updatedSeconds = current.seconds + extra;
+            const startedAt = current.startedAt ?? now;
+            const updated: TaskTimer = { ...current, seconds: updatedSeconds, isRunning: false, startedAt, finishedAt: now, lastUpdatedAt: now };
+            const next = { ...prev, [taskId]: updated };
+            persistTimers(next, activeTimerId === taskId ? null : activeTimerId);
+            return next;
+        });
+        if (activeTimerId === taskId) setActiveTimerId(null);
+    };
 
     return (
         <div className="max-w-7xl mx-auto space-y-12 pb-24">
@@ -943,102 +1149,7 @@ const StudyPlanPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Subject Management Panel */}
-                                <div className="rounded-[2.5rem] bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/50 border border-slate-100">
-                                    <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between mb-8">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                                                <ListTodo size={24} />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-lg font-black text-slate-900">Your Subjects</h3>
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Add or remove subjects</p>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <div className="space-y-6">
-                                        {/* Add Subject Box */}
-                                        <div className="rounded-3xl bg-slate-50 p-6 border border-slate-100 shadow-inner">
-                                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                                                <div className="lg:col-span-2">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Subject Title"
-                                                        value={subjectDraft.name}
-                                                        onChange={(e) => setSubjectDraft({ ...subjectDraft, name: e.target.value })}
-                                                        className="w-full rounded-2xl border-slate-200 bg-white py-3 px-4 text-sm font-bold text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                                                    />
-                                                </div>
-                                                <select
-                                                    value={subjectDraft.difficulty}
-                                                    onChange={(e) => setSubjectDraft({ ...subjectDraft, difficulty: e.target.value as StudyDifficulty })}
-                                                    className="w-full rounded-2xl border-slate-200 bg-white py-3 px-4 text-sm font-bold text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer outline-none"
-                                                >
-                                                    <option value="easy">Level: Easy</option>
-                                                    <option value="medium">Level: Medium</option>
-                                                    <option value="hard">Level: Hard</option>
-                                                </select>
-                                                <input
-                                                    type="number"
-                                                    placeholder="Credits"
-                                                    value={subjectDraft.creditHours}
-                                                    onChange={(e) => setSubjectDraft({ ...subjectDraft, creditHours: Number(e.target.value) })}
-                                                    className="w-full rounded-2xl border-slate-200 bg-white py-3 px-4 text-sm font-bold text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                                                />
-                                                <button
-                                                    onClick={handleAddSubject}
-                                                    disabled={!subjectDraft.name}
-                                                    className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black text-white hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    <Plus size={16} />
-                                                    Add Subject
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Subjects List */}
-                                        <div className="grid gap-4 sm:grid-cols-2">
-                                            {planInput.subjects.length === 0 ? (
-                                                <div className="col-span-full flex flex-col items-center justify-center py-12 text-center text-slate-400 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                                                    <div className="mb-4 rounded-full bg-white p-4 shadow-sm border border-slate-100">
-                                                        <ListTodo size={32} className="text-slate-300" />
-                                                    </div>
-                                                    <p className="text-sm font-bold text-slate-600">No Subjects Added</p>
-                                                    <p className="max-w-[200px] text-xs">Add your subjects to create a tailored study plan.</p>
-                                                </div>
-                                            ) : (
-                                                planInput.subjects.map((sub, idx) => (
-                                                    <div key={idx} className="group relative flex items-center gap-4 rounded-3xl bg-white p-4 border border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-slate-200">
-                                                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-                                                            sub.difficulty === 'hard' ? 'bg-rose-50 text-rose-600' :
-                                                            sub.difficulty === 'medium' ? 'bg-amber-50 text-amber-600' :
-                                                            'bg-emerald-50 text-emerald-600'
-                                                        }`}>
-                                                            <Brain size={20} />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <h4 className="truncate text-sm font-black text-slate-900">{sub.name}</h4>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{sub.difficulty}</span>
-                                                                <span className="w-1 h-1 rounded-full bg-slate-200"></span>
-                                                                <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 rounded w-fit">
-                                                                    {sub.creditHours} Credits
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleRemoveSubject(idx)}
-                                                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 hover:text-rose-600"
-                                                        >
-                                                            <Plus size={18} className="rotate-45" />
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
 
                             {/* RIGHT SIDE: Smart Insights Panel */}
@@ -1094,20 +1205,13 @@ const StudyPlanPage: React.FC = () => {
                                     {/* Generation Button Area */}
                                     <div className="space-y-4 pt-4">
                                         <button
-                                            onClick={handleCreatePlan}
+                                            onClick={() => setCurrentStep(3)}
                                             disabled={isCreating}
                                             className="w-full px-6 py-5 rounded-[2rem] bg-blue-600 text-white text-sm font-black uppercase tracking-widest hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/20 hover:-translate-y-1 transition-all disabled:opacity-80 disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:cursor-not-allowed group relative overflow-hidden"
                                         >
-                                            {isCreating ? (
-                                                <div className="flex flex-col items-center justify-center gap-2">
-                                                    <Loader2 size={24} className="animate-spin text-white/50" />
-                                                    <span className="text-[10px] tracking-widest font-black opacity-90 animate-pulse">{generationStage || 'Processing...'}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="flex items-center justify-center gap-2">
-                                                    Generate Smart Study Plan <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                                                </span>
-                                            )}
+                                            <span className="flex items-center justify-center gap-2">
+                                                Review & Generate <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                            </span>
                                         </button>
                                         <button onClick={() => setCurrentStep(1)} className="w-full py-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1">
                                             <ChevronLeft size={14} /> Go Back
@@ -1293,7 +1397,7 @@ const StudyPlanPage: React.FC = () => {
                                                 </div>
                                                 <div className="rounded-xl bg-emerald-50 p-2">
                                                     <p className="text-[10px] text-slate-500">Hours</p>
-                                                    <p className="text-sm font-bold text-slate-900">{planHours.toFixed(1)}</p>
+                                                    <p className="text-sm font-bold text-slate-900">{formatHours(planHours)}</p>
                                                 </div>
                                                 <div className="rounded-xl bg-amber-50 p-2">
                                                     <p className="text-[10px] text-slate-500">Subjects</p>
@@ -1399,6 +1503,32 @@ const StudyPlanPage: React.FC = () => {
                             const dayTotal = session.subjects.length;
                             const dayProgress = dayTotal > 0 ? Math.round(((dayCompleted + dayInProgress * 0.5) / dayTotal) * 100) : 0;
 
+                            const dayMinutes = session.subjects.reduce((total, sub) => {
+                                const mins = sub.durationMinutes ?? (sub.durationHours ? sub.durationHours * 60 : 0);
+                                return total + mins;
+                            }, 0);
+                            const dayHours = dayMinutes > 0
+                                ? dayMinutes / 60
+                                : (session.totalStudyHours ?? 0);
+
+                            let currentStartTime = new Date();
+                            currentStartTime.setHours(9, 0, 0, 0); // Default to 9:00 a.m.
+                            if (selectedPlan.internshipEndTime) {
+                                const [h, m] = selectedPlan.internshipEndTime.split(':').map(Number);
+                                if (!isNaN(h) && !isNaN(m)) {
+                                    currentStartTime.setHours((h + 1) % 24, m, 0, 0);
+                                }
+                            }
+
+                            const formatTime = (date: Date) => {
+                                const h = date.getHours();
+                                const m = date.getMinutes();
+                                const ampm = h >= 12 ? 'p.m.' : 'a.m.';
+                                const hour12 = h % 12 || 12;
+                                const minStr = m < 10 ? `0${m}` : m;
+                                return `${hour12}.${minStr} ${ampm}`;
+                            };
+
                             return (
                                 <div key={session._id} className="relative group">
                                     {/* Timeline Marker Line */}
@@ -1435,7 +1565,7 @@ const StudyPlanPage: React.FC = () => {
                                                 <div className="flex items-center gap-6 bg-slate-50/50 rounded-2xl px-6 py-3 border border-slate-100">
                                                     <div className="flex items-center gap-2">
                                                         <Clock size={16} className="text-slate-400" />
-                                                        <span className="text-sm font-black text-slate-700">{session.totalStudyHours}h</span>
+                                                        <span className="text-sm font-black text-slate-700">{formatHours(dayHours)}h</span>
                                                     </div>
                                                     <div className="h-5 w-px bg-slate-200" />
                                                     <div className="flex items-center gap-3">
@@ -1457,6 +1587,16 @@ const StudyPlanPage: React.FC = () => {
                                                     const priorityMeta = PRIORITY_META[subject.priority] || PRIORITY_META.medium;
                                                     const isComplete = currentStatus === 'completed';
                                                     const isInProgress = currentStatus === 'in-progress';
+
+                                                    const taskId = `${session._id}-${idx}`;
+                                                    const timerState = timers[taskId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null };
+                                                    const durationMins = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
+                                                    const progressPct = durationMins ? Math.min(100, Math.round((timerState.seconds / (durationMins * 60)) * 100)) : null;
+
+                                                    const startTimeStr = formatTime(currentStartTime);
+                                                    currentStartTime = new Date(currentStartTime.getTime() + durationMins * 60000);
+                                                    const endTimeStr = formatTime(currentStartTime);
+                                                    const timeDisplay = `${startTimeStr} - ${endTimeStr}`;
 
                                                     const taskTypeTheme: Record<string, string> = {
                                                         reading: 'bg-blue-50 text-blue-600 border-blue-100/50',
@@ -1512,7 +1652,7 @@ const StudyPlanPage: React.FC = () => {
                                                                         </span>
                                                                         <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase">
                                                                             <Clock size={14} />
-                                                                            {subject.durationMinutes ? `${subject.durationMinutes}m` : `${subject.durationHours}h`}
+                                                                            {timeDisplay}
                                                                         </div>
                                                                     </div>
 
@@ -1543,8 +1683,17 @@ const StudyPlanPage: React.FC = () => {
                                                                     )}
                                                                 </div>
 
-                                                                <div className="lg:w-52 space-y-2">
-                                                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</div>
+                                                                <div className={`w-full lg:w-64 min-w-[240px] space-y-3 ${activeTimerId === taskId ? 'ring-2 ring-emerald-200 ring-offset-2 ring-offset-white rounded-2xl' : ''}`}>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</div>
+                                                                        <button 
+                                                                            onClick={() => setOpenTrackerId(openTrackerId === taskId ? null : taskId)}
+                                                                            className="flex items-center gap-1 text-[10px] font-black uppercase text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg"
+                                                                        >
+                                                                            <Timer size={12} />
+                                                                            Track
+                                                                        </button>
+                                                                    </div>
                                                                     <div className="grid grid-cols-3 gap-2">
                                                                         <button
                                                                             onClick={() => handleStatusChange(session._id, idx, 'pending')}
@@ -1567,7 +1716,7 @@ const StudyPlanPage: React.FC = () => {
                                                                             Progress
                                                                         </button>
                                                                         <button
-                                                                            onClick={() => handleStatusChange(session._id, idx, 'completed')}
+                                                                            onClick={() => handleCompleteTask(session._id, idx, taskId)}
                                                                             className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.18em] transition-all ${
                                                                                 isComplete
                                                                                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200/50'
@@ -1577,6 +1726,17 @@ const StudyPlanPage: React.FC = () => {
                                                                             Done
                                                                         </button>
                                                                     </div>
+
+                                                                    {openTrackerId === taskId && (
+                                                                            <TimerPanel
+                                                                                title={subject.title || subject.topic || subject.subjectName}
+                                                                                timerState={timerState}
+                                                                                progressPct={progressPct}
+                                                                                onStart={() => handleStartTimer(taskId, session._id, idx)}
+                                                                                onPause={() => handlePauseTimer(taskId)}
+                                                                                onReset={() => handleResetTimer(taskId)}
+                                                                            />
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1592,6 +1752,7 @@ const StudyPlanPage: React.FC = () => {
                 </div>
             )}
             </>
+
         </div>
     );
 };

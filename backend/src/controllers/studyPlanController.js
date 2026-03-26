@@ -343,7 +343,7 @@ const generateAISummary = (subjects, hoursPerDay, totalDays) => {
 exports.createStudyPlan = async (req, res, next) => {
     try {
         const { title, examStartDate, examEndDate, internshipStartTime, internshipEndTime } = req.body;
-        const rawSubjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : req.body.subjects;
+        const subjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : (req.body.subjects || []);
         const availableHoursPerDay = typeof req.body.availableHoursPerDay === 'string'
             ? parseFloat(req.body.availableHoursPerDay)
             : req.body.availableHoursPerDay;
@@ -355,8 +355,6 @@ exports.createStudyPlan = async (req, res, next) => {
         const start = new Date(examStartDate);
         const end = new Date(examEndDate);
         const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-        const hasDocs = Array.isArray(req.files) && req.files.length > 0;
-
         const sessions = generateStudySessions(subjects, examStartDate, examEndDate, hoursPerDay);
         const aiSummary = generateAISummary(subjects, hoursPerDay, totalDays);
 
@@ -385,7 +383,7 @@ exports.createStudyPlan = async (req, res, next) => {
 exports.createStudyPlanWithDocs = async (req, res, next) => {
     try {
         const { title, examStartDate, examEndDate, internshipStartTime, internshipEndTime } = req.body;
-        const subjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : req.body.subjects;
+        const rawSubjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : (req.body.subjects || []);
         const availableHoursPerDay = typeof req.body.availableHoursPerDay === 'string'
             ? parseFloat(req.body.availableHoursPerDay)
             : req.body.availableHoursPerDay;
@@ -397,13 +395,25 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
         const start = new Date(examStartDate);
         const end = new Date(examEndDate);
         const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        const files = Array.isArray(req.files) ? req.files : [];
+        const hasDocs = files.length > 0;
+        const docSubjects = hasDocs
+            ? files.map((f, idx) => ({
+                name: f.originalname || `Document ${idx + 1}`,
+                difficulty: 'medium',
+                weight: 1,
+                creditHours: 3,
+                syllabusTopics: [],
+            }))
+            : [];
 
         // Read docs and generate AI-powered study plan
         const docsText = await readDocumentsToText(req.files || []);
         const aiKey = typeof req.body.aiKey === 'string' ? req.body.aiKey.trim() : undefined;
 
         // Try AI-powered generation first
-        const subjectsForAI = hasDocs ? [] : rawSubjects;
+        // Pass user subjects as hints even when docs are provided, so AI can blend both
+        const subjectsForAI = rawSubjects && rawSubjects.length > 0 ? rawSubjects : docSubjects;
         const aiResult = await generateAIStudyPlan({
             subjects: subjectsForAI,
             docsText,
@@ -441,7 +451,7 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
                 notes: session.dayTheme || session.notes || '',
             }));
 
-            aiSummary = aiResult.aiSummary || generateAISummary(subjects, hoursPerDay, totalDays);
+            aiSummary = aiResult.aiSummary || generateAISummary(subjectsForAI, hoursPerDay, totalDays);
 
             // Enrich subjects with extracted topics from AI
             if (aiResult.extractedTopics && aiResult.extractedTopics.length > 0) {
@@ -454,14 +464,53 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
                     syllabusTopics: (t.topics || []).slice(0, 10),
                 }));
             } else {
-                enrichedSubjects = subjectsForAI && subjectsForAI.length > 0 ? subjectsForAI : rawSubjects || [];
+                enrichedSubjects = subjectsForAI && subjectsForAI.length > 0 ? subjectsForAI : rawSubjects || docSubjects || [];
             }
         } else {
             logger.info('[StudyPlan] AI generation failed, using fallback local generation');
-            const fallbackSubjects = subjectsForAI && subjectsForAI.length > 0 ? subjectsForAI : rawSubjects || [];
+            const fallbackSubjects = subjectsForAI && subjectsForAI.length > 0 ? subjectsForAI : rawSubjects || docSubjects || [];
             sessions = generateStudySessions(fallbackSubjects, examStartDate, examEndDate, hoursPerDay);
             aiSummary = generateAISummary(fallbackSubjects, hoursPerDay, totalDays);
             enrichedSubjects = fallbackSubjects;
+        }
+
+        const hasAnyTasks = Array.isArray(sessions) && sessions.some((s) => Array.isArray(s.subjects) && s.subjects.length > 0);
+        if (!hasAnyTasks) {
+            // If docs were provided but AI produced no tasks, create a simple daily review block so the plan is usable.
+            if (hasDocs && docsText && docsText.length > 0) {
+                const startDate = new Date(examStartDate);
+                sessions = Array.from({ length: Math.max(1, totalDays) }).map((_, idx) => ({
+                    day: idx + 1,
+                    date: new Date(startDate.getTime() + idx * 86400000),
+                    subjects: [
+                        {
+                            subjectName: 'Study Materials',
+                            title: 'Review uploaded documents',
+                            topic: 'Uploaded docs focus',
+                            taskType: 'reading',
+                            instruction: 'Read, highlight key points, and summarize takeaways.',
+                            durationHours: hoursPerDay,
+                            durationMinutes: Math.round(hoursPerDay * 60),
+                            technique: 'pomodoro',
+                            resources: [],
+                            priority: 'medium',
+                        },
+                    ],
+                    totalStudyHours: hoursPerDay,
+                    notes: 'Focus: review uploaded materials',
+                }));
+                enrichedSubjects = [
+                    {
+                        name: 'Uploaded Documents',
+                        difficulty: 'medium',
+                        weight: 1,
+                        creditHours: 3,
+                        syllabusTopics: [],
+                    },
+                ];
+            } else {
+                return next(new AppError('Could not generate study tasks from the provided inputs. Please add at least one subject or clearer study documents, then try again.', 400));
+            }
         }
 
         const plan = await StudyPlan.create({
