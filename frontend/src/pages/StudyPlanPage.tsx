@@ -208,6 +208,8 @@ const StudyPlanPage: React.FC = () => {
     const [hydrated, setHydrated] = useState(false);
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [lastNotifiedTask, setLastNotifiedTask] = useState<string | null>(null);
+    const [activeAlert, setActiveAlert] = useState<{ title: string; time: string; subject: string; id: string; planId?: string } | null>(null);
+    const [welcomeAlertShown, setWelcomeAlertShown] = useState(false);
 
     const persistTimers = (nextTimers: TimerMap, activeId: string | null) => {
         if (!hydrated) return; // avoid clobbering before hydration
@@ -460,16 +462,77 @@ const StudyPlanPage: React.FC = () => {
         };
         loadPlans();
         
-        // Check initial notification permission
         if ("Notification" in window && Notification.permission === "granted") {
             setNotificationsEnabled(true);
         }
     }, []);
 
+    useEffect(() => {
+        if (!isLoadingPlans && plans.length > 0 && !welcomeAlertShown) {
+            const activePlan = plans.find(p => p._id === selectedPlanId) || plans[0];
+            const next = getNextTaskForPlan(activePlan);
+            if (next) {
+                setActiveAlert({
+                    id: 'welcome',
+                    title: next.title,
+                    subject: "Scheduled Session",
+                    time: next.time,
+                    planId: activePlan._id
+                });
+                const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                audio.volume = 0.6;
+                audio.play().catch((e) => console.warn("Inter visit audio failed", e));
+                setWelcomeAlertShown(true);
+            }
+        }
+    }, [isLoadingPlans, plans, welcomeAlertShown, selectedPlanId]);
+
     const selectedPlan = useMemo(
         () => plans.find((p) => p._id === selectedPlanId) || plans[0],
         [plans, selectedPlanId]
     );
+
+    const getNextTaskForPlan = (plan: StudyPlan) => {
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const todaySession = plan.sessions.find(s => s.date.toString().split('T')[0] === todayStr);
+
+        if (!todaySession) return null;
+
+        let currentStartTime = new Date();
+        let studyStartHour = 9, studyStartMin = 0;
+        const workDays = plan.internshipDays || [];
+
+        if (plan.internshipStartTime && plan.internshipEndTime && workDays.length > 0) {
+            const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'short' });
+            if (workDays.includes(dayOfWeek)) {
+                const [h, m] = plan.internshipEndTime.split(':').map(Number);
+                if (!isNaN(h) && !isNaN(m)) {
+                    studyStartHour = (h + 1) % 24;
+                    studyStartMin = m;
+                }
+            }
+        }
+        currentStartTime.setHours(studyStartHour, studyStartMin, 0, 0);
+
+        for (let i = 0; i < todaySession.subjects.length; i++) {
+            const subject = todaySession.subjects[i];
+            const taskStartTime = new Date(currentStartTime);
+            const durationMins = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
+            
+            // Check status first - we want the first non-completed one
+            if (subject.status !== 'completed') {
+                return {
+                    title: subject.title || subject.topic || subject.subjectName,
+                    time: taskStartTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                };
+            }
+            
+            // Increment start time for the next subject in loop
+            currentStartTime = new Date(currentStartTime.getTime() + durationMins * 60000);
+        }
+        return null;
+    };
 
     // ── Reminder Engine ───────────────────────────────────────────────
     useEffect(() => {
@@ -513,9 +576,19 @@ const StudyPlanPage: React.FC = () => {
                 // If task starts within the next 2 minutes (120000ms) and we haven't notified for it
                 if (diffMs > 0 && diffMs < 120000 && lastNotifiedTask !== taskId) {
                     setLastNotifiedTask(taskId);
+                    const startTimeStr = taskStartTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
+                    // Set In-App Alert
+                    setActiveAlert({
+                        id: taskId,
+                        title: subject.title || subject.topic || "Study Session",
+                        subject: subject.subjectName,
+                        time: startTimeStr,
+                        planId: selectedPlan._id
+                    });
+
                     const notification = new Notification("Study Session Starting!", {
-                        body: `Next: ${subject.title} at ${taskStartTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
+                        body: `Next: ${subject.title} at ${startTimeStr}`,
                         icon: '/favicon.ico',
                         silent: false
                     });
@@ -528,6 +601,7 @@ const StudyPlanPage: React.FC = () => {
                         window.focus();
                         setSelectedPlanId(selectedPlan._id);
                         setViewMode('schedule');
+                        setActiveAlert(null); // Dismiss in-app alert when notification is clicked
                         notification.close();
                     };
                 }
@@ -544,16 +618,14 @@ const StudyPlanPage: React.FC = () => {
             return;
         }
 
-        if (Notification.permission === "granted") {
-            setNotificationsEnabled(!notificationsEnabled);
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+            setNotificationsEnabled(true);
+            toast.success("Reminders active with sound alerts!");
+            const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+            audio.play().catch(() => {});
         } else {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-                setNotificationsEnabled(true);
-                toast.success("Notifications enabled!");
-            } else {
-                toast.error("Notification permission denied");
-            }
+            toast.error("Notification permission denied");
         }
     };
     
@@ -706,14 +778,16 @@ const StudyPlanPage: React.FC = () => {
     };
 
     const handleStatusChange = async (sessionId: string, subjectIdx: number, status: StudyTaskStatus) => {
-        if (!selectedPlan) return;
+        if (!selectedPlan) return null;
         try {
             const updated = await updateSubjectStatus(selectedPlan._id, sessionId, subjectIdx, status);
             setPlans((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
             const labels: Record<StudyTaskStatus, string> = { pending: 'Set to pending', 'in-progress': 'Started', completed: 'Completed!' };
             toast.success(labels[status]);
+            return updated;
         } catch (error: any) {
             toast.error(error?.response?.data?.message || 'Could not update status');
+            return null;
         }
     };
 
@@ -783,7 +857,8 @@ const StudyPlanPage: React.FC = () => {
 
     const handleCompleteTask = async (sessionId: string, subjectIdx: number, taskId: string) => {
         const now = Date.now();
-        await handleStatusChange(sessionId, subjectIdx, 'completed');
+        const updatedPlan = await handleStatusChange(sessionId, subjectIdx, 'completed');
+        
         setTimers((prev) => {
             const current = prev[taskId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null, lastUpdatedAt: null };
             const lastTick = current.lastUpdatedAt || current.startedAt || now;
@@ -795,17 +870,80 @@ const StudyPlanPage: React.FC = () => {
             persistTimers(next, activeTimerId === taskId ? null : activeTimerId);
             return next;
         });
+
         if (activeTimerId === taskId) setActiveTimerId(null);
+
+        // Auto-trigger next task alert
+        if (updatedPlan) {
+            const next = getNextTaskForPlan(updatedPlan);
+            if (next) {
+                setActiveAlert({
+                    id: `next-${Date.now()}`,
+                    title: next.title,
+                    subject: "Consecutive Mission",
+                    time: next.time,
+                    planId: updatedPlan._id
+                });
+                const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                audio.volume = 0.5;
+                audio.play().catch(() => {});
+            }
+        }
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-12 pb-24">
+        <div className="max-w-7xl mx-auto space-y-12 pb-24 relative">
+            {/* ── Global In-App Alert Banner ── */}
+            {activeAlert && (
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] w-[90%] max-w-2xl animate-pop-in px-4 pointer-events-none">
+                    <div className="bg-slate-900 text-white rounded-[2rem] p-4 pr-5 shadow-[0_30px_70px_-15px_rgba(30,58,138,0.5)] border-2 border-blue-500/40 backdrop-blur-xl flex items-center justify-between gap-6 relative overflow-hidden group pointer-events-auto ring-1 ring-white/10 animate-bounce-subtle">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent bg-[length:200%_100%] animate-shimmer pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-transparent pointer-events-none" />
+                        
+                        <div className="flex items-center gap-4 relative z-10 shrink-0">
+                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0 animate-pulse">
+                                <Bell size={24} className="text-white" />
+                            </div>
+                            <div className="space-y-0.5">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 flex items-center gap-1.5 drop-shadow-sm">
+                                    <Sparkles size={11} className="animate-spin-slow" /> Next Mission
+                                </p>
+                                <h4 className="text-sm font-black tracking-tight leading-none text-white max-w-[200px] truncate">{activeAlert.title}</h4>
+                                <div className="flex items-center gap-2.5 mt-1.5">
+                                    <span className="text-[9px] font-bold text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase">{activeAlert.subject}</span>
+                                    <span className="text-[10px] font-black text-blue-400 flex items-center gap-1">
+                                        <Clock size={12} /> {activeAlert.time}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 relative z-10 shrink-0">
+                            <button 
+                                onClick={() => {
+                                    const firstId = plans[0]?._id;
+                                    const targetPlanId = activeAlert.planId || selectedPlanId || firstId;
+                                    setSelectedPlanId(targetPlanId);
+                                    setViewMode('schedule');
+                                    setActiveAlert(null);
+                                }}
+                                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all hover:scale-110 active:scale-95 shadow-lg shadow-blue-600/20 flex items-center gap-2"
+                            >
+                                <Play size={14} fill="currentColor" /> Enter Studio
+                            </button>
+                            <button 
+                                onClick={() => setActiveAlert(null)}
+                                className="h-9 w-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all border border-white/5 cursor-pointer"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Premium Header ── */}
             <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 p-8 shadow-2xl md:p-12">
-                {/* Decorative background elements */}
-                <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-blue-600/20 blur-[100px]" />
-                <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-emerald-600/10 blur-[100px]" />
-                
+
                 <div className="relative flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-4">
                         <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-blue-400 ring-1 ring-inset ring-blue-500/20">
@@ -1444,12 +1582,6 @@ const StudyPlanPage: React.FC = () => {
                                                         <p className="text-[11px] uppercase tracking-wide text-slate-500">
                                                             {plan.totalStudyDays} days study period
                                                         </p>
-                                                        {notificationsEnabled && selectedPlanId === plan._id && (
-                                                            <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100/50 animate-pulse">
-                                                                <Zap size={10} />
-                                                                Monitoring Active
-                                                            </div>
-                                                        )}
                                                         <div className="mt-2 text-right">
                                                             <p className="text-xs font-semibold text-blue-700">{plan.overallProgress}%</p>
                                                             <div className="mt-1 h-2 w-20 overflow-hidden rounded-full bg-slate-200">
