@@ -25,7 +25,7 @@ import {
     Info,
     Play,
     Pause,
-    Square,
+    RotateCcw,
     Timer,
     Bell,
     BellOff,
@@ -82,75 +82,77 @@ const TimerPanel: React.FC<{
     onReset: () => void;
 }> = ({ title, timerState, progressPct, onStart, onPause, onReset }) => {
     return (
-        <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-3 animate-in slide-in-from-top-2">
-                    <div className="flex items-center justify-between gap-2">
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-xs font-black text-blue-700 uppercase tracking-widest break-all">
-                        <Timer size={14} />
-                        <span className="break-all leading-snug">{title}</span>
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 space-y-4 animate-in slide-in-from-top-2">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-blue-700 uppercase tracking-wider break-all leading-tight">
+                        <Timer size={14} className="shrink-0" />
+                        <span className="break-all">{title}</span>
                     </div>
                     <span
-                        className="text-[11px] font-semibold text-slate-500"
+                        className="text-[11px] font-medium text-slate-500"
                         title={`Task started at ${formatClockTime(timerState.startedAt)}`}
                     >
-                        Started at {formatClockTime(timerState.startedAt)}
+                        Started at {formatClockTime(timerState.startedAt) || '--:--'}
                     </span>
                     {timerState.finishedAt && (
-                        <span className="text-[11px] font-semibold text-emerald-600" title={`Task finished at ${formatClockTime(timerState.finishedAt)}`}>
+                        <span className="text-[11px] font-medium text-emerald-600" title={`Task finished at ${formatClockTime(timerState.finishedAt)}`}>
                             Finished at {formatClockTime(timerState.finishedAt)}
                         </span>
                     )}
                 </div>
-                <div className="text-right">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Elapsed Time</p>
-                    <span className="font-mono text-2xl font-black text-slate-900">
+                <div className="text-right shrink-0">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Elapsed Time</p>
+                    <span className="font-mono text-xl font-bold text-slate-800">
                         {formatTimer(timerState.seconds)}
                     </span>
                 </div>
             </div>
 
             {progressPct !== null && (
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                         <span>Progress</span>
                         <span>{progressPct}%</span>
                     </div>
-                    <div className="h-2 rounded-full bg-white shadow-inner overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all" style={{ width: `${progressPct}%` }} />
+                    <div className="h-2 rounded-full bg-white/60 shadow-inner overflow-hidden border border-slate-100/50">
+                        <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500" style={{ width: `${progressPct}%` }} />
                     </div>
                 </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
                 {!timerState.isRunning ? (
                     <button
                         onClick={onStart}
-                        className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white shadow-md shadow-emerald-200 hover:bg-emerald-700 transition"
+                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all hover:scale-105 active:scale-95"
                     >
-                        <Play size={14} />
+                        <Play size={12} fill="currentColor" />
                         Start
                     </button>
                 ) : (
                     <button
                         onClick={onPause}
-                        className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white shadow-md shadow-amber-200 hover:bg-amber-600 transition"
+                        className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-200 hover:bg-amber-600 transition-all hover:scale-105 active:scale-95"
                     >
-                        <Pause size={14} />
+                        <Pause size={12} fill="currentColor" />
                         Pause
                     </button>
                 )}
 
                 <button
                     onClick={onReset}
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-800 transition"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-800 transition-all hover:scale-105 active:scale-95 shadow-sm"
                 >
-                    <Square size={12} />
+                    <RotateCcw size={12} />
                     Reset
                 </button>
 
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    Time spent: {formatTimer(timerState.seconds)}
-                </span>
+                <div className="ml-auto">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500/80">
+                        Total spent: {formatTimer(timerState.seconds)}
+                    </span>
+                </div>
             </div>
         </div>
     );
@@ -791,6 +793,29 @@ const StudyPlanPage: React.FC = () => {
         }
     };
 
+    const handleRegeneratePlan = () => {
+        if (!selectedPlan) return;
+        
+        setPlanInput({
+            title: selectedPlan.title,
+            examStartDate: selectedPlan.examStartDate ? new Date(selectedPlan.examStartDate).toISOString().split('T')[0] : todayISO,
+            examEndDate: selectedPlan.examEndDate ? new Date(selectedPlan.examEndDate).toISOString().split('T')[0] : '',
+            subjects: selectedPlan.subjects || [],
+            availableHoursPerDay: selectedPlan.availableHoursPerDay || 4,
+            internshipStartTime: selectedPlan.internshipStartTime || '',
+            internshipEndTime: selectedPlan.internshipEndTime || '',
+            internshipHoursPerDay: selectedPlan.internshipHoursPerDay || 0,
+            internshipDaysPerWeek: selectedPlan.internshipDaysPerWeek || 0,
+            internshipDays: selectedPlan.internshipDays || [],
+        });
+        
+        setWorkEnabled(!!selectedPlan.internshipStartTime);
+        setSelectedWorkDays(selectedPlan.internshipDays || []);
+        setViewMode('builder');
+        setCurrentStep(2);
+        toast.success('Retrieved settings. You can now tweak and regenerate!');
+    };
+
     const handleDeletePlan = async (planId: string) => {
         const plan = plans.find((p) => p._id === planId);
         const name = plan?.title || 'this plan';
@@ -905,13 +930,13 @@ const StudyPlanPage: React.FC = () => {
                                 <Bell size={24} className="text-white" />
                             </div>
                             <div className="space-y-0.5">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 flex items-center gap-1.5 drop-shadow-sm">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400 flex items-center gap-1.5 drop-shadow-sm">
                                     <Sparkles size={11} className="animate-spin-slow" /> Next Mission
                                 </p>
-                                <h4 className="text-sm font-black tracking-tight leading-none text-white max-w-[200px] truncate">{activeAlert.title}</h4>
+                                <h4 className="text-sm font-bold tracking-tight leading-none text-white max-w-[200px] truncate">{activeAlert.title}</h4>
                                 <div className="flex items-center gap-2.5 mt-1.5">
-                                    <span className="text-[9px] font-bold text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase">{activeAlert.subject}</span>
-                                    <span className="text-[10px] font-black text-blue-400 flex items-center gap-1">
+                                    <span className="text-[9px] font-semibold bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase">{activeAlert.subject}</span>
+                                    <span className="text-[10px] font-bold text-blue-400 flex items-center gap-1">
                                         <Clock size={12} /> {activeAlert.time}
                                     </span>
                                 </div>
@@ -926,7 +951,7 @@ const StudyPlanPage: React.FC = () => {
                                     setViewMode('schedule');
                                     setActiveAlert(null);
                                 }}
-                                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all hover:scale-110 active:scale-95 shadow-lg shadow-blue-600/20 flex items-center gap-2"
+                                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold uppercase tracking-wider transition-all hover:scale-110 active:scale-95 shadow-lg shadow-blue-600/20 flex items-center gap-2"
                             >
                                 <Play size={14} fill="currentColor" /> Enter Studio
                             </button>
@@ -951,7 +976,7 @@ const StudyPlanPage: React.FC = () => {
                             AI Study Planner
                         </div>
                         <div className="space-y-2">
-                            <h1 className="text-4xl font-black tracking-tight text-white md:text-5xl lg:text-6xl">
+                            <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
                                 Study Plan <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Generator</span>
                             </h1>
                             <p className="max-w-2xl text-lg font-medium text-slate-400 leading-relaxed">
@@ -974,11 +999,11 @@ const StudyPlanPage: React.FC = () => {
                         {plans.length > 0 && (
                             <button
                                 onClick={() => setViewMode('plans')}
-                                className="group relative flex items-center justify-center gap-3 rounded-2xl bg-white px-6 py-4 text-sm font-black text-slate-950 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-white/10"
+                                className="btn-premium flex items-center justify-center gap-3 transition-all hover:scale-[1.05] active:scale-[0.95]"
                             >
-                                <Layout size={18} className="transition-transform group-hover:rotate-12" />
+                                <Layout size={18} />
                                 My Study Plans
-                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-950 text-[10px] font-black text-white">
+                                <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-blue-500 text-[10px] font-bold text-white ml-2 ring-2 ring-blue-400/30">
                                     {plans.length}
                                 </span>
                             </button>
@@ -999,33 +1024,32 @@ const StudyPlanPage: React.FC = () => {
             {viewMode === 'builder' && (
                 <div className="space-y-8 animate-slide-in">
                     {/* ── Premium Stepper ── */}
-                    <div className="relative overflow-hidden rounded-[2.5rem] bg-white p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+                    <div className="relative overflow-hidden rounded-[2rem] bg-slate-900/5 p-6 border border-slate-200/60 backdrop-blur-sm">
                         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between relative z-10">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-6">
                                 {[1, 2, 3].map((step) => (
                                     <React.Fragment key={step}>
                                         <div className="flex items-center gap-3">
-                                            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl font-black text-sm transition-all duration-500 ${
+                                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold text-xs transition-all duration-500 ${
                                                 currentStep === step
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110'
+                                                    ? 'bg-slate-900 text-white shadow-[0_10px_20px_-5px_rgba(15,23,42,0.3)] scale-110 ring-4 ring-blue-500/10'
                                                     : step < (currentStep as number)
                                                         ? 'bg-emerald-500 text-white'
-                                                        : 'bg-slate-100 text-slate-400'
+                                                        : 'bg-white text-slate-400 border border-slate-200'
                                             }`}>
-                                                {step < (currentStep as number) ? <CheckCircle2 size={18} /> : step}
+                                                {step < (currentStep as number) ? <CheckCircle2 size={16} /> : `0${step}`}
                                             </div>
                                             <div className="hidden lg:block">
-                                                <p className={`text-[10px] font-black uppercase tracking-wider ${
-                                                    currentStep === step ? 'text-blue-600' : 'text-slate-400'
+                                                <p className={`text-[10px] font-bold uppercase tracking-wider ${
+                                                    currentStep === step ? 'text-slate-900' : 'text-slate-400'
                                                 }`}>
-                                                    Step {step}
+                                                    Phase {step}
                                                 </p>
-                                                <p className="text-xs font-bold text-slate-900">
-                                                    {step === 1 ? 'Upload' : step === 2 ? 'Settings' : 'Ready'}
+                                                <p className="text-xs font-bold text-slate-700">
+                                                    {step === 1 ? 'Resources' : step === 2 ? 'Logic' : 'Deployment'}
                                                 </p>
                                             </div>
                                         </div>
-                                        {step < 3 && <div className="hidden h-[2px] w-12 bg-slate-100 md:block" />}
                                     </React.Fragment>
                                 ))}
                             </div>
@@ -1033,15 +1057,15 @@ const StudyPlanPage: React.FC = () => {
                             <div className="flex items-center gap-4">
                                 <button
                                     onClick={prefillDemoPlan}
-                                    className="flex items-center gap-2 rounded-2xl bg-slate-50 px-5 py-3 text-xs font-bold text-slate-600 transition-all hover:bg-slate-100 border border-slate-200/50"
+                                    className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 transition-all hover:bg-slate-50 border border-slate-200/50 shadow-sm"
                                 >
                                     <Sparkles size={14} className="text-amber-500" />
                                     Use Example
                                 </button>
-                                <div className="h-10 w-[1px] bg-slate-200 hidden md:block" />
+                                <div className="h-8 w-[1px] bg-slate-200 hidden md:block" />
                                 <div className="text-right hidden sm:block">
-                                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Process</p>
-                                    <p className="text-sm font-black text-slate-900">3 Steps</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Progress</p>
+                                    <p className="text-xs font-bold text-slate-900">{Math.round((currentStep / 3) * 100)}% COMPLETE</p>
                                 </div>
                             </div>
                         </div>
@@ -1051,15 +1075,15 @@ const StudyPlanPage: React.FC = () => {
                     {currentStep === 1 && (
                         <div className="grid gap-8 md:grid-cols-2">
                             {/* Study Materials Upload */}
-                            <div className="group relative overflow-hidden rounded-[2.5rem] bg-white p-8 shadow-xl shadow-slate-200/50 border border-slate-100 transition-all hover:shadow-2xl hover:shadow-blue-100">
-                                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-blue-500/5 blur-3xl group-hover:bg-blue-500/10 transition-colors" />
+                            <div className="premium-card p-10 group overflow-hidden bg-white">
+                                <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-blue-500/5 blur-[80px] group-hover:bg-blue-500/10 transition-colors" />
                                 <div className="relative space-y-6">
                                     <div className="flex items-center gap-4">
                                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 transition-transform group-hover:scale-110">
                                             <FileText size={24} />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-black text-slate-900">Study Materials</h3>
+                                            <h3 className="text-lg font-bold text-slate-900">Study Materials</h3>
                                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Upload notes for AI to read</p>
                                         </div>
                                     </div>
@@ -1069,12 +1093,12 @@ const StudyPlanPage: React.FC = () => {
                                         onDrop={handleDrop}
                                         className="relative rounded-[2rem] border-2 border-dashed border-slate-100 bg-slate-50/50 p-10 text-center transition-all hover:border-blue-300 hover:bg-blue-50/50"
                                     >
-                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-                                            <Upload className="text-blue-600" size={24} />
+                                        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-white shadow-xl shadow-blue-900/5 ring-1 ring-slate-100 group-hover:scale-110 transition-transform">
+                                            <Upload className="text-blue-600" size={32} />
                                         </div>
-                                        <p className="text-sm font-bold text-slate-900">Drop your syllabus or slides</p>
-                                        <p className="mt-1 text-xs text-slate-500">PDF, PPTX, or Markdown</p>
-                                        <label className="mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 py-3 text-xs font-black text-white shadow-xl shadow-slate-900/20 transition-all hover:scale-105 active:scale-95">
+                                        <p className="text-lg font-bold text-slate-900">Drop your syllabus or slides</p>
+                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wider">PDF, PPTX, or Markdown</p>
+                                        <label className="mt-8 btn-premium inline-flex cursor-pointer items-center justify-center gap-3">
                                             <input
                                                 type="file"
                                                 className="hidden"
@@ -1111,15 +1135,15 @@ const StudyPlanPage: React.FC = () => {
                             </div>
 
                             {/* Timetable Upload */}
-                            <div className="group relative overflow-hidden rounded-[2.5rem] bg-white p-8 shadow-xl shadow-slate-200/50 border border-slate-100 transition-all hover:shadow-2xl hover:shadow-purple-100">
-                                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-purple-500/5 blur-3xl group-hover:bg-purple-500/10 transition-colors" />
+                            <div className="premium-card p-10 group overflow-hidden bg-white">
+                                <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-purple-500/5 blur-[80px] group-hover:bg-purple-500/10 transition-colors" />
                                 <div className="relative space-y-6">
                                     <div className="flex items-center gap-4">
                                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 transition-transform group-hover:scale-110">
                                             <CalendarClock size={24} />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-black text-slate-900">Exam Schedule</h3>
+                                            <h3 className="text-lg font-bold text-slate-900">Exam Schedule</h3>
                                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Add your exam dates</p>
                                         </div>
                                     </div>
@@ -1129,12 +1153,12 @@ const StudyPlanPage: React.FC = () => {
                                         onDrop={handleTimetableDrop}
                                         className="relative rounded-[2rem] border-2 border-dashed border-slate-100 bg-slate-50/50 p-10 text-center transition-all hover:border-purple-300 hover:bg-purple-50/50"
                                     >
-                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-                                            <Calendar size={24} className="text-purple-600" />
+                                        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-white shadow-xl shadow-purple-900/5 ring-1 ring-slate-100 group-hover:scale-110 transition-transform">
+                                            <Calendar className="text-purple-600" size={32} />
                                         </div>
-                                        <p className="text-sm font-bold text-slate-900">Sync your exam dates</p>
-                                        <p className="mt-1 text-xs text-slate-500">AI will prioritize your subjects</p>
-                                        <label className="mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 py-3 text-xs font-black text-white shadow-xl shadow-slate-900/20 transition-all hover:scale-105 active:scale-95">
+                                        <p className="text-lg font-bold text-slate-900">Sync your exam dates</p>
+                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wider">AI will prioritize your subjects</p>
+                                        <label className="mt-8 btn-premium inline-flex cursor-pointer items-center justify-center gap-3">
                                             <input
                                                 type="file"
                                                 className="hidden"
@@ -1175,7 +1199,7 @@ const StudyPlanPage: React.FC = () => {
                                 <p className="text-xs font-medium text-slate-400 italic">Step 1: Upload your materials</p>
                                 <button
                                     onClick={() => setCurrentStep(2)}
-                                    className="flex items-center gap-2 rounded-[2rem] bg-blue-600 px-8 py-4 text-sm font-black text-white shadow-xl shadow-blue-200 transition-all hover:scale-105 active:scale-95"
+                                    className="flex items-center gap-2 rounded-[2rem] bg-blue-600 px-8 py-4 text-sm font-bold text-white shadow-xl shadow-blue-200 transition-all hover:scale-105 active:scale-95"
                                 >
                                     Next Step
                                     <ChevronRight size={18} />
@@ -1194,7 +1218,7 @@ const StudyPlanPage: React.FC = () => {
                                             <Calendar size={24} />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-black text-slate-900">Study Settings</h3>
+                                            <h3 className="text-lg font-bold text-slate-900">Study Settings</h3>
                                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Set your availability</p>
                                         </div>
                                     </div>
@@ -1202,7 +1226,7 @@ const StudyPlanPage: React.FC = () => {
                                     <div className="grid gap-6">
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-xs font-black uppercase tracking-widest text-slate-400 group flex items-center gap-2 cursor-help relative">
+                                                <label className="text-xs font-bold uppercase tracking-wider text-slate-400 group flex items-center gap-2 cursor-help relative">
                                                     Plan Name
                                                     <Info size={14} className="text-slate-300 peer" />
                                                     <div className="absolute left-1/2 -top-8 -translate-x-1/2 opacity-0 peer-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded font-medium whitespace-nowrap pointer-events-none z-10">Give your plan a memorable name</div>
@@ -1238,12 +1262,12 @@ const StudyPlanPage: React.FC = () => {
                                                 </div>
                                             </div>
                                             {titleError && (
-                                                <p className="text-[10px] font-black uppercase tracking-tighter text-rose-500 animate-in fade-in slide-in-from-left-2">{titleError}</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-tighter text-rose-500 animate-in fade-in slide-in-from-left-2">{titleError}</p>
                                             )}
                                         </div>
 
                                         <div className="space-y-3">
-                                            <label className="text-xs font-black uppercase tracking-widest text-slate-400 group flex items-center gap-2 cursor-help relative">
+                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 group flex items-center gap-2 cursor-help relative">
                                                 Study Timeline
                                                 <Info size={14} className="text-slate-300 peer" />
                                                 <div className="absolute left-1/2 -top-8 -translate-x-1/2 opacity-0 peer-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded font-medium whitespace-nowrap pointer-events-none z-10">Study from today until your exams begin</div>
@@ -1274,8 +1298,8 @@ const StudyPlanPage: React.FC = () => {
 
                                         <div className="space-y-3 pt-4 border-t border-slate-100 mt-2">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-xs font-black uppercase tracking-widest text-slate-400">Daily Study Goal</label>
-                                                <span className="text-blue-600 font-black text-lg">{manualHoursOverride ? planInput.availableHoursPerDay : derivedAvailableHours} <span className="text-sm text-slate-400 font-semibold">hours/day</span></span>
+                                                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Daily Study Goal</label>
+                                                <span className="text-blue-600 font-bold text-lg">{manualHoursOverride ? planInput.availableHoursPerDay : derivedAvailableHours} <span className="text-sm text-slate-400 font-semibold">hours/day</span></span>
                                             </div>
                                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                                 <input
@@ -1290,7 +1314,7 @@ const StudyPlanPage: React.FC = () => {
                                                     }}
                                                     className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                                                 />
-                                                <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-2 px-1">
+                                                <div className="flex justify-between text-[10px] font-semibold mt-2 px-1">
                                                     <span>Light (1h)</span>
                                                     <span>Intense (12h)</span>
                                                 </div>
@@ -1300,7 +1324,7 @@ const StudyPlanPage: React.FC = () => {
                                         <div className="space-y-4 pt-4 border-t border-slate-100 mt-2">
                                             <div className="flex items-center justify-between bg-white border-2 border-slate-100 hover:border-blue-100 p-4 rounded-2xl transition-all cursor-pointer group" onClick={() => setWorkEnabled(!workEnabled)}>
                                                 <div>
-                                                    <p className="text-sm font-black text-slate-900">Work &amp; Internship Commitments</p>
+                                                    <p className="text-sm font-bold text-slate-900">Work &amp; Internship Commitments</p>
                                                     <p className="text-xs font-medium text-slate-500 mt-0.5">Enable if you have a job or internship.</p>
                                                 </div>
                                                 <div className={`w-12 h-6 rounded-full p-1 transition-colors ${workEnabled ? 'bg-blue-600' : 'bg-slate-200 group-hover:bg-slate-300'}`}>
@@ -1312,8 +1336,8 @@ const StudyPlanPage: React.FC = () => {
                                                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 animate-in fade-in slide-in-from-top-2 space-y-6">
                                                     <div className="space-y-4">
                                                         <div className="flex items-center justify-between">
-                                                            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Days per Week</label>
-                                                            <span className="text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-widest">{selectedWorkDays.length} {selectedWorkDays.length === 1 ? 'day' : 'days'} selected</span>
+                                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Days per Week</label>
+                                                            <span className="text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider">{selectedWorkDays.length} {selectedWorkDays.length === 1 ? 'day' : 'days'} selected</span>
                                                         </div>
                                                         <div className="flex gap-2">
                                                             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
@@ -1346,7 +1370,7 @@ const StudyPlanPage: React.FC = () => {
                                                             })}
                                                         </div>
                                                         {selectedWorkDays.length > 5 && (
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50/80 border border-amber-100/60 p-2.5 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50/80 border border-amber-100/60 p-2.5 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
                                                                 <Info size={14} className="shrink-0" />
                                                                 High workload may affect your study balance
                                                             </p>
@@ -1355,12 +1379,12 @@ const StudyPlanPage: React.FC = () => {
                                                     
                                                     <div className={`space-y-4 pt-4 border-t border-slate-200 transition-opacity duration-300 ${selectedWorkDays.length === 0 ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
                                                         <div className="flex items-center justify-between">
-                                                            <label className="text-xs font-black uppercase tracking-widest text-slate-400">Hours per Day</label>
+                                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Hours per Day</label>
                                                             <span className="text-slate-900 font-bold bg-white px-2 py-1 rounded-md text-xs border border-slate-200 shadow-sm">{planInput.internshipHoursPerDay} <span className="text-slate-400 font-medium">hours</span></span>
                                                         </div>
                                                         <div className="flex items-center gap-3 px-1">
                                                             <div className="flex-1 space-y-1.5">
-                                                                <label className="text-[10px] uppercase tracking-widest font-black text-slate-400 block px-1">Start Time</label>
+                                                                <label className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block px-1">Start Time</label>
                                                                 <input
                                                                     type="time"
                                                                     value={workStartTime}
@@ -1379,9 +1403,9 @@ const StudyPlanPage: React.FC = () => {
                                                                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all cursor-pointer"
                                                                 />
                                                             </div>
-                                                            <div className="text-slate-300 font-black mt-5 shrink-0">-</div>
+                                                            <div className="text-slate-300 font-bold mt-5 shrink-0">-</div>
                                                             <div className="flex-1 space-y-1.5">
-                                                                <label className="text-[10px] uppercase tracking-widest font-black text-slate-400 block px-1">End Time</label>
+                                                                <label className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block px-1">End Time</label>
                                                                 <input
                                                                     type="time"
                                                                     value={workEndTime}
@@ -1416,25 +1440,25 @@ const StudyPlanPage: React.FC = () => {
                                 <div className="sticky top-8 space-y-6">
                                     {/* Summary Card */}
                                     <div className="rounded-[2.5rem] bg-white p-8 shadow-xl shadow-slate-200/50 border border-slate-100">
-                                        <h4 className="text-sm font-black text-slate-900 mb-6 flex items-center gap-2">
+                                        <h4 className="text-sm font-bold text-slate-900 mb-6 flex items-center gap-2">
                                             <Activity size={18} className="text-blue-600" />
                                             Plan Summary
                                         </h4>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Time to Exam</p>
-                                                <p className="text-2xl font-black text-slate-900">{daysUntilExam} <span className="text-sm text-slate-500 font-medium">days</span></p>
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Time to Exam</p>
+                                                <p className="text-2xl font-bold text-slate-900">{daysUntilExam} <span className="text-sm text-slate-500 font-medium">days</span></p>
                                             </div>
                                             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Study Hours</p>
-                                                <p className="text-2xl font-black text-slate-900">{totalStudyHoursAvailable} <span className="text-sm text-slate-500 font-medium">hrs</span></p>
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Study Hours</p>
+                                                <p className="text-2xl font-bold text-slate-900">{totalStudyHoursAvailable} <span className="text-sm text-slate-500 font-medium">hrs</span></p>
                                             </div>
                                         </div>
                                         
                                         <div className={`mt-4 rounded-2xl p-4 flex items-center justify-between transition-colors ${workloadScore.barCol} border border-transparent`}>
                                             <div>
-                                                <p className={`text-[10px] font-black uppercase tracking-widest ${workloadScore.color}`}>Overall Workload</p>
-                                                <p className={`text-lg font-black ${workloadScore.color}`}>{workloadScore.text}</p>
+                                                <p className={`text-[10px] font-bold uppercase tracking-wider ${workloadScore.color}`}>Overall Workload</p>
+                                                <p className={`text-lg font-bold ${workloadScore.color}`}>{workloadScore.text}</p>
                                             </div>
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-sm ${workloadScore.color}`}>
                                                 <Zap size={20} />
@@ -1447,7 +1471,7 @@ const StudyPlanPage: React.FC = () => {
                                         <div className="absolute -top-6 -right-6 p-6 opacity-[0.03] group-hover:rotate-12 transition-transform duration-700">
                                             <Brain size={120} />
                                         </div>
-                                        <h4 className="text-sm font-black mb-6 flex items-center gap-2 text-blue-400">
+                                        <h4 className="text-sm font-bold mb-6 flex items-center gap-2 text-blue-400">
                                             <Sparkles size={18} />
                                             AI Suggestions
                                         </h4>
@@ -1466,13 +1490,13 @@ const StudyPlanPage: React.FC = () => {
                                         <button
                                             onClick={() => setCurrentStep(3)}
                                             disabled={isCreating}
-                                            className="w-full px-6 py-5 rounded-[2rem] bg-blue-600 text-white text-sm font-black uppercase tracking-widest hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/20 hover:-translate-y-1 transition-all disabled:opacity-80 disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:cursor-not-allowed group relative overflow-hidden"
+                                            className="w-full px-6 py-5 rounded-[2rem] bg-blue-600 text-white text-sm font-bold uppercase tracking-wider hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/20 hover:-translate-y-1 transition-all disabled:opacity-80 disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:cursor-not-allowed group relative overflow-hidden"
                                         >
                                             <span className="flex items-center justify-center gap-2">
                                                 Review & Generate <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                                             </span>
                                         </button>
-                                        <button onClick={() => setCurrentStep(1)} className="w-full py-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1">
+                                        <button onClick={() => setCurrentStep(1)} className="w-full py-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1">
                                             <ChevronLeft size={14} /> Go Back
                                         </button>
                                     </div>
@@ -1616,7 +1640,7 @@ const StudyPlanPage: React.FC = () => {
                 <div className="space-y-5 animate-slide-in">
                     <div className="card p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <h2 className="text-2xl font-black text-slate-900">My Study Plans</h2>
+                            <h2 className="text-2xl font-bold text-slate-900">My Study Plans</h2>
                             <p className="text-sm text-slate-500">You have {plans.length} saved plan{plans.length !== 1 ? 's' : ''}. Tap any plan to view its schedule.</p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -1673,8 +1697,8 @@ const StudyPlanPage: React.FC = () => {
 
                                             <div className="space-y-3">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{completedTasks}/{totalTasks} Protocols Verified</span>
-                                                    <span className="text-xs font-black text-blue-600">{plan.overallProgress}%</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{completedTasks}/{totalTasks} Protocols Verified</span>
+                                                    <span className="text-xs font-bold text-blue-600">{plan.overallProgress}%</span>
                                                 </div>
                                                 <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden shadow-inner">
                                                     <div 
@@ -1708,16 +1732,26 @@ const StudyPlanPage: React.FC = () => {
                         
                         <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
                             <div className="space-y-4">
-                                <button 
-                                    onClick={() => setViewMode('plans')} 
-                                    className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
-                                >
-                                    <ChevronLeft size={16} />
-                                    Back to Study Plans
-                                </button>
+                                <div className="flex items-center gap-4">
+                                    <button 
+                                        onClick={() => setViewMode('plans')} 
+                                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700 transition-colors"
+                                    >
+                                        <ChevronLeft size={16} />
+                                        Back to Study Plans
+                                    </button>
+                                    <div className="h-4 w-[1px] bg-slate-200" />
+                                    <button 
+                                        onClick={handleRegeneratePlan}
+                                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 transition-colors"
+                                    >
+                                        <Wand2 size={16} />
+                                        Regenerate
+                                    </button>
+                                </div>
                                 
                                 <div>
-                                    <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Your Study Schedule</h2>
+                                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight mb-2">Your Study Schedule</h2>
                                     <p className="text-sm font-semibold text-slate-400 max-w-md">
                                         Schedule for <span className="text-blue-600">"{selectedPlan.title}"</span>.
                                     </p>
@@ -1726,16 +1760,16 @@ const StudyPlanPage: React.FC = () => {
 
                             <div className="flex flex-wrap items-center gap-4">
                                 <div className="rounded-[2rem] bg-slate-50 px-8 py-5 border border-slate-100 flex flex-col items-center min-w-[120px]">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Status</p>
-                                    <p className="text-2xl font-black text-blue-600">{selectedPlan.overallProgress}%</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</p>
+                                    <p className="text-2xl font-bold text-blue-600">{selectedPlan.overallProgress}%</p>
                                 </div>
                                 <div className="rounded-[2rem] bg-slate-50 px-8 py-5 border border-slate-100 flex flex-col items-center min-w-[120px]">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total</p>
-                                    <p className="text-2xl font-black text-slate-900">{totalHours.toFixed(0)}h</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Total</p>
+                                    <p className="text-2xl font-bold text-slate-900">{totalHours.toFixed(0)}h</p>
                                 </div>
                                 <div className="rounded-[2rem] bg-emerald-50 px-8 py-5 border border-emerald-100/50 flex flex-col items-center min-w-[120px]">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Span</p>
-                                    <p className="text-2xl font-black text-emerald-700">{selectedPlan.totalStudyDays}d</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">Span</p>
+                                    <p className="text-2xl font-bold text-emerald-700">{selectedPlan.totalStudyDays}d</p>
                                 </div>
                             </div>
                         </div>
@@ -1752,7 +1786,7 @@ const StudyPlanPage: React.FC = () => {
                                     <Zap size={24} />
                                 </div>
                                 <div className="space-y-2">
-                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">AI Study Advice</p>
+                                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">AI Study Advice</p>
                                     <p className="text-slate-300 font-medium leading-relaxed max-w-4xl italic">
                                         "{selectedPlan.aiSummary}"
                                     </p>
@@ -1827,8 +1861,8 @@ const StudyPlanPage: React.FC = () => {
                                                 : 'bg-white border-slate-50 text-slate-900 group-hover:border-blue-100 group-hover:text-blue-600'
                                             }`}>
                                                 <div className="text-center">
-                                                    <p className="text-[10px] font-black uppercase tracking-tighter opacity-70">Day</p>
-                                                    <p className="text-2xl font-black leading-none">{session.day}</p>
+                                                    <p className="text-[10px] font-bold uppercase tracking-tighter opacity-70">Day</p>
+                                                    <p className="text-2xl font-bold leading-none">{session.day}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -1837,21 +1871,21 @@ const StudyPlanPage: React.FC = () => {
                                             {/* Session Header */}
                                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6">
                                                 <div>
-                                                    <h3 className="text-xl font-black text-slate-900">
+                                                    <h3 className="text-xl font-bold text-slate-900">
                                                         {new Date(session.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                                                     </h3>
                                                     {session.notes && (
-                                                        <p className="text-xs font-bold text-blue-500 uppercase tracking-widest mt-1">{session.notes}</p>
+                                                        <p className="text-xs font-bold text-blue-500 uppercase tracking-wider mt-1">{session.notes}</p>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-6 bg-slate-50/50 rounded-2xl px-6 py-3 border border-slate-100">
                                                     <div className="flex items-center gap-2">
                                                         <Clock size={16} className="text-slate-400" />
-                                                        <span className="text-sm font-black text-slate-700">{formatHours(dayHours)}h</span>
+                                                        <span className="text-sm font-bold text-slate-700">{formatHours(dayHours)}h</span>
                                                     </div>
                                                     <div className="h-5 w-px bg-slate-200" />
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{dayCompleted}/{dayTotal} Verified</span>
+                                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{dayCompleted}/{dayTotal} Verified</span>
                                                         <div className="h-2 w-24 rounded-full bg-slate-200 overflow-hidden shadow-inner">
                                                             <div 
                                                                 className={`h-full transition-all duration-1000 ${dayProgress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
@@ -1926,23 +1960,23 @@ const StudyPlanPage: React.FC = () => {
 
                                                                 <div className="flex-1 space-y-4">
                                                                     <div className="flex flex-wrap items-center gap-3">
-                                                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${taskTypeTheme[subject.taskType || 'reading']}`}>
+                                                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${taskTypeTheme[subject.taskType || 'reading']}`}>
                                                                             {subject.taskType || 'MODULE'}
                                                                         </span>
-                                                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-100 bg-slate-50 text-slate-500`}>
+                                                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-slate-100 bg-slate-50 text-slate-500`}>
                                                                             {priorityMeta.label}
                                                                         </span>
-                                                                        <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase">
+                                                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase">
                                                                             <Clock size={14} />
                                                                             {timeDisplay}
                                                                         </div>
                                                                     </div>
 
                                                                     <div>
-                                                                        <h4 className={`text-xl font-black tracking-tight ${isComplete ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                                                                        <h4 className={`text-xl font-bold tracking-tight ${isComplete ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                                                                             {subject.title || subject.topic || subject.subjectName}
                                                                         </h4>
-                                                                        <p className="text-sm font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                                                        <p className="text-sm font-semibold mt-1 uppercase tracking-tighter">
                                                                             {subject.subjectName} {subject.technique ? `// ${subject.technique} Protocol` : ''}
                                                                         </p>
                                                                     </div>
@@ -1956,7 +1990,7 @@ const StudyPlanPage: React.FC = () => {
                                                                     {subject.resources && subject.resources.length > 0 && (
                                                                         <div className="flex flex-wrap gap-2">
                                                                             {subject.resources.map((res, i) => (
-                                                                                <span key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                                                                                <span key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-wider border border-blue-100">
                                                                                     <FileText size={12} />
                                                                                     {res}
                                                                                 </span>
@@ -1967,10 +2001,10 @@ const StudyPlanPage: React.FC = () => {
 
                                                                 <div className={`w-full lg:w-64 min-w-[240px] space-y-3 ${activeTimerId === taskId ? 'ring-2 ring-emerald-200 ring-offset-2 ring-offset-white rounded-2xl' : ''}`}>
                                                                     <div className="flex items-center justify-between">
-                                                                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</div>
+                                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</div>
                                                                         <button 
                                                                             onClick={() => setOpenTrackerId(openTrackerId === taskId ? null : taskId)}
-                                                                            className="flex items-center gap-1 text-[10px] font-black uppercase text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg"
+                                                                            className="flex items-center gap-1 text-[10px] font-bold uppercase text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg"
                                                                         >
                                                                             <Timer size={12} />
                                                                             Track
@@ -1979,30 +2013,30 @@ const StudyPlanPage: React.FC = () => {
                                                                     <div className="grid grid-cols-3 gap-2">
                                                                         <button
                                                                             onClick={() => handleStatusChange(session._id, idx, 'pending')}
-                                                                            className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.18em] transition-all ${
+                                                                            className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-[0.14em] transition-all shadow-sm ${
                                                                                 currentStatus === 'pending'
                                                                                     ? 'bg-slate-900 text-white shadow-lg shadow-slate-400/20'
-                                                                                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                                                                                    : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100'
                                                                             }`}
                                                                         >
                                                                             Pending
                                                                         </button>
                                                                         <button
                                                                             onClick={() => handleStatusChange(session._id, idx, 'in-progress')}
-                                                                            className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.18em] transition-all ${
+                                                                            className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-[0.14em] transition-all shadow-sm ${
                                                                                 isInProgress
                                                                                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-300/30'
-                                                                                    : 'bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-600'
+                                                                                    : 'bg-white text-slate-500 hover:bg-blue-50 hover:text-blue-600 border border-slate-100'
                                                                             }`}
                                                                         >
                                                                             Progress
                                                                         </button>
                                                                         <button
                                                                             onClick={() => handleCompleteTask(session._id, idx, taskId)}
-                                                                            className={`py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.18em] transition-all ${
+                                                                            className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-[0.14em] transition-all shadow-sm ${
                                                                                 isComplete
                                                                                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200/50'
-                                                                                    : 'bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
+                                                                                    : 'bg-white text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-100'
                                                                             }`}
                                                                         >
                                                                             Done

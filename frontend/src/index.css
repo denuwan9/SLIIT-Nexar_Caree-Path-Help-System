@@ -58,14 +58,14 @@
 }
 
 :root {
-  --font-family: 'Outfit', 'Inter', system-ui, sans-serif;
-  --font-curated: 'Outfit', sans-serif;
+  --font-family: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-curated: 'Inter', sans-serif;
   color-scheme: light;
 }
 
 body {
   background-color: #E0F2FE;
-  color: #0A0A0A;
+  color: #0F172A;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: var(--font-curated);
@@ -240,6 +240,53 @@ body {
     background: #F8FAFC;
     border-color: #CBD5E1;
     color: #0F172A;
+  }
+
+  /* Premium UI Components */
+  .premium-card {
+    background: linear-gradient(135deg, #ffffff 0%, #F8FAFC 100%);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+    border-radius: 2rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .premium-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -10px rgba(0, 86, 179, 0.08), 0 8px 12px -4px rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 86, 179, 0.1);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+  }
+
+  .btn-premium {
+    background: #0A0F1C;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 0.875rem 1.75rem;
+    border-radius: 1.25rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 20px -5px rgba(10, 15, 28, 0.3);
+  }
+
+  .btn-premium:hover {
+    background: #000000;
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px -8px rgba(10, 15, 28, 0.4);
+  }
+
+  .text-gradient-blue {
+    background: linear-gradient(135deg, #0056B3 0%, #00A3FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   /* Cards */
