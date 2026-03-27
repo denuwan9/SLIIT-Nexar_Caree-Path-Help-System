@@ -458,6 +458,21 @@ const StudyPlanPage: React.FC = () => {
         () => plans.find((p) => p._id === selectedPlanId) || plans[0],
         [plans, selectedPlanId]
     );
+    
+    // Sync local work settings when a plan is selected
+    useEffect(() => {
+        if (selectedPlan) {
+            if (selectedPlan.internshipDays && selectedPlan.internshipDays.length > 0) {
+                setWorkEnabled(true);
+                setSelectedWorkDays(selectedPlan.internshipDays);
+                if (selectedPlan.internshipStartTime) setWorkStartTime(selectedPlan.internshipStartTime);
+                if (selectedPlan.internshipEndTime) setWorkEndTime(selectedPlan.internshipEndTime);
+            } else if (selectedPlan.internshipStartTime || selectedPlan.internshipEndTime) {
+                // Fallback for older plans that might have times but no day list
+                setWorkEnabled(true);
+            }
+        }
+    }, [selectedPlan?._id]);
 
     const internshipLoadLabel = useMemo(() => {
         if (planInput.internshipHoursPerDay && planInput.internshipDaysPerWeek) {
@@ -544,6 +559,9 @@ const StudyPlanPage: React.FC = () => {
                 // Keep user-entered subjects as hints even when uploading docs so AI can blend both
                 subjects: planInput.subjects,
                 availableHoursPerDay: derivedHours,
+                internshipStartTime: workStartTime,
+                internshipEndTime: workEndTime,
+                internshipDays: selectedWorkDays,
             };
 
             if (allFiles.length === 0 && planInput.subjects.length === 0) {
@@ -561,6 +579,9 @@ const StudyPlanPage: React.FC = () => {
                 if (payload.internshipEndTime) formData.append('internshipEndTime', payload.internshipEndTime);
                 if (payload.internshipHoursPerDay) formData.append('internshipHoursPerDay', String(payload.internshipHoursPerDay));
                 if (payload.internshipDaysPerWeek) formData.append('internshipDaysPerWeek', String(payload.internshipDaysPerWeek));
+                if (payload.internshipDays) {
+                    payload.internshipDays.forEach(day => formData.append('internshipDays', day));
+                }
                 formData.append('subjects', JSON.stringify(payload.subjects));
                 allFiles.forEach((file) => formData.append('studyDocs', file));
 
@@ -1511,14 +1532,30 @@ const StudyPlanPage: React.FC = () => {
                                 ? dayMinutes / 60
                                 : (session.totalStudyHours ?? 0);
 
+
+                            // --- Compute study block start time after internship ---
                             let currentStartTime = new Date();
-                            currentStartTime.setHours(9, 0, 0, 0); // Default to 9:00 a.m.
-                            if (selectedPlan.internshipEndTime) {
-                                const [h, m] = selectedPlan.internshipEndTime.split(':').map(Number);
-                                if (!isNaN(h) && !isNaN(m)) {
-                                    currentStartTime.setHours((h + 1) % 24, m, 0, 0);
+                            // Determine if today is a work day (internship)
+                            let studyStartHour = 9, studyStartMin = 0;
+                            let isWorkDay = false;
+                            
+                            // Use persisted internshipDays from selectedPlan if available, fallback to transient state
+                            const workDays = selectedPlan.internshipDays || selectedWorkDays;
+                            
+                            if (selectedPlan.internshipStartTime && selectedPlan.internshipEndTime && Array.isArray(workDays) && workDays.length > 0) {
+                                const dayOfWeek = new Date(session.date).toLocaleDateString('en-US', { weekday: 'short' }); // e.g., 'Mon'
+                                if (workDays.includes(dayOfWeek)) {
+                                    isWorkDay = true;
                                 }
                             }
+                            if (isWorkDay && selectedPlan.internshipEndTime) {
+                                const [h, m] = selectedPlan.internshipEndTime.split(':').map(Number);
+                                if (!isNaN(h) && !isNaN(m)) {
+                                    studyStartHour = (h + 1) % 24;
+                                    studyStartMin = m;
+                                }
+                            }
+                            currentStartTime.setHours(studyStartHour, studyStartMin, 0, 0);
 
                             const formatTime = (date: Date) => {
                                 const h = date.getHours();

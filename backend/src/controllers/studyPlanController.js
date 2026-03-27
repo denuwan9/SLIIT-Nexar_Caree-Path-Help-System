@@ -89,7 +89,7 @@ const readDocumentsToText = async (files = []) => {
  * Uses Groq AI to deeply analyze documents and generate a comprehensive study plan.
  * Produces detailed daily sessions with specific tasks, instructions, and study techniques.
  */
-const generateAIStudyPlan = async ({ subjects, docsText, hoursPerDay, totalDays, examStartDate, examEndDate, internshipStartTime, internshipEndTime, aiKey }) => {
+const generateAIStudyPlan = async ({ subjects, docsText, hoursPerDay, totalDays, examStartDate, examEndDate, internshipStartTime, internshipEndTime, internshipDays, aiKey }) => {
     const client = getGroqClient(aiKey);
     if (!client) return null;
 
@@ -107,12 +107,9 @@ IMPORTANT RULES:
 - Tasks must feel like real work (e.g., "Understand TCP 3-way handshake", not "Read networking").
 - Avoid repeating the same type of task; mix reading, practice, summarizing, testing, revising.
 - No duplicate tasks; keep logical order (basic → advanced); break large topics into smaller steps.
-- If documents are binary/unreadable (PDF, images), still use FILE NAMES to infer subjects/topics.
-- Ignore subject names that do not appear in the documents; align subjects/topics to the docs instead.
-- Schedule study blocks OUTSIDE internship hours (${internshipStartTime || 'N/A'} to ${internshipEndTime || 'N/A'}).
-- Vary task types: reading, summarizing, practice problems, revision flashcards, self-testing, mind-mapping, past paper practice.
-- Give each task a clear, actionable instruction telling the student exactly what to do.
-- Prioritize harder subjects and topics closer to exam dates.
+- Return ONLY valid JSON. No markdown, no explanation.
+- BALANCED WORKLOAD: Ensure study hours are distributed evenly across ALL days. If a student works on a specific day, reduce the study load for that day to keep it manageable and balanced. Avoid cramming everything into the first few days.
+- HUMAN-FRIENDLY: Do not expect the student to study more than 4-6 hours total on work days. Spread the remaining work to free days.
 - Include break recommendations and study technique tips.
 
 Return ONLY valid JSON. No markdown, no explanation.`;
@@ -126,7 +123,8 @@ ${subjectsJson}
 CONSTRAINTS:
 - Exam period: ${examStartDate} to ${examEndDate} (${totalDays} days)
 - Available study hours per day: ${hoursPerDay}
-- Internship time: ${internshipStartTime || 'none'} to ${internshipEndTime || 'none'} (schedule study OUTSIDE this window)
+- Internship time: ${internshipStartTime || 'none'} to ${internshipEndTime || 'none'} (Work days: ${Array.isArray(internshipDays) ? internshipDays.join(', ') : 'none'})
+- IMPORTANT: Be highly balanced. Reduce study sessions on work days even if it means extending the study time on other free days.
 
 Generate a complete study plan in this exact JSON format:
 {
@@ -255,33 +253,54 @@ const buildTaskBacklog = (subjects) => {
     return backlog;
 };
 
-const generateStudySessions = (subjects, examStartDate, examEndDate, hoursPerDay) => {
-    const start = new Date(examStartDate);
-    const end = new Date(examEndDate);
+/**
+ * Balanced Study Plan Generator: 
+ * Spreads tasks evenly across all available days while respecting the max available hours per day.
+ * Prevents 'backloading' or 'overnight' cramming by calculating an even distribution goal.
+ */
+const generateStudySessions = (subjects, startDate, endDate, maxHoursPerDay, internshipDays = []) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
     const totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
 
     const backlog = buildTaskBacklog(subjects);
+    const totalWorkHoursRequired = backlog.reduce((sum, task) => sum + (task.durationHours || 1), 0);
+    
+    // Balanced daily goal: divide total work by number of days to get even distribution
+    const baselineDailyGoal = totalWorkHoursRequired / totalDays;
+    
     const sessions = [];
-    let currentDate = new Date(start);
+    const workDaysSet = new Set(internshipDays || []);
 
     for (let day = 0; day < totalDays; day++) {
+        const sessionDate = new Date(start.getTime() + day * 86400000);
+        const dayOfWeek = sessionDate.toLocaleDateString('en-US', { weekday: 'short' });
+        const isWorkDay = workDaysSet.has(dayOfWeek);
+
+        // Capacity adjustment for human-friendly scheduling
+        // On work days, we try to stay under or around the baseline goal, capped by maxHoursPerDay.
+        // On free days, we can take more if there's a backlog.
+        let dayCapacity = isWorkDay 
+            ? Math.min(maxHoursPerDay, Math.max(2, baselineDailyGoal)) // Try to keep work days light but productive
+            : Math.min(maxHoursPerDay, baselineDailyGoal * 1.5); // Allow catch-up on weekends
+
         const daySubjects = [];
-        let dayHoursLeft = hoursPerDay;
+        let dayHoursLeft = dayCapacity;
 
         const availableTasks = backlog
             .filter((t) => !t.scheduled && t.offsetDays <= day)
             .sort((a, b) => {
                 const prioRank = { critical: 3, high: 2, medium: 1, low: 0 };
                 if (prioRank[b.priority] !== prioRank[a.priority]) return prioRank[b.priority] - prioRank[a.priority];
-                if (b.difficultyWeight !== a.difficultyWeight) return b.difficultyWeight - a.difficultyWeight;
                 return (b.durationMinutes || 0) - (a.durationMinutes || 0);
             });
 
-        while (dayHoursLeft > 0 && availableTasks.length > 0) {
+        while (dayHoursLeft > 0.1 && availableTasks.length > 0) {
             const task = availableTasks.shift();
             if (!task) break;
             const durationHours = task.durationHours || (task.durationMinutes ? task.durationMinutes / 60 : 1);
-            if (durationHours > dayHoursLeft + 0.01) continue;
+            
+            if (durationHours > dayHoursLeft + 0.05) continue;
 
             daySubjects.push({
                 subjectName: task.subjectName,
@@ -300,21 +319,34 @@ const generateStudySessions = (subjects, examStartDate, examEndDate, hoursPerDay
             task.scheduled = true;
         }
 
-        // Generate a day theme based on subjects covered
-        const uniqueSubjects = [...new Set(daySubjects.map(s => s.subjectName))];
-        const dayTheme = uniqueSubjects.length > 0
-            ? `Focus: ${uniqueSubjects.join(' & ')}`
-            : 'Rest day';
-
         sessions.push({
             day: day + 1,
-            date: new Date(currentDate),
+            date: sessionDate,
             subjects: daySubjects,
-            totalStudyHours: Math.round((hoursPerDay - dayHoursLeft) * 100) / 100,
-            notes: dayTheme,
+            totalStudyHours: Math.round((dayCapacity - dayHoursLeft) * 100) / 100,
+            notes: isWorkDay ? `Balanced block after internship` : `Weekend study focus`,
         });
+    }
 
-        currentDate.setDate(currentDate.getDate() + 1);
+    // Capture any remaining orphans from the backlog
+    const unscheduled = backlog.filter(t => !t.scheduled);
+    if (unscheduled.length > 0) {
+        unscheduled.forEach(task => {
+            const lastSession = sessions[sessions.length - 1];
+            lastSession.subjects.push({
+                subjectName: task.subjectName,
+                topic: task.topic,
+                title: task.title,
+                taskType: task.taskType,
+                instruction: task.instruction,
+                durationHours: task.durationHours,
+                durationMinutes: task.durationMinutes,
+                technique: task.technique,
+                resources: task.resources,
+                priority: task.priority,
+            });
+            lastSession.totalStudyHours += task.durationHours;
+        });
     }
 
     return sessions;
@@ -325,11 +357,10 @@ const generateAISummary = (subjects, hoursPerDay, totalDays) => {
     const tips = [];
 
     if (hardSubjects.length > 0) {
-        tips.push(`Focus extra attention on: ${hardSubjects.join(', ')} — these are high-difficulty subjects.`);
+        tips.push(`Focus extra attention on: ${hardSubjects.join(', ')}.`);
     }
-    tips.push(`You have ${hoursPerDay} study hours per day across ${totalDays} days.`);
-    tips.push('Use the Pomodoro technique: 25-minute sessions with 5-minute breaks.');
-    tips.push('Review completed sessions and mark them as done to track your progress.');
+    tips.push(`Your plan is balanced with approximately ${Math.round(hoursPerDay * 10) / 10} study hours per day.`);
+    tips.push('Use the Pomodoro technique for better focus.');
 
     return tips.join(' ');
 };
@@ -342,7 +373,7 @@ const generateAISummary = (subjects, hoursPerDay, totalDays) => {
  */
 exports.createStudyPlan = async (req, res, next) => {
     try {
-        const { title, examStartDate, examEndDate, internshipStartTime, internshipEndTime } = req.body;
+        const { title, examStartDate, examEndDate, internshipStartTime, internshipEndTime, internshipDays } = req.body;
         const subjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : (req.body.subjects || []);
         const availableHoursPerDay = typeof req.body.availableHoursPerDay === 'string'
             ? parseFloat(req.body.availableHoursPerDay)
@@ -355,7 +386,7 @@ exports.createStudyPlan = async (req, res, next) => {
         const start = new Date(examStartDate);
         const end = new Date(examEndDate);
         const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-        const sessions = generateStudySessions(subjects, examStartDate, examEndDate, hoursPerDay);
+        const sessions = generateStudySessions(subjects, examStartDate, examEndDate, hoursPerDay, internshipDays);
         const aiSummary = generateAISummary(subjects, hoursPerDay, totalDays);
 
         const plan = await StudyPlan.create({
@@ -363,6 +394,7 @@ exports.createStudyPlan = async (req, res, next) => {
             title, examStartDate, examEndDate, subjects,
             internshipStartTime,
             internshipEndTime,
+            internshipDays: Array.isArray(internshipDays) ? internshipDays : [],
             internshipHoursPerDay: internshipHours,
             availableHoursPerDay: hoursPerDay,
             sessions,
@@ -382,7 +414,7 @@ exports.createStudyPlan = async (req, res, next) => {
  */
 exports.createStudyPlanWithDocs = async (req, res, next) => {
     try {
-        const { title, examStartDate, examEndDate, internshipStartTime, internshipEndTime } = req.body;
+        const { title, examStartDate, examEndDate, internshipStartTime, internshipEndTime, internshipDays } = req.body;
         const rawSubjects = typeof req.body.subjects === 'string' ? JSON.parse(req.body.subjects) : (req.body.subjects || []);
         const availableHoursPerDay = typeof req.body.availableHoursPerDay === 'string'
             ? parseFloat(req.body.availableHoursPerDay)
@@ -423,6 +455,7 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
             examEndDate,
             internshipStartTime,
             internshipEndTime,
+            internshipDays,
             aiKey,
         });
 
@@ -469,7 +502,7 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
         } else {
             logger.info('[StudyPlan] AI generation failed, using fallback local generation');
             const fallbackSubjects = subjectsForAI && subjectsForAI.length > 0 ? subjectsForAI : rawSubjects || docSubjects || [];
-            sessions = generateStudySessions(fallbackSubjects, examStartDate, examEndDate, hoursPerDay);
+            sessions = generateStudySessions(fallbackSubjects, examStartDate, examEndDate, hoursPerDay, internshipDays);
             aiSummary = generateAISummary(fallbackSubjects, hoursPerDay, totalDays);
             enrichedSubjects = fallbackSubjects;
         }
@@ -520,6 +553,7 @@ exports.createStudyPlanWithDocs = async (req, res, next) => {
             examEndDate,
             internshipStartTime,
             internshipEndTime,
+            internshipDays: Array.isArray(internshipDays) ? internshipDays : [],
             internshipHoursPerDay: internshipHours,
             subjects: enrichedSubjects,
             availableHoursPerDay: hoursPerDay,
