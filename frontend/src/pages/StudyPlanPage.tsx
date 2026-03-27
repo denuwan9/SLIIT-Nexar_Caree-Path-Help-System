@@ -27,7 +27,11 @@ import {
     Pause,
     Square,
     Timer,
+    Bell,
+    BellOff,
+    Volume2,
 } from 'lucide-react';
+
 import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, updateSubjectStatus } from '../services/studyPlanService';
 import type {
     CreateStudyPlanInput,
@@ -194,13 +198,16 @@ const StudyPlanPage: React.FC = () => {
     const [titleError, setTitleError] = useState<string | null>(null);
     const [workEnabled, setWorkEnabled] = useState(false);
     const [generationStage, setGenerationStage] = useState<string | null>(null);
+
     const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([]);
-    const [workStartTime, setWorkStartTime] = useState('09:00');
-    const [workEndTime, setWorkEndTime] = useState('17:00');
+    const [workStartTime, setWorkStartTime] = useState('');
+    const [workEndTime, setWorkEndTime] = useState('');
     const [timers, setTimers] = useState<TimerMap>({});
     const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
     const [openTrackerId, setOpenTrackerId] = useState<string | null>(null);
     const [hydrated, setHydrated] = useState(false);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+    const [lastNotifiedTask, setLastNotifiedTask] = useState<string | null>(null);
 
     const persistTimers = (nextTimers: TimerMap, activeId: string | null) => {
         if (!hydrated) return; // avoid clobbering before hydration
@@ -365,11 +372,11 @@ const StudyPlanPage: React.FC = () => {
 
     const [planInput, setPlanInput] = useState<CreateStudyPlanInput>({
         title: '',
-        examStartDate: '',
+        examStartDate: todayISO, // Default to today as requested
         examEndDate: '',
         availableHoursPerDay: 4,
-        internshipHoursPerDay: 4,
-        internshipDaysPerWeek: 5,
+        internshipHoursPerDay: 0,
+        internshipDaysPerWeek: 0,
         internshipStartTime: '',
         internshipEndTime: '',
         subjects: [],
@@ -432,11 +439,11 @@ const StudyPlanPage: React.FC = () => {
         } else {
             tips.push("Your schedule looks moderate. Adjust daily goals as needed to keep pace.");
         }
-        if (planInput.subjects.length === 0) {
-            tips.push("Add your subjects below so the AI knows what you need to study.");
+        if (planInput.subjects.length === 0 && documents.length === 0) {
+            tips.push("Upload your materials in Step 1 so the AI can analyze your subjects.");
         }
         return tips;
-    }, [daysUntilExam, planInput.subjects.length, workloadScore.level]);
+    }, [daysUntilExam, planInput.subjects.length, workloadScore.level, documents.length]);
 
     useEffect(() => {
         const loadPlans = async () => {
@@ -452,12 +459,103 @@ const StudyPlanPage: React.FC = () => {
             }
         };
         loadPlans();
+        
+        // Check initial notification permission
+        if ("Notification" in window && Notification.permission === "granted") {
+            setNotificationsEnabled(true);
+        }
     }, []);
 
     const selectedPlan = useMemo(
         () => plans.find((p) => p._id === selectedPlanId) || plans[0],
         [plans, selectedPlanId]
     );
+
+    // ── Reminder Engine ───────────────────────────────────────────────
+    useEffect(() => {
+        if (!notificationsEnabled || !selectedPlan) return;
+
+        const checkReminders = () => {
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+            const todaySession = selectedPlan.sessions.find(s => s.date.toString().split('T')[0] === todayStr);
+
+            if (!todaySession) return;
+
+            // Recalculate times to find upcoming task
+            let currentStartTime = new Date();
+            let studyStartHour = 9, studyStartMin = 0;
+            const workDays = selectedPlan.internshipDays || [];
+
+            if (selectedPlan.internshipStartTime && selectedPlan.internshipEndTime && workDays.length > 0) {
+                const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'short' });
+                if (workDays.includes(dayOfWeek)) {
+                    const [h, m] = selectedPlan.internshipEndTime.split(':').map(Number);
+                    if (!isNaN(h) && !isNaN(m)) {
+                        studyStartHour = (h + 1) % 24;
+                        studyStartMin = m;
+                    }
+                }
+            }
+            currentStartTime.setHours(studyStartHour, studyStartMin, 0, 0);
+
+            for (let i = 0; i < todaySession.subjects.length; i++) {
+                const subject = todaySession.subjects[i];
+                const taskStartTime = new Date(currentStartTime);
+                const durationMins = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
+                
+                // Move currentStartTime for next iteration
+                currentStartTime = new Date(currentStartTime.getTime() + durationMins * 60000);
+
+                const taskId = `${todaySession._id}-${i}`;
+                const diffMs = taskStartTime.getTime() - now.getTime();
+                
+                // If task starts within the next 2 minutes (120000ms) and we haven't notified for it
+                if (diffMs > 0 && diffMs < 120000 && lastNotifiedTask !== taskId) {
+                    setLastNotifiedTask(taskId);
+                    
+                    const notification = new Notification("Study Session Starting!", {
+                        body: `Next: ${subject.title} at ${taskStartTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
+                        icon: '/favicon.ico',
+                        silent: false
+                    });
+
+                    // Sound alert (gentle chime)
+                    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                    audio.play().catch(e => console.warn("Audio play failed", e));
+                    
+                    notification.onclick = () => {
+                        window.focus();
+                        setSelectedPlanId(selectedPlan._id);
+                        setViewMode('schedule');
+                        notification.close();
+                    };
+                }
+            }
+        };
+
+        const timer = setInterval(checkReminders, 30000); // Check every 30 seconds
+        return () => clearInterval(timer);
+    }, [notificationsEnabled, selectedPlan, lastNotifiedTask, viewMode]);
+
+    const requestNotificationPermission = async () => {
+        if (!("Notification" in window)) {
+            toast.error("Browser does not support notifications");
+            return;
+        }
+
+        if (Notification.permission === "granted") {
+            setNotificationsEnabled(!notificationsEnabled);
+        } else {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                setNotificationsEnabled(true);
+                toast.success("Notifications enabled!");
+            } else {
+                toast.error("Notification permission denied");
+            }
+        }
+    };
     
     // Sync local work settings when a plan is selected
     useEffect(() => {
@@ -1008,13 +1106,13 @@ const StudyPlanPage: React.FC = () => {
 
                                         <div className="space-y-3">
                                             <label className="text-xs font-black uppercase tracking-widest text-slate-400 group flex items-center gap-2 cursor-help relative">
-                                                Exam Dates
+                                                Study Timeline
                                                 <Info size={14} className="text-slate-300 peer" />
-                                                <div className="absolute left-1/2 -top-8 -translate-x-1/2 opacity-0 peer-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded font-medium whitespace-nowrap pointer-events-none z-10">When do your exams start and end?</div>
+                                                <div className="absolute left-1/2 -top-8 -translate-x-1/2 opacity-0 peer-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded font-medium whitespace-nowrap pointer-events-none z-10">Study from today until your exams begin</div>
                                             </label>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="relative">
-                                                    <p className="absolute -top-2 left-4 bg-white px-1 text-[10px] font-bold text-blue-500 rounded">Start Date</p>
+                                                    <p className="absolute -top-2 left-4 bg-white px-1 text-[10px] font-bold text-blue-500 rounded">Study Start</p>
                                                     <input
                                                         type="date"
                                                         className="w-full rounded-2xl border-2 border-slate-100 bg-transparent px-4 py-4 text-sm font-bold text-slate-900 transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
@@ -1024,7 +1122,7 @@ const StudyPlanPage: React.FC = () => {
                                                     />
                                                 </div>
                                                 <div className="relative">
-                                                    <p className="absolute -top-2 left-4 bg-white px-1 text-[10px] font-bold text-blue-500 rounded">End Date</p>
+                                                    <p className="absolute -top-2 left-4 bg-white px-1 text-[10px] font-bold text-blue-500 rounded">Exam Date Start</p>
                                                     <input
                                                         type="date"
                                                         className="w-full rounded-2xl border-2 border-slate-100 bg-transparent px-4 py-4 text-sm font-bold text-slate-900 transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
@@ -1131,6 +1229,7 @@ const StudyPlanPage: React.FC = () => {
                                                                     onChange={(e) => {
                                                                         const val = e.target.value;
                                                                         setWorkStartTime(val);
+                                                                        setPlanInput(prev => ({ ...prev, internshipStartTime: val }));
                                                                         const h1 = val.split(':').map(Number);
                                                                         const h2 = workEndTime.split(':').map(Number);
                                                                         if (h1.length === 2 && h2.length === 2) {
@@ -1151,6 +1250,7 @@ const StudyPlanPage: React.FC = () => {
                                                                     onChange={(e) => {
                                                                         const val = e.target.value;
                                                                         setWorkEndTime(val);
+                                                                        setPlanInput(prev => ({ ...prev, internshipEndTime: val }));
                                                                         const h1 = workStartTime.split(':').map(Number);
                                                                         const h2 = val.split(':').map(Number);
                                                                         if (h1.length === 2 && h2.length === 2) {
@@ -1253,7 +1353,7 @@ const StudyPlanPage: React.FC = () => {
                                         <p className="text-xs text-slate-500">One click to create your schedule.</p>
                                     </div>
                                 </div>
-                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-center">
+                                <div className="grid gap-3 sm:grid-cols-3 text-center">
                                     <div className="rounded-xl bg-blue-50 p-3">
                                         <p className="text-xs text-slate-500">Exam window</p>
                                         <p className="text-sm font-bold text-slate-900 truncate">{planInput.examStartDate || '--'} → {planInput.examEndDate || '--'}</p>
@@ -1265,10 +1365,6 @@ const StudyPlanPage: React.FC = () => {
                                     <div className="rounded-xl bg-emerald-50 p-3">
                                         <p className="text-xs text-slate-500">Daily study hours</p>
                                         <p className="text-lg font-bold text-slate-900">{derivedAvailableHours}h</p>
-                                    </div>
-                                    <div className="rounded-xl bg-amber-50 p-3">
-                                        <p className="text-xs text-slate-500">Subjects added</p>
-                                        <p className="text-lg font-bold text-slate-900">{planInput.subjects.length}</p>
                                     </div>
                                 </div>
                                 <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-4 text-sm text-slate-700">
@@ -1308,7 +1404,22 @@ const StudyPlanPage: React.FC = () => {
                                             <p className="text-sm font-semibold text-slate-900">Active plans</p>
                                             <p className="text-xs text-slate-500">Tap to view schedule</p>
                                         </div>
-                                        {isLoadingPlans && <Loader2 size={16} className="animate-spin text-slate-400" />}
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={requestNotificationPermission}
+                                                className={`rounded-full p-2.5 transition-all shadow-sm flex items-center gap-2 text-xs font-bold ${
+                                                    notificationsEnabled 
+                                                    ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200' 
+                                                    : 'bg-slate-50 text-slate-400 ring-1 ring-slate-200 hover:text-blue-500 hover:ring-blue-200'
+                                                }`}
+                                                title={notificationsEnabled ? "Notifications Active" : "Enable Reminders"}
+                                            >
+                                                {notificationsEnabled ? <Bell size={15} /> : <BellOff size={15} />}
+                                                <span className="sr-only">Toggle Reminders</span>
+                                                {notificationsEnabled && <Volume2 size={13} className="animate-pulse" />}
+                                            </button>
+                                            {isLoadingPlans && <Loader2 size={16} className="animate-spin text-slate-400" />}
+                                        </div>
                                     </div>
                                     <div className="space-y-3">
                                         {plans.length === 0 && (
@@ -1331,8 +1442,14 @@ const StudyPlanPage: React.FC = () => {
                                                     >
                                                         <p className="text-sm font-bold text-slate-900">{plan.title}</p>
                                                         <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                                                            {plan.subjects.length} subjects · {plan.totalStudyDays} days
+                                                            {plan.totalStudyDays} days study period
                                                         </p>
+                                                        {notificationsEnabled && selectedPlanId === plan._id && (
+                                                            <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100/50 animate-pulse">
+                                                                <Zap size={10} />
+                                                                Monitoring Active
+                                                            </div>
+                                                        )}
                                                         <div className="mt-2 text-right">
                                                             <p className="text-xs font-semibold text-blue-700">{plan.overallProgress}%</p>
                                                             <div className="mt-1 h-2 w-20 overflow-hidden rounded-full bg-slate-200">
@@ -1411,7 +1528,7 @@ const StudyPlanPage: React.FC = () => {
                                             </div>
 
                                             {/* Stats row */}
-                                            <div className="grid grid-cols-3 gap-2 text-center">
+                                            <div className="grid grid-cols-2 gap-2 text-center">
                                                 <div className="rounded-xl bg-blue-50 p-2">
                                                     <p className="text-[10px] text-slate-500">Days</p>
                                                     <p className="text-sm font-bold text-slate-900">{plan.totalStudyDays}</p>
@@ -1419,10 +1536,6 @@ const StudyPlanPage: React.FC = () => {
                                                 <div className="rounded-xl bg-emerald-50 p-2">
                                                     <p className="text-[10px] text-slate-500">Hours</p>
                                                     <p className="text-sm font-bold text-slate-900">{formatHours(planHours)}</p>
-                                                </div>
-                                                <div className="rounded-xl bg-amber-50 p-2">
-                                                    <p className="text-[10px] text-slate-500">Subjects</p>
-                                                    <p className="text-sm font-bold text-slate-900">{plan.subjects.length}</p>
                                                 </div>
                                             </div>
 
