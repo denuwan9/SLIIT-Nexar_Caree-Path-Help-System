@@ -81,6 +81,7 @@ const studyPlanSchema = new mongoose.Schema(
         internshipStartTime: { type: String }, // HH:MM (24h)
         internshipEndTime: { type: String },   // HH:MM (24h)
         internshipHoursPerDay: { type: Number },
+        internshipDays: [{ type: String }],    // Days of week (e.g. ['Mon', 'Wed'])
         availableHoursPerDay: { type: Number, default: 4, min: 1, max: 16 },
         sessions: [studySessionSchema],  // AI-generated daily sessions
         aiSummary: { type: String, default: '' }, // AI-generated advice text
