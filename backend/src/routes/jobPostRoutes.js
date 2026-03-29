@@ -13,7 +13,7 @@ router.get('/me', restrictTo('student'), jobPostController.getMyJobPosts);
 router.delete('/:id', restrictTo('student'), jobPostController.deleteJobPost);
 
 // Admin routes
-router.get('/', restrictTo('admin'), jobPostController.getAllJobPosts);
+router.get('/', jobPostController.getAllJobPosts);
 router.patch('/:id/review', restrictTo('admin'), jobPostController.reviewJobPost);
 
 // Shared (student own + admin)

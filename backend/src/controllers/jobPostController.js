@@ -123,6 +123,7 @@ exports.getJobPostById = async (req, res, next) => {
  */
 exports.getAllJobPosts = async (req, res, next) => {
     try {
+        console.log('getAllJobPosts called by user:', req.user?.email, 'role:', req.user?.role);
         const filter = {};
         if (req.query.status) filter['adminReview.status'] = req.query.status;
 
