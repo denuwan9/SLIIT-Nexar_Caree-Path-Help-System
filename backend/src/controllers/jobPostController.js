@@ -86,11 +86,12 @@ exports.createJobPost = async (req, res, next) => {
 
 /**
  * GET /api/jobs/me
- * Student — get own job posts
+ * Student — get own job posts, Admin — get all job posts
  */
 exports.getMyJobPosts = async (req, res, next) => {
     try {
-        const posts = await JobPost.find({ student: req.user._id }).sort({ createdAt: -1 });
+        const query = req.user.role === 'admin' ? {} : { student: req.user._id };
+        const posts = await JobPost.find(query).sort({ createdAt: -1 });
         res.status(200).json({ status: 'success', results: posts.length, data: { posts } });
     } catch (error) {
         next(error);

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Briefcase, UserCheck, Calendar, Percent } from 'lucide-react';
 import { useAuth } from '../components/auth/AuthProvider';
 import { fetchMyJobPosts } from '../services/jobPostService';
+import { fetchApplicationsForJobPost, type Application } from '../services/applicationService';
 import type { JobPost } from '../services/jobPostService';
 
 const JobPostingDashboard: React.FC = () => {
@@ -13,6 +14,9 @@ const JobPostingDashboard: React.FC = () => {
   const [posts, setPosts] = useState<JobPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [applications, setApplications] = useState<Record<string, Application[]>>({});
+  const [selectedPost, setSelectedPost] = useState<JobPost | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -29,9 +33,22 @@ const JobPostingDashboard: React.FC = () => {
     load();
   }, []);
 
-  const totalApplications = useMemo(() => {
-    return posts.reduce((total, post) => total + ((post as any).applications || 0), 0);
+  useEffect(() => {
+    if (posts.length > 0) {
+      posts.forEach(async (post) => {
+        try {
+          const apps = await fetchApplicationsForJobPost(post._id);
+          setApplications(prev => ({ ...prev, [post._id]: apps }));
+        } catch (err) {
+          console.error('Failed to load applications for post', post._id, err);
+        }
+      });
+    }
   }, [posts]);
+
+  const totalApplications = useMemo(() => {
+    return Object.values(applications).reduce((total, apps) => total + apps.length, 0);
+  }, [applications]);
 
   const totalVisitors = useMemo(() => {
     return posts.reduce((total, post) => total + (post.viewCount || 0), 0);
@@ -114,13 +131,15 @@ const JobPostingDashboard: React.FC = () => {
                   </div>
 
                   <div className="mt-4 flex gap-2 items-center">
-                    <span className="px-2 py-1 text-[11px] rounded-full bg-emerald-50 text-emerald-600 font-semibold">{(post as any).applications || 0} applications</span>
-                    <button
-                      onClick={() => navigate(`/job-postings/${post._id}`)}
-                      className="rounded-full px-3 py-1.5 text-xs bg-purple-600 text-white hover:bg-purple-700 transition-all"
+                    <span
+                      className="px-2 py-1 text-[11px] rounded-full bg-emerald-50 text-emerald-600 font-semibold cursor-pointer hover:bg-emerald-100 transition-colors"
+                      onClick={() => {
+                        setSelectedPost(post);
+                        setIsModalOpen(true);
+                      }}
                     >
-                      View
-                    </button>
+                      {applications[post._id]?.length || 0} applications
+                    </span>
                   </div>
                 </div>
               ))}
@@ -136,6 +155,59 @@ const JobPostingDashboard: React.FC = () => {
             </ul>
           </div>
         </>
+      )}
+
+      {/* Applicants Modal */}
+      {isModalOpen && selectedPost && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-bold text-[#0F172A]">Applicants for "{selectedPost.title}"</h2>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {applications[selectedPost._id]?.length === 0 ? (
+                  <p className="text-slate-500 text-center py-8">No applications yet.</p>
+                ) : (
+                  applications[selectedPost._id]?.map((app) => (
+                    <div key={app._id} className="border border-slate-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-semibold text-[#0F172A]">{app.applicant.name}</h3>
+                          <p className="text-sm text-[#64748B]">{app.applicant.email}</p>
+                        </div>
+                        <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+                          app.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                          app.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          app.status === 'reviewed' ? 'bg-blue-100 text-blue-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {app.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[#64748B] mb-2">
+                        Applied on {new Date(app.appliedAt).toLocaleDateString()}
+                      </p>
+                      {app.coverLetter && (
+                        <div>
+                          <h4 className="font-medium text-[#0F172A] text-sm">Cover Letter</h4>
+                          <p className="text-sm text-[#64748B]">{app.coverLetter}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

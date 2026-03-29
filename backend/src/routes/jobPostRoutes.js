@@ -9,7 +9,7 @@ router.use(protect);
 
 // Student routes
 router.post('/', restrictTo('student'), jobPostValidator, validate, jobPostController.createJobPost);
-router.get('/me', restrictTo('student'), jobPostController.getMyJobPosts);
+router.get('/me', restrictTo('student', 'admin'), jobPostController.getMyJobPosts);
 router.delete('/:id', restrictTo('student'), jobPostController.deleteJobPost);
 
 // Admin routes
@@ -18,5 +18,9 @@ router.patch('/:id/review', restrictTo('admin'), jobPostController.reviewJobPost
 
 // Shared (student own + admin)
 router.get('/:id', jobPostController.getJobPostById);
+
+// Apply to a job post by ID (alias endpoint)
+const applicationController = require('../controllers/applicationController');
+router.post('/:id/apply', applicationController.applyForJob);
 
 module.exports = router;

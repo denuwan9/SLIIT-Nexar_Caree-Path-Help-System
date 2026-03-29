@@ -285,6 +285,17 @@ const jobPostValidator = [
     body('skills').optional().isArray(),
 ];
 
+// ── Application validator ──────────────────────────────────────────
+const applicationValidator = [
+    body('jobPostId')
+        .notEmpty().withMessage('Job post ID is required')
+        .isMongoId().withMessage('Invalid job post ID'),
+    body('coverLetter')
+        .optional()
+        .isLength({ max: 2000 }).withMessage('Cover letter cannot exceed 2000 characters'),
+    body('resume').optional().isString(),
+];
+
 // ── Career Day Event validator ─────────────────────────────────────
 const careerDayEventValidator = [
     body('title').trim().notEmpty().withMessage('Event title is required'),
@@ -353,4 +364,5 @@ module.exports = {
     normalDayEventValidator,
     studyPlanValidator,
     jobPostValidator,
+    applicationValidator,
 };
