@@ -1847,50 +1847,123 @@ const StudyPlanPage: React.FC = () => {
                                             {isLoadingPlans && <Loader2 size={16} className="animate-spin text-slate-400" />}
                                         </div>
                                     </div>
-                                    <div className="space-y-3">
-                                        {plans.length === 0 && (
+                                    <div className="space-y-6">
+                                        {plans.length === 0 ? (
                                             <p className="text-sm text-slate-500">No plans yet. Generate to see the schedule.</p>
-                                        )}
-                                        {plans.map((plan) => (
-                                            <div
-                                                key={plan._id}
-                                                className={`w-full rounded-2xl border px-4 py-3 text-left transition hover:border-blue-200 hover:bg-blue-50/50 ${
-                                                    selectedPlan?._id === plan._id ? 'border-blue-300 bg-blue-50' : 'border-slate-100'
-                                                }`}
-                                            >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedPlanId(plan._id);
-                                                            setViewMode('schedule');
-                                                        }}
-                                                        className="flex-1 text-left"
-                                                    >
-                                                        <p className="text-sm font-bold text-slate-900">{plan.title}</p>
-                                                        <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                                                            {plan.totalStudyDays} days study period
-                                                        </p>
-                                                        <div className="mt-2 text-right">
-                                                            <p className="text-xs font-semibold text-blue-700">{plan.overallProgress}%</p>
-                                                            <div className="mt-1 h-2 w-20 overflow-hidden rounded-full bg-slate-200">
-                                                                <div
-                                                                    className="h-full bg-blue-600"
-                                                                    style={{ width: `${plan.overallProgress}%` }}
-                                                                />
-                                                            </div>
+                                        ) : (() => {
+                                            const sortedPlans = [...plans].sort((a, b) => 
+                                                new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+                                            );
+                                            
+                                            // Only the single most recent plan is marked as Active.
+                                            const active = sortedPlans.filter((_, i) => i === 0);
+                                            const history = sortedPlans.filter((_, i) => i !== 0);
+
+                                            return (
+                                                <>
+                                                    {/* Active Plans Section */}
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center gap-2 px-1">
+                                                            <Activity size={14} className="text-blue-500" />
+                                                            <p className="text-[10px] font-black uppercase text-blue-600 tracking-[0.1em]">Current Objectives</p>
                                                         </div>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeletePlan(plan._id)}
-                                                        disabled={deletingPlanId === plan._id}
-                                                        className="rounded-full p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                                                        aria-label="Delete plan"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                                        {active.map((plan) => (
+                                                            <div
+                                                                key={plan._id}
+                                                                className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition-all hover:border-blue-200 hover:bg-blue-50/50 hover:-translate-y-0.5 ${
+                                                                    selectedPlan?._id === plan._id 
+                                                                        ? 'border-blue-300 bg-white shadow-xl shadow-blue-50' 
+                                                                        : 'border-slate-100 bg-slate-50/10'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedPlanId(plan._id);
+                                                                            setViewMode('schedule');
+                                                                        }}
+                                                                        className="flex-1 text-left"
+                                                                    >
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <p className="text-sm font-bold text-slate-900">{plan.title}</p>
+                                                                                {sortedPlans.indexOf(plan) === 0 && (
+                                                                                    <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full tracking-tighter animate-pulse shadow-sm shadow-blue-200">NEWLY GENERATED</span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                        <p className="text-[11px] uppercase tracking-wide text-slate-500 mt-1">
+                                                                            {plan.totalStudyDays} days study period
+                                                                        </p>
+                                                                        <div className="mt-2 flex items-center justify-between">
+                                                                            <div className="h-2 flex-1 max-w-[80px] overflow-hidden rounded-full bg-slate-200">
+                                                                                <div
+                                                                                    className="h-full bg-blue-600 transition-all duration-1000"
+                                                                                    style={{ width: `${plan.overallProgress}%` }}
+                                                                                />
+                                                                            </div>
+                                                                            <p className="text-xs font-bold text-blue-700 ml-3">{plan.overallProgress}%</p>
+                                                                        </div>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeletePlan(plan._id)}
+                                                                        disabled={deletingPlanId === plan._id}
+                                                                        className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                                                                        aria-label="Delete plan"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Inactive Plans Section */}
+                                                    {history.length > 0 && (
+                                                        <div className="space-y-3 pt-4 border-t border-slate-100">
+                                                            <div className="flex items-center gap-2 px-1">
+                                                                <Layout size={14} className="text-slate-400" />
+                                                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.1em]">Inactive Plans</p>
+                                                            </div>
+                                                            {history.map((plan) => (
+                                                                <div
+                                                                    key={plan._id}
+                                                                    className={`w-full rounded-2xl border px-4 py-2.5 text-left transition bg-slate-50/50 opacity-60 hover:opacity-100 ${
+                                                                        selectedPlan?._id === plan._id ? 'border-blue-300 bg-blue-50/10 opacity-100' : 'border-slate-50'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex items-start justify-between gap-2">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setSelectedPlanId(plan._id);
+                                                                                setViewMode('schedule');
+                                                                            }}
+                                                                            className="flex-1 text-left"
+                                                                        >
+                                                                            <div className="flex items-center gap-2">
+                                                                                <p className="text-sm font-bold text-slate-700">{plan.title}</p>
+                                                                                {plan.overallProgress === 100 && <CheckCircle2 size={12} className="text-emerald-500" />}
+                                                                            </div>
+                                                                            <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                                                Inactive • {new Date(plan.createdAt || 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                                            </p>
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeletePlan(plan._id)}
+                                                                            disabled={deletingPlanId === plan._id}
+                                                                            className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                                                                            aria-label="Delete plan"
+                                                                        >
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </div>
@@ -1921,69 +1994,134 @@ const StudyPlanPage: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {plans.map((plan) => {
-                            const planHours = plan.sessions?.reduce((s, sess) => s + (sess.totalStudyHours || 0), 0) || 0;
-                            const totalTasks = plan.sessions?.reduce((s, sess) => s + sess.subjects.length, 0) || 0;
-                            const completedTasks = plan.sessions?.reduce((s, sess) => s + sess.subjects.filter(sub => sub.isCompleted).length, 0) || 0;
-                            return (
-                                <div
-                                    key={plan._id}
-                                    className="card p-5 text-left transition-all hover:shadow-lg hover:border-blue-200 hover:-translate-y-0.5 space-y-4"
-                                >
-                                    <div className="flex justify-between items-start gap-2">
-                                        <button
-                                            onClick={() => {
-                                                setSelectedPlanId(plan._id);
-                                                setViewMode('schedule');
-                                            }}
-                                            className="flex-1 text-left space-y-4"
-                                        >
-                                            {/* Header */}
-                                            <div className="space-y-1">
-                                                <p className="text-base font-bold text-slate-900 truncate">{plan.title}</p>
-                                                <p className="text-[11px] text-slate-500">
-                                                    Created {new Date(plan.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                </p>
-                                            </div>
+                    <div className="space-y-12">
+                        {(() => {
+                            const sortedPlans = [...plans].sort((a, b) => 
+                                new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+                            );
+                            const active = sortedPlans.filter((_, i) => i === 0);
+                            const inactive = sortedPlans.filter((_, i) => i !== 0);
 
-                                            {/* Stats row */}
-                                            <div className="grid grid-cols-2 gap-2 text-center">
-                                                <div className="rounded-xl bg-blue-50 p-2">
-                                                    <p className="text-[10px] text-slate-500">Days</p>
-                                                    <p className="text-sm font-bold text-slate-900">{plan.totalStudyDays}</p>
-                                                </div>
-                                                <div className="rounded-xl bg-emerald-50 p-2">
-                                                    <p className="text-[10px] text-slate-500">Hours</p>
-                                                    <p className="text-sm font-bold text-slate-900">{formatHours(planHours)}</p>
-                                                </div>
+                            const renderPlanCard = (plan: StudyPlan, isRecent: boolean, isHistory: boolean = false) => {
+                                const planHours = plan.sessions?.reduce((s, sess) => s + (sess.totalStudyHours || 0), 0) || 0;
+                                const totalTasks = plan.sessions?.reduce((s, sess) => s + sess.subjects.length, 0) || 0;
+                                const completedTasks = plan.sessions?.reduce((s, sess) => s + sess.subjects.filter(sub => sub.status === 'completed' || sub.isCompleted).length, 0) || 0;
+                                
+                                return (
+                                    <div
+                                        key={plan._id}
+                                        className={`card p-6 text-left transition-all hover:shadow-xl hover:-translate-y-0.5 space-y-5 animate-slide-in relative group ${
+                                            isRecent ? 'ring-2 ring-blue-500/20 border-blue-200 bg-white' : isHistory ? 'opacity-70 grayscale-[0.3] bg-slate-50/50' : 'bg-white'
+                                        }`}
+                                    >
+                                        {isRecent && (
+                                            <div className="absolute -top-3 right-6 bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg items-center gap-2 flex">
+                                                <Sparkles size={12} />
+                                                FOCUS PLAN
                                             </div>
+                                        )}
+                                        {isHistory && plan.overallProgress === 100 && (
+                                            <div className="absolute top-4 right-4 text-emerald-500">
+                                                <CheckCircle2 size={24} />
+                                            </div>
+                                        )}
 
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{completedTasks}/{totalTasks} Protocols Verified</span>
-                                                    <span className="text-xs font-bold text-blue-600">{plan.overallProgress}%</span>
+                                        <div className="flex justify-between items-start gap-4">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedPlanId(plan._id);
+                                                    setViewMode('schedule');
+                                                }}
+                                                className="flex-1 text-left space-y-5"
+                                            >
+                                                <div className="space-y-1">
+                                                    <h3 className="text-xl font-black text-slate-900 tracking-tight leading-tight">{plan.title}</h3>
+                                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        {new Date(plan.createdAt || 0).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                                    </p>
                                                 </div>
-                                                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden shadow-inner">
-                                                    <div 
-                                                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-1000 ease-out"
-                                                        style={{ width: `${plan.overallProgress}%` }}
-                                                    />
+
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="rounded-2xl bg-slate-50 p-3 border border-slate-100 flex items-center gap-3">
+                                                        <Calendar size={16} className="text-blue-500" />
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Timeline</p>
+                                                            <p className="text-sm font-bold text-slate-900">{plan.totalStudyDays} Days</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="rounded-2xl bg-slate-50 p-3 border border-slate-100 flex items-center gap-3">
+                                                        <Clock size={16} className="text-indigo-500" />
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Total</p>
+                                                            <p className="text-sm font-bold text-slate-900">{formatHours(planHours)}h</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan._id); }}
-                                            disabled={deletingPlanId === plan._id}
-                                            className="rounded-full p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                                            aria-label="Delete plan"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{completedTasks}/{totalTasks} COMPLETED</span>
+                                                        <span className="text-sm font-black text-blue-600">{plan.overallProgress}%</span>
+                                                    </div>
+                                                    <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden shadow-inner p-0.5">
+                                                        <div 
+                                                            className={`h-full rounded-full transition-all duration-1000 ease-out ${plan.overallProgress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`}
+                                                            style={{ width: `${plan.overallProgress}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan._id); }}
+                                                disabled={deletingPlanId === plan._id}
+                                                className="rounded-xl p-3 text-slate-300 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 border border-transparent hover:border-rose-100"
+                                                aria-label="Delete plan"
+                                            >
+                                                {deletingPlanId === plan._id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                                            </button>
+                                        </div>
                                     </div>
+                                );
+                            };
+
+                            return (
+                                <div className="space-y-12">
+                                    {active.length > 0 && (
+                                        <div className="space-y-6">
+                                            <div className="flex items-center gap-4 px-2">
+                                                <div className="h-px flex-1 bg-slate-100" />
+                                                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Primary Focus Plan</h3>
+                                                <div className="h-px flex-1 bg-slate-100" />
+                                            </div>
+                                            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                                {active.map((p, i) => renderPlanCard(p, i === 0 && active.length > 0))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {inactive.length > 0 && (
+                                        <div className="space-y-6">
+                                            <div className="flex items-center gap-4 px-2 opacity-60">
+                                                <div className="h-px flex-1 bg-slate-100" />
+                                                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Inactive Schedules</h3>
+                                                <div className="h-px flex-1 bg-slate-100" />
+                                            </div>
+                                            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                                {inactive.map((p) => renderPlanCard(p, false, true))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {plans.length === 0 && !isLoadingPlans && (
+                                        <div className="text-center py-20 bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
+                                            <Sparkles size={48} className="mx-auto text-slate-200 mb-6" />
+                                            <p className="text-lg font-bold text-slate-900">No active plans found</p>
+                                            <p className="text-sm text-slate-500 mt-2">Generate a schedule in the builder to begin your journey.</p>
+                                        </div>
+                                    )}
                                 </div>
                             );
-                        })}
+                        })()}
                     </div>
                 </div>
             )}
@@ -2092,7 +2230,7 @@ const StudyPlanPage: React.FC = () => {
 
 
                             // --- Compute study block start time after internship ---
-                            let currentStartTime = new Date();
+                            let currentStartTime = new Date(session.date);
                             // Determine if today is a work day (internship)
                             let studyStartHour = 9, studyStartMin = 0;
                             let isWorkDay = false;
@@ -2198,20 +2336,24 @@ const StudyPlanPage: React.FC = () => {
                                                     // Sort based on their calculated start times
                                                     subjectsWithTimes.sort((a, b) => a.taskStartTime.getTime() - b.taskStartTime.getTime());
 
+                                                    const now = new Date();
+
                                                     return subjectsWithTimes.map(({ subject, originalIdx, taskStartTime, durationMins }) => {
                                                         const idx = originalIdx; // Keep tracking the original index for API calls
                                                         const currentStatus: StudyTaskStatus = subject.status || (subject.isCompleted ? 'completed' : 'pending');
                                                         const priorityMeta = PRIORITY_META[subject.priority] || PRIORITY_META.medium;
                                                         const isComplete = currentStatus === 'completed';
                                                         const isInProgress = currentStatus === 'in-progress';
+                                                        const taskEndTime = new Date(taskStartTime.getTime() + durationMins * 60000);
+                                                        const isOverdue = !isComplete && taskEndTime < now;
 
                                                         const taskId = `${session._id}-${idx}`;
                                                         const timerState = timers[taskId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null };
 
                                                         const startTimeStr = formatTime(taskStartTime);
-                                                        const taskEndTime = new Date(taskStartTime.getTime() + durationMins * 60000);
                                                         const endTimeStr = formatTime(taskEndTime);
                                                         const timeDisplay = `${startTimeStr} - ${endTimeStr}`;
+
 
 
 
@@ -2225,20 +2367,28 @@ const StudyPlanPage: React.FC = () => {
 
                                                     return (
                                                         <div
-                                                            key={`${session._id}-${idx}`}
+                                                            key={`${session._id}-${originalIdx}`}
                                                             ref={el => { taskRefs.current[taskId] = el; }}
                                                             className={`group relative overflow-hidden rounded-[2rem] border p-8 transition-all ${
                                                                 isComplete
                                                                     ? 'border-emerald-200 bg-emerald-50/20 opacity-80'
                                                                     : isInProgress
                                                                         ? 'border-blue-200 bg-white shadow-xl shadow-blue-100 scale-[1.01]'
-                                                                        : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-lg hover:shadow-slate-200/50'
+                                                                        : isOverdue 
+                                                                            ? 'border-rose-300 bg-rose-50/20 shadow-lg shadow-rose-100'
+                                                                            : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-lg hover:shadow-slate-200/50'
                                                             }`}
                                                         >
                                                             {/* Top indicator for sorted active task */}
                                                             {isInProgress && (
                                                                 <div className="absolute top-0 right-0 px-6 py-2 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-3xl shadow-lg">
                                                                     Active Target
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {isOverdue && !isComplete && (
+                                                                <div className="absolute top-0 right-[120px] px-6 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-3xl shadow-lg animate-pulse">
+                                                                    Overdue
                                                                 </div>
                                                             )}
 
@@ -2252,8 +2402,14 @@ const StudyPlanPage: React.FC = () => {
                                                                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-slate-100 bg-slate-50 text-slate-500`}>
                                                                             {priorityMeta.label}
                                                                         </span>
+                                                                        
+                                                                        {isOverdue && !isComplete && (
+                                                                            <span className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-rose-200 bg-rose-50 text-rose-600">
+                                                                                Missed Schedule
+                                                                            </span>
+                                                                        )}
 
-                                                                        {editingTaskTime?.sessionId === session._id && editingTaskTime?.subjectIdx === idx ? (
+                                                                        {editingTaskTime?.sessionId === session._id && editingTaskTime?.subjectIdx === originalIdx ? (
                                                                             <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-blue-200 shadow-inner z-20 flex-wrap">
                                                                                 <input 
                                                                                     type="date" 
