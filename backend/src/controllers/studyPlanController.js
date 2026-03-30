@@ -677,3 +677,71 @@ exports.deleteStudyPlan = async (req, res, next) => {
         next(error);
     }
 };
+
+/**
+ * PATCH /api/study-plans/:id/sessions/:sessionId/:subjectIdx/time
+ * Student — edit task date and/or time
+ */
+exports.updateSubjectTime = async (req, res, next) => {
+    try {
+        const { date, customStartTime } = req.body;
+        const plan = await StudyPlan.findOne({ _id: req.params.id, student: req.user._id });
+        if (!plan) return next(new AppError('Study plan not found.', 404));
+
+        const session = plan.sessions.id(req.params.sessionId);
+        if (!session) return next(new AppError('Session not found.', 404));
+
+        const subjectIdx = parseInt(req.params.subjectIdx, 10);
+        const subjectData = session.subjects[subjectIdx];
+        if (!subjectData) return next(new AppError('Subject not found in session.', 404));
+
+        // 1. Update customStartTime
+        if (customStartTime !== undefined) {
+            subjectData.customStartTime = customStartTime;
+        }
+
+        // 2. Adjust session if date is changed
+        if (date) {
+            const newDateObj = new Date(date);
+            const newDateStr = newDateObj.toISOString().split('T')[0];
+            const oldDateStr = new Date(session.date).toISOString().split('T')[0];
+
+            if (newDateStr !== oldDateStr) {
+                // Extract subject out
+                const [movedSubject] = session.subjects.splice(subjectIdx, 1);
+
+                let targetSession = plan.sessions.find(s => new Date(s.date).toISOString().split('T')[0] === newDateStr);
+                if (!targetSession) {
+                    // Create new session
+                    const newDayNumber = plan.sessions.length > 0 ? Math.max(...plan.sessions.map(s => s.day)) + 1 : 1;
+                    plan.sessions.push({
+                        day: newDayNumber,
+                        date: newDateObj,
+                        subjects: []
+                    });
+                    
+                    // Re-sort sessions by date and renumber `day`
+                    plan.sessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    plan.sessions.forEach((s, idx) => { s.day = idx + 1; });
+                    
+                    targetSession = plan.sessions.find(s => new Date(s.date).toISOString().split('T')[0] === newDateStr);
+                }
+
+                // Add to new session
+                targetSession.subjects.push(movedSubject);
+
+                // Clean up empty session if necessary
+                if (session.subjects.length === 0) {
+                    plan.sessions.id(session._id).deleteOne();
+                    plan.sessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    plan.sessions.forEach((s, idx) => { s.day = idx + 1; });
+                }
+            }
+        }
+
+        await plan.save();
+        res.status(200).json({ status: 'success', data: { plan } });
+    } catch (error) {
+        next(error);
+    }
+};

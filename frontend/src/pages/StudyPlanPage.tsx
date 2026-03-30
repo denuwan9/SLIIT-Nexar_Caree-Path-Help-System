@@ -24,15 +24,16 @@ import {
     ArrowLeft,
     Info,
     Play,
-    Pause,
     RotateCcw,
     Timer,
     Bell,
     BellOff,
     Volume2,
+    X,
 } from 'lucide-react';
 
-import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, updateSubjectStatus } from '../services/studyPlanService';
+
+import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, updateSubjectStatus, updateSubjectTime } from '../services/studyPlanService';
 import type {
     CreateStudyPlanInput,
     StudyPlan,
@@ -53,13 +54,14 @@ type TimerMap = Record<string, TaskTimer>;
 const TIMER_MAP_KEY = 'studyPlanTaskTimers';
 
 function formatTimer(totalSeconds: number) {
-    const hrs = Math.floor(totalSeconds / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
-    if (hrs > 0) {
-        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} min`;
+}
+
+function formatTaskTime(timestamp: number | null) {
+    if (!timestamp) return '--:--';
+    return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 const formatHours = (hours?: number | null, digits = 1) => {
@@ -73,90 +75,256 @@ const formatClockTime = (timestamp?: number | null) => {
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
-const TimerPanel: React.FC<{
-    title: string;
-    timerState: TaskTimer;
-    progressPct: number | null;
-    onStart: () => void;
-    onPause: () => void;
-    onReset: () => void;
-}> = ({ title, timerState, progressPct, onStart, onPause, onReset }) => {
+const TaskTrackerPanel: React.FC<{
+    tasks: { taskId: string; title?: string; topic?: string; subjectName: string; durationMinutes?: number; durationHours?: number; status?: StudyTaskStatus; isCompleted?: boolean; sessionId: string; idx: number }[];
+    timers: TimerMap;
+    activeTimerId: string | null;
+    selectedTrackerId: string | null;
+    onSelectTask: (taskId: string) => void;
+    onStart: (taskId: string, sessionId: string, idx: number) => void;
+    onPause: (taskId: string) => void;
+    onReset: (taskId: string) => void;
+    onComplete: (sessionId: string, idx: number, taskId: string) => void;
+}> = ({ tasks, timers, activeTimerId, selectedTrackerId, onSelectTask, onStart, onPause, onReset, onComplete }) => {
+    const [activeTab, setActiveTab] = useState<'list' | 'tracker'>('list');
+
+    // Auto-switch to tracker when a task is selected
+    const handleTaskClick = (taskId: string) => {
+        onSelectTask(taskId);
+        setActiveTab('tracker');
+    };
+
+    const selectedTask = tasks.find(t => t.taskId === selectedTrackerId);
+    const timerState = selectedTrackerId ? (timers[selectedTrackerId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null }) : null;
+    const durationMins = selectedTask ? (selectedTask.durationMinutes || Math.round((selectedTask.durationHours || 1) * 60)) : 0;
+
+    const getTaskStatus = (t: typeof tasks[0]): { label: string; icon: string; bg: string; text: string; border: string } => {
+        const timer = timers[t.taskId];
+        const status = t.status || (t.isCompleted ? 'completed' : 'pending');
+        if (status === 'completed') return { label: 'Completed', icon: 'C', bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200' };
+        if (status === 'in-progress' || timer?.isRunning) return { label: 'Started', icon: 'S', bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' };
+        if (timer && timer.seconds > 0 && !timer.isRunning) return { label: 'Resume', icon: 'R', bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' };
+        return { label: 'Pending', icon: 'P', bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' };
+    };
+
+    // Clock hand angle for the elapsed time
+    const elapsedAngle = timerState ? ((timerState.seconds % 3600) / 3600) * 360 : 0;
+    const currentTimeStr = timerState?.isRunning
+        ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase()
+        : '00:00 P.M.';
+
     return (
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 space-y-4 animate-in slide-in-from-top-2">
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-blue-700 uppercase tracking-wider break-all leading-tight">
-                        <Timer size={14} className="shrink-0" />
-                        <span className="break-all">{title}</span>
-                    </div>
-                    <span
-                        className="text-[11px] font-medium text-slate-500"
-                        title={`Task started at ${formatClockTime(timerState.startedAt)}`}
-                    >
-                        Started at {formatClockTime(timerState.startedAt) || '--:--'}
-                    </span>
-                    {timerState.finishedAt && (
-                        <span className="text-[11px] font-medium text-emerald-600" title={`Task finished at ${formatClockTime(timerState.finishedAt)}`}>
-                            Finished at {formatClockTime(timerState.finishedAt)}
-                        </span>
-                    )}
-                </div>
-                <div className="text-right shrink-0">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Elapsed Time</p>
-                    <span className="font-mono text-xl font-bold text-slate-800">
-                        {formatTimer(timerState.seconds)}
-                    </span>
-                </div>
+        <div className="rounded-[2rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200">
+                <button
+                    onClick={() => setActiveTab('list')}
+                    className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all ${
+                        activeTab === 'list'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                >
+                    Task List
+                </button>
+                <button
+                    onClick={() => setActiveTab('tracker')}
+                    className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all ${
+                        activeTab === 'tracker'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                >
+                    Time Tracker
+                </button>
             </div>
 
-            {progressPct !== null && (
-                <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                        <span>Progress</span>
-                        <span>{progressPct}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-white/60 shadow-inner overflow-hidden border border-slate-100/50">
-                        <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500" style={{ width: `${progressPct}%` }} />
-                    </div>
+            {/* Task List Tab */}
+            {activeTab === 'list' && (
+                <div className="p-4 space-y-2 max-h-[28rem] overflow-y-auto">
+                    {tasks.length === 0 && (
+                        <p className="text-center py-12 text-slate-400 text-sm font-semibold">No tasks available</p>
+                    )}
+                    {[...tasks].sort((a, b) => {
+                        const getPriority = (t: typeof a) => {
+                            const timer = timers[t.taskId];
+                            const status = t.status || (t.isCompleted ? 'completed' : 'pending');
+                            if (status === 'completed' || t.isCompleted) return 99; // Completed → absolute bottom
+                            if (status === 'in-progress' || timer?.isRunning) return 0; // Started → top
+                            if (timer && timer.seconds > 0 && !timer.isRunning) return 1; // Resume
+                            return 2; // Pending
+                        };
+                        return getPriority(a) - getPriority(b);
+                    }).map((t) => {
+                        const st = getTaskStatus(t);
+                        const timer = timers[t.taskId];
+                        const isActive = t.taskId === activeTimerId;
+                        const isSelected = t.taskId === selectedTrackerId;
+
+                        return (
+                            <button
+                                key={t.taskId}
+                                onClick={() => handleTaskClick(t.taskId)}
+                                className={`w-full text-left rounded-2xl p-4 flex items-center justify-between gap-3 transition-all border ${
+                                    isActive
+                                        ? 'bg-orange-50 border-orange-200 shadow-md'
+                                        : isSelected
+                                            ? 'bg-blue-50 border-blue-200'
+                                            : `${st.bg}/30 ${st.border} hover:shadow-sm`
+                                }`}
+                            >
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-slate-900 truncate">
+                                        {t.title || t.topic || t.subjectName}
+                                    </p>
+                                    {(timer && timer.seconds > 0) && (
+                                        <p className="text-lg font-black text-slate-800 mt-0.5">
+                                            {formatTimer(timer.seconds)}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${st.bg} ${st.border}`}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border ${st.border} ${st.bg} ${st.text}`}>
+                                        {st.icon}
+                                    </div>
+                                    <span className={`text-[11px] font-bold ${st.text}`}>{st.label}</span>
+                                </div>
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-                {!timerState.isRunning ? (
-                    <button
-                        onClick={onStart}
-                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all hover:scale-105 active:scale-95"
-                    >
-                        <Play size={12} fill="currentColor" />
-                        Start
-                    </button>
-                ) : (
-                    <button
-                        onClick={onPause}
-                        className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-200 hover:bg-amber-600 transition-all hover:scale-105 active:scale-95"
-                    >
-                        <Pause size={12} fill="currentColor" />
-                        Pause
-                    </button>
-                )}
+            {/* Time Tracker Tab */}
+            {activeTab === 'tracker' && (
+                <div className="p-8 flex flex-col items-center justify-center min-h-[24rem]">
+                    {!selectedTask ? (
+                        <div className="text-center space-y-4">
+                            <div className="w-24 h-24 rounded-full border-4 border-slate-200 flex items-center justify-center mx-auto">
+                                <Timer size={40} className="text-slate-300" />
+                            </div>
+                            <p className="text-sm font-bold text-slate-400">Select a task from the Task List</p>
+                            <button
+                                onClick={() => setActiveTab('list')}
+                                className="text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
+                            >
+                                ← Go to Task List
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="w-full max-w-sm space-y-6 text-center">
+                            {/* Task Info + Duration */}
+                            <div>
+                                <p className="text-sm font-bold text-slate-500 truncate">
+                                    {selectedTask.title || selectedTask.topic || selectedTask.subjectName}
+                                </p>
+                                <p className={`text-3xl font-black mt-1 ${(timerState?.seconds || 0) >= durationMins * 60 ? 'text-rose-600' : 'text-slate-900'}`}>
+                                    {formatTimer(timerState?.seconds || 0)}
+                                </p>
+                                { (timerState?.seconds || 0) >= durationMins * 60 ? (
+                                    <p className="text-sm font-black text-rose-600 animate-pulse mt-1 capitalize tracking-widest">Time is Over! ⏰</p>
+                                ) : (
+                                    <p className="text-xs font-bold text-slate-400 mt-0.5">/ {durationMins}:00 min</p>
+                                )}
+                            </div>
 
-                <button
-                    onClick={onReset}
-                    className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-800 transition-all hover:scale-105 active:scale-95 shadow-sm"
-                >
-                    <RotateCcw size={12} />
-                    Reset
-                </button>
+                            {/* Large Clock Display */}
+                            <div className="relative mx-auto w-48 h-48">
+                                <div className="absolute inset-0 rounded-[2rem] border-4 border-slate-200 bg-white shadow-lg flex items-center justify-center">
+                                    {/* Clock circle */}
+                                    <div className="relative w-32 h-32">
+                                        <svg viewBox="0 0 100 100" className="w-full h-full">
+                                            {/* Outer ring */}
+                                            <circle cx="50" cy="50" r="46" fill="none" stroke="#E2E8F0" strokeWidth="2" />
+                                            {/* Progress arc */}
+                                            <circle
+                                                cx="50" cy="50" r="46"
+                                                fill="none"
+                                                stroke={(timerState?.seconds || 0) >= durationMins * 60 ? '#E11D48' : timerState?.isRunning ? '#3B82F6' : '#94A3B8'}
+                                                strokeWidth="3"
+                                                strokeDasharray={`${Math.min(100, ((timerState?.seconds || 0) / (durationMins * 60)) * 100) * 2.89} 289`}
+                                                strokeLinecap="round"
+                                                transform="rotate(-90 50 50)"
+                                                className="transition-all duration-1000"
+                                            />
+                                            {/* Dots around the clock */}
+                                            {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(angle => (
+                                                <circle
+                                                    key={angle}
+                                                    cx={50 + 42 * Math.cos((angle - 90) * Math.PI / 180)}
+                                                    cy={50 + 42 * Math.sin((angle - 90) * Math.PI / 180)}
+                                                    r="2"
+                                                    fill={timerState?.isRunning ? '#3B82F6' : '#CBD5E1'}
+                                                />
+                                            ))}
+                                            {/* Clock hand */}
+                                            <line
+                                                x1="50" y1="50"
+                                                x2={50 + 30 * Math.cos((elapsedAngle - 90) * Math.PI / 180)}
+                                                y2={50 + 30 * Math.sin((elapsedAngle - 90) * Math.PI / 180)}
+                                                stroke={(timerState?.seconds || 0) >= durationMins * 60 ? '#E11D48' : timerState?.isRunning ? '#3B82F6' : '#94A3B8'}
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                            />
+                                            {/* Center dot */}
+                                            <circle cx="50" cy="50" r="3" fill={(timerState?.seconds || 0) >= durationMins * 60 ? '#E11D48' : timerState?.isRunning ? '#3B82F6' : '#94A3B8'} />
+                                        </svg>
+                                    </div>
+                                </div>
+                                {/* Current Time Label */}
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
+                                    <p className="text-[11px] font-black text-slate-700">{currentTimeStr}</p>
+                                </div>
+                            </div>
 
-                <div className="ml-auto">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500/80">
-                        Total spent: {formatTimer(timerState.seconds)}
-                    </span>
+                            {/* Play/Pause Controls */}
+                            <div className="flex items-center justify-center gap-4">
+                                {timerState?.isRunning ? (
+                                    <button
+                                        onClick={() => onPause(selectedTrackerId!)}
+                                        className="w-16 h-16 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-200 hover:bg-amber-600 transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        {/* Pause icon */}
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <rect x="6" y="4" width="4" height="16" rx="1" />
+                                            <rect x="14" y="4" width="4" height="16" rx="1" />
+                                        </svg>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => onStart(selectedTrackerId!, selectedTask.sessionId, selectedTask.idx)}
+                                        className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        <Play size={28} fill="currentColor" />
+                                    </button>
+                                )}
+
+                                {(timerState?.seconds || 0) > 0 && !timerState?.isRunning && (
+                                    <button
+                                        onClick={() => onReset(selectedTrackerId!)}
+                                        className="w-12 h-12 rounded-xl bg-white text-slate-400 border border-slate-200 flex items-center justify-center hover:text-rose-500 hover:border-rose-200 transition-all"
+                                    >
+                                        <RotateCcw size={18} />
+                                    </button>
+                                )}
+
+                                {timerState?.isRunning && (
+                                    <button
+                                        onClick={() => onComplete(selectedTask.sessionId, selectedTask.idx, selectedTrackerId!)}
+                                        className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all"
+                                    >
+                                        <CheckCircle2 size={20} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
+            )}
         </div>
     );
 };
+
 
 const PRIORITY_META: Record<StudyPriority, { label: string; accent: string; tip: string; icon: any }> = {
     critical: {
@@ -199,7 +367,6 @@ const StudyPlanPage: React.FC = () => {
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
     const [titleError, setTitleError] = useState<string | null>(null);
     const [workEnabled, setWorkEnabled] = useState(false);
-    const [generationStage, setGenerationStage] = useState<string | null>(null);
 
     const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([]);
     const [workStartTime, setWorkStartTime] = useState('');
@@ -212,6 +379,31 @@ const StudyPlanPage: React.FC = () => {
     const [lastNotifiedTask, setLastNotifiedTask] = useState<string | null>(null);
     const [activeAlert, setActiveAlert] = useState<{ title: string; time: string; subject: string; id: string; planId?: string } | null>(null);
     const [welcomeAlertShown, setWelcomeAlertShown] = useState(false);
+    
+    // Edit task date/time state
+    const [editingTaskTime, setEditingTaskTime] = useState<{ sessionId: string; subjectIdx: number; date: string; customStartTime: string } | null>(null);
+
+
+    const selectedPlan = useMemo(
+        () => plans.find((p) => p._id === selectedPlanId) || plans[0],
+        [plans, selectedPlanId]
+    );
+
+    const allTasksFlat = useMemo(() => {
+        if (!selectedPlan) return [];
+        return selectedPlan.sessions.flatMap(s => 
+            s.subjects.map((sub, idx) => ({ 
+                ...sub, 
+                sessionId: s._id, 
+                idx, 
+                taskId: `${s._id}-${idx}`,
+                day: s.day,
+                date: s.date
+            }))
+        );
+    }, [selectedPlan]);
+    const taskRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+
 
     const persistTimers = (nextTimers: TimerMap, activeId: string | null) => {
         if (!hydrated) return; // avoid clobbering before hydration
@@ -230,13 +422,27 @@ const StudyPlanPage: React.FC = () => {
                 if (t.isRunning && t.startedAt) {
                     const last = t.lastUpdatedAt || t.startedAt;
                     const elapsed = Math.max(0, Math.floor((now - last) / 1000));
-                    next[id] = { ...t, seconds: t.seconds + elapsed, lastUpdatedAt: now };
+                    let newSeconds = t.seconds + elapsed;
+
+                    // Auto-stop logic: check against task duration limit
+                    const task = allTasksFlat.find(tk => tk.taskId === id);
+                    if (task) {
+                        const limitSeconds = (task.durationMinutes || Math.round((task.durationHours || 0) * 60)) * 60;
+                        if (newSeconds >= limitSeconds) {
+                            newSeconds = limitSeconds;
+                            next[id] = { ...t, seconds: newSeconds, isRunning: false, lastUpdatedAt: now, finishedAt: now };
+                        } else {
+                            next[id] = { ...t, seconds: newSeconds, lastUpdatedAt: now };
+                        }
+                    } else {
+                        next[id] = { ...t, seconds: newSeconds, lastUpdatedAt: now };
+                    }
                 } else {
                     next[id] = { ...t, lastUpdatedAt: t.lastUpdatedAt || now };
                 }
             });
             persistTimers(next, activeId);
-            return source === 'unload' ? prev : next; // keep state when unloading
+            return source === 'unload' ? prev : next;
         });
     };
 
@@ -489,10 +695,27 @@ const StudyPlanPage: React.FC = () => {
         }
     }, [isLoadingPlans, plans, welcomeAlertShown, selectedPlanId]);
 
-    const selectedPlan = useMemo(
-        () => plans.find((p) => p._id === selectedPlanId) || plans[0],
-        [plans, selectedPlanId]
-    );
+
+
+    useEffect(() => {
+        if (activeTimerId && timers[activeTimerId] && !timers[activeTimerId].isRunning) {
+            const task = allTasksFlat.find(t => t.taskId === activeTimerId);
+            if (task) {
+                const limitSeconds = (task.durationMinutes || Math.round((task.durationHours || 0) * 60)) * 60;
+                if (timers[activeTimerId].seconds >= limitSeconds) {
+                    setActiveTimerId(null);
+                    toast(`Time is over for: ${task.title || task.topic || task.subjectName}`, {
+                        icon: '⏰',
+                        duration: 6000,
+                        position: 'top-center',
+                        style: { borderRadius: '1rem', background: '#FFF1F2', border: '1px solid #FECDD3', color: '#BE123C', fontWeight: '800' }
+                    });
+                    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                    audio.play().catch(() => {});
+                }
+            }
+        }
+    }, [timers, activeTimerId, allTasksFlat]);
 
     const getNextTaskForPlan = (plan: StudyPlan) => {
         const now = new Date();
@@ -776,6 +999,21 @@ const StudyPlanPage: React.FC = () => {
             clearInterval(stageInterval);
             setIsCreating(false);
             setGenerationStage(null);
+        }
+    };
+
+    const handleSaveTaskTime = async () => {
+        if (!selectedPlan || !editingTaskTime) return;
+        try {
+            const updated = await updateSubjectTime(selectedPlan._id, editingTaskTime.sessionId, editingTaskTime.subjectIdx, {
+                date: editingTaskTime.date,
+                customStartTime: editingTaskTime.customStartTime || null
+            });
+            setPlans((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+            setEditingTaskTime(null);
+            toast.success('Task date and time updated');
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to update time');
         }
     };
 
@@ -1726,6 +1964,21 @@ const StudyPlanPage: React.FC = () => {
 
             {viewMode === 'schedule' && selectedPlan && (
                 <div className="space-y-10 animate-slide-in pb-20">
+                    {/* Task Tracker Panel (Tabs: Task List | Time Tracker) */}
+                    <div className="max-w-lg mx-auto w-full mb-8">
+                        <TaskTrackerPanel
+                            tasks={allTasksFlat}
+                            timers={timers}
+                            activeTimerId={activeTimerId}
+                            selectedTrackerId={openTrackerId}
+                            onSelectTask={(taskId) => setOpenTrackerId(taskId)}
+                            onStart={(taskId, sessionId, idx) => handleStartTimer(taskId, sessionId, idx)}
+                            onPause={(taskId) => handlePauseTimer(taskId)}
+                            onReset={(taskId) => handleResetTimer(taskId)}
+                            onComplete={(sessionId, idx, taskId) => handleCompleteTask(sessionId, idx, taskId)}
+                        />
+                    </div>
+
                     {/* Schedule Header */}
                     <div className="group relative overflow-hidden rounded-[2.5rem] bg-white p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
                         <div className="absolute -right-32 -top-32 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl" />
@@ -1753,7 +2006,7 @@ const StudyPlanPage: React.FC = () => {
                                 <div>
                                     <h2 className="text-4xl font-bold text-slate-900 tracking-tight mb-2">Your Study Schedule</h2>
                                     <p className="text-sm font-semibold text-slate-400 max-w-md">
-                                        Schedule for <span className="text-blue-600">"{selectedPlan.title}"</span>.
+                                        Schedule for <span className="text-blue-600 font-bold">"{selectedPlan.title}"</span>.
                                     </p>
                                 </div>
                             </div>
@@ -1909,10 +2162,19 @@ const StudyPlanPage: React.FC = () => {
                                                     const durationMins = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
                                                     const progressPct = durationMins ? Math.min(100, Math.round((timerState.seconds / (durationMins * 60)) * 100)) : null;
 
+                                                    if (subject.customStartTime) {
+                                                        const [hh, mm] = subject.customStartTime.split(':').map(Number);
+                                                        if (!isNaN(hh) && !isNaN(mm)) {
+                                                            currentStartTime = new Date(currentStartTime);
+                                                            currentStartTime.setHours(hh, mm, 0, 0);
+                                                        }
+                                                    }
+
                                                     const startTimeStr = formatTime(currentStartTime);
                                                     currentStartTime = new Date(currentStartTime.getTime() + durationMins * 60000);
                                                     const endTimeStr = formatTime(currentStartTime);
                                                     const timeDisplay = `${startTimeStr} - ${endTimeStr}`;
+
 
                                                     const taskTypeTheme: Record<string, string> = {
                                                         reading: 'bg-blue-50 text-blue-600 border-blue-100/50',
@@ -1925,40 +2187,25 @@ const StudyPlanPage: React.FC = () => {
                                                     return (
                                                         <div
                                                             key={`${session._id}-${idx}`}
+                                                            ref={el => { taskRefs.current[taskId] = el; }}
                                                             className={`group relative overflow-hidden rounded-[2rem] border p-8 transition-all ${
                                                                 isComplete
                                                                     ? 'border-emerald-200 bg-emerald-50/20 opacity-80'
                                                                     : isInProgress
-                                                                        ? 'border-blue-200 bg-white shadow-lg shadow-blue-100/50 scale-[1.02]'
-                                                                        : 'border-slate-100 bg-white hover:border-slate-200'
+                                                                        ? 'border-blue-200 bg-white shadow-xl shadow-blue-100 scale-[1.01]'
+                                                                        : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-lg hover:shadow-slate-200/50'
                                                             }`}
                                                         >
-                                                            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center">
-                                                                {/* Status Marker */}
-                                                                <div className="flex-shrink-0 flex lg:flex-col items-center gap-4">
-                                                                    <button
-                                                                        onClick={() => handleStatusChange(session._id, idx, 'completed')}
-                                                                        className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-all ${
-                                                                            isComplete 
-                                                                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' 
-                                                                            : 'bg-slate-50 text-slate-300 hover:bg-emerald-50 hover:text-emerald-500'
-                                                                        }`}
-                                                                    >
-                                                                        <CheckCircle2 size={24} />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleStatusChange(session._id, idx, 'in-progress')}
-                                                                        className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-all ${
-                                                                            isInProgress 
-                                                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 animate-pulse' 
-                                                                            : 'bg-slate-50 text-slate-300 hover:bg-blue-50 hover:text-blue-500'
-                                                                        }`}
-                                                                    >
-                                                                        <Loader2 size={24} className={isInProgress ? 'animate-spin' : ''} />
-                                                                    </button>
+                                                            {/* Top indicator for sorted active task */}
+                                                            {isInProgress && (
+                                                                <div className="absolute top-0 right-0 px-6 py-2 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-3xl shadow-lg">
+                                                                    Active Target
                                                                 </div>
+                                                            )}
 
-                                                                <div className="flex-1 space-y-4">
+                                                            <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center">
+                                                                {/* Left: Metadata & Status */}
+                                                                <div className="flex-1 space-y-5">
                                                                     <div className="flex flex-wrap items-center gap-3">
                                                                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${taskTypeTheme[subject.taskType || 'reading']}`}>
                                                                             {subject.taskType || 'MODULE'}
@@ -1966,31 +2213,81 @@ const StudyPlanPage: React.FC = () => {
                                                                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-slate-100 bg-slate-50 text-slate-500`}>
                                                                             {priorityMeta.label}
                                                                         </span>
-                                                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase">
-                                                                            <Clock size={14} />
-                                                                            {timeDisplay}
-                                                                        </div>
+
+                                                                        {editingTaskTime?.sessionId === session._id && editingTaskTime?.subjectIdx === idx ? (
+                                                                            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-blue-200 shadow-inner z-20">
+                                                                                <input 
+                                                                                    type="date" 
+                                                                                    value={editingTaskTime.date}
+                                                                                    onChange={(e) => setEditingTaskTime({...editingTaskTime, date: e.target.value})}
+                                                                                    className="text-xs px-2 py-1.5 rounded bg-white border border-slate-200 text-slate-700 outline-none focus:border-blue-500 font-medium"
+                                                                                />
+                                                                                <input 
+                                                                                    type="time" 
+                                                                                    value={editingTaskTime.customStartTime}
+                                                                                    onChange={(e) => setEditingTaskTime({...editingTaskTime, customStartTime: e.target.value})}
+                                                                                    className="text-xs px-2 py-1.5 rounded bg-white border border-slate-200 text-slate-700 outline-none focus:border-blue-500 font-medium"
+                                                                                />
+                                                                                <button onClick={handleSaveTaskTime} className="bg-blue-600 text-white text-[10px] uppercase font-bold px-3 py-1.5 rounded hover:bg-blue-700 transition shadow-sm">Save</button>
+                                                                                <button onClick={() => setEditingTaskTime(null)} className="text-slate-500 hover:text-slate-800 p-1"><X size={14}/></button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="group/time flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-tight relative">
+                                                                                <Clock size={14} className="text-blue-500" />
+                                                                                {timeDisplay}
+                                                                                <button 
+                                                                                    onClick={() => {
+                                                                                        const dtStr = new Date(session.date).toISOString().split('T')[0];
+                                                                                        // To generate a nice default time string 'HH:mm' from the calculated start time:
+                                                                                        let defaultHour = currentStartTime.getHours() - Math.floor(durationMins / 60);
+                                                                                        let defaultMin = currentStartTime.getMinutes() - (durationMins % 60);
+                                                                                        if (defaultMin < 0) { defaultMin += 60; defaultHour--; }
+                                                                                        const hStr = defaultHour.toString().padStart(2, '0');
+                                                                                        const mStr = defaultMin.toString().padStart(2, '0');
+                                                                                        const fallbackTime = `${hStr}:${mStr}`;
+                                                                                        
+                                                                                        setEditingTaskTime({ sessionId: session._id, subjectIdx: idx, date: dtStr, customStartTime: subject.customStartTime || fallbackTime });
+                                                                                    }}
+                                                                                    className="opacity-0 group-hover/time:opacity-100 p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all ml-1"
+                                                                                    title="Edit Date/Time"
+                                                                                >
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
 
                                                                     <div>
-                                                                        <h4 className={`text-xl font-bold tracking-tight ${isComplete ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                                                                        <h4 className={`text-2xl font-black tracking-tight ${isComplete ? 'text-slate-400 line-through' : 'text-slate-950'}`}>
                                                                             {subject.title || subject.topic || subject.subjectName}
                                                                         </h4>
-                                                                        <p className="text-sm font-semibold mt-1 uppercase tracking-tighter">
-                                                                            {subject.subjectName} {subject.technique ? `// ${subject.technique} Protocol` : ''}
-                                                                        </p>
+                                                                        <div className="flex items-center gap-3 mt-1.5">
+                                                                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">
+                                                                                {subject.subjectName}
+                                                                            </p>
+                                                                            {subject.technique && (
+                                                                                <>
+                                                                                    <div className="h-3 w-px bg-slate-200" />
+                                                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                                                                         {subject.technique} Protocol
+                                                                                    </p>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
 
                                                                     {subject.instruction && (
-                                                                        <p className="text-sm text-slate-600 leading-relaxed font-medium bg-slate-50/50 p-4 rounded-2xl border border-slate-50">
-                                                                            {subject.instruction}
-                                                                        </p>
+                                                                        <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-100 group-hover:bg-blue-50/30 transition-colors">
+                                                                            <p className="text-[13px] text-slate-600 leading-relaxed font-medium">
+                                                                                {subject.instruction}
+                                                                            </p>
+                                                                        </div>
                                                                     )}
 
                                                                     {subject.resources && subject.resources.length > 0 && (
                                                                         <div className="flex flex-wrap gap-2">
                                                                             {subject.resources.map((res, i) => (
-                                                                                <span key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-wider border border-blue-100">
+                                                                                <span key={i} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-slate-600 text-[10px] font-bold uppercase tracking-wider border border-slate-100 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 cursor-pointer">
                                                                                     <FileText size={12} />
                                                                                     {res}
                                                                                 </span>
@@ -1999,60 +2296,34 @@ const StudyPlanPage: React.FC = () => {
                                                                     )}
                                                                 </div>
 
-                                                                <div className={`w-full lg:w-64 min-w-[240px] space-y-3 ${activeTimerId === taskId ? 'ring-2 ring-emerald-200 ring-offset-2 ring-offset-white rounded-2xl' : ''}`}>
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</div>
-                                                                        <button 
-                                                                            onClick={() => setOpenTrackerId(openTrackerId === taskId ? null : taskId)}
-                                                                            className="flex items-center gap-1 text-[10px] font-bold uppercase text-blue-500 hover:text-blue-600 transition-colors bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg"
-                                                                        >
-                                                                            <Timer size={12} />
-                                                                            Track
-                                                                        </button>
+                                                                {/* Right: Compact Status Badge */}
+                                                                <div className="shrink-0 flex flex-col items-end gap-3">
+                                                                    <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${
+                                                                        isComplete
+                                                                            ? 'bg-emerald-100 border-emerald-200 text-emerald-700'
+                                                                            : isInProgress
+                                                                                ? 'bg-orange-100 border-orange-200 text-orange-700'
+                                                                                : timerState.seconds > 0
+                                                                                    ? 'bg-amber-100 border-amber-200 text-amber-700'
+                                                                                    : 'bg-blue-100 border-blue-200 text-blue-700'
+                                                                    }`}>
+                                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border ${
+                                                                            isComplete ? 'border-emerald-300 bg-emerald-200' : isInProgress ? 'border-orange-300 bg-orange-200' : timerState.seconds > 0 ? 'border-amber-300 bg-amber-200' : 'border-blue-300 bg-blue-200'
+                                                                        }`}>
+                                                                            {isComplete ? 'C' : isInProgress ? 'S' : timerState.seconds > 0 ? 'R' : 'P'}
+                                                                        </div>
+                                                                        <span className="text-[11px] font-bold">
+                                                                            {isComplete ? 'Completed' : isInProgress ? 'Started' : timerState.seconds > 0 ? 'Resume' : 'Pending'}
+                                                                        </span>
                                                                     </div>
-                                                                    <div className="grid grid-cols-3 gap-2">
-                                                                        <button
-                                                                            onClick={() => handleStatusChange(session._id, idx, 'pending')}
-                                                                            className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-[0.14em] transition-all shadow-sm ${
-                                                                                currentStatus === 'pending'
-                                                                                    ? 'bg-slate-900 text-white shadow-lg shadow-slate-400/20'
-                                                                                    : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100'
-                                                                            }`}
-                                                                        >
-                                                                            Pending
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleStatusChange(session._id, idx, 'in-progress')}
-                                                                            className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-[0.14em] transition-all shadow-sm ${
-                                                                                isInProgress
-                                                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-300/30'
-                                                                                    : 'bg-white text-slate-500 hover:bg-blue-50 hover:text-blue-600 border border-slate-100'
-                                                                            }`}
-                                                                        >
-                                                                            Progress
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleCompleteTask(session._id, idx, taskId)}
-                                                                            className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-[0.14em] transition-all shadow-sm ${
-                                                                                isComplete
-                                                                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200/50'
-                                                                                    : 'bg-white text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-100'
-                                                                            }`}
-                                                                        >
-                                                                            Done
-                                                                        </button>
-                                                                    </div>
-
-                                                                    {openTrackerId === taskId && (
-                                                                            <TimerPanel
-                                                                                title={subject.title || subject.topic || subject.subjectName}
-                                                                                timerState={timerState}
-                                                                                progressPct={progressPct}
-                                                                                onStart={() => handleStartTimer(taskId, session._id, idx)}
-                                                                                onPause={() => handlePauseTimer(taskId)}
-                                                                                onReset={() => handleResetTimer(taskId)}
-                                                                            />
+                                                                    {timerState.seconds > 0 && (
+                                                                        <p className="text-lg font-black text-slate-800 font-mono tabular-nums">
+                                                                            {formatTimer(timerState.seconds)}
+                                                                        </p>
                                                                     )}
+                                                                    <p className="text-[10px] font-black uppercase text-slate-300 tracking-tighter">
+                                                                        Task ID: {idx + 1}
+                                                                    </p>
                                                                 </div>
                                                             </div>
                                                         </div>

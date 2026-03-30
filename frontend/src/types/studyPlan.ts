@@ -24,6 +24,7 @@ export interface StudySessionSubject {
     priority: StudyPriority;
     isCompleted?: boolean;
     status?: StudyTaskStatus;
+    customStartTime?: string | null;
 }
 
 export interface StudySession {

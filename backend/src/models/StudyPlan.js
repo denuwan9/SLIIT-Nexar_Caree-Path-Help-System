@@ -18,6 +18,8 @@ const studySessionSchema = new mongoose.Schema(
                 instruction: { type: String, default: '' },
                 durationHours: { type: Number, required: true, min: 0.25 },
                 durationMinutes: { type: Number },
+                customStartTime: { type: String, default: null },
+
                 technique: {
                     type: String,
                     enum: ['pomodoro', 'spaced', 'mixed', null],
