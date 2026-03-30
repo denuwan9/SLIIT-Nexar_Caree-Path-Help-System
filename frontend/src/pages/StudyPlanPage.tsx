@@ -34,6 +34,8 @@ import {
 
 
 import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, updateSubjectStatus, updateSubjectTime } from '../services/studyPlanService';
+import { googleCalendarService } from '../services/googleCalendarService';
+import { Share2, CalendarPlus } from 'lucide-react';
 import type {
     CreateStudyPlanInput,
     StudyPlan,
@@ -373,6 +375,8 @@ const StudyPlanPage: React.FC = () => {
     const [welcomeAlertShown, setWelcomeAlertShown] = useState(false);
     
     const [isTrackerExpanded, setIsTrackerExpanded] = useState(false);
+    const [isCalendarLinked, setIsCalendarLinked] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     
     // Edit task date/time state
     const [editingTaskTime, setEditingTaskTime] = useState<{ sessionId: string; subjectIdx: number; date: string; customStartTime: string; durationMinutes: number; originalDurationMinutes: number } | null>(null);
@@ -382,6 +386,56 @@ const StudyPlanPage: React.FC = () => {
         () => plans.find((p) => p._id === selectedPlanId) || plans[0],
         [plans, selectedPlanId]
     );
+
+    useEffect(() => {
+        const checkCalendarStatus = async () => {
+            try {
+                const status = await googleCalendarService.getStatus();
+                setIsCalendarLinked(status.isLinked);
+            } catch (error) {
+                console.error('Failed to fetch calendar status:', error);
+            }
+        };
+        if (viewMode === 'schedule') {
+            checkCalendarStatus();
+        }
+    }, [viewMode]);
+
+    const handleGoogleSync = () => {
+        if (!selectedPlan || isSyncing) return;
+        
+        setIsSyncing(true);
+        const client = (window as any).google?.accounts.oauth2.initCodeClient({
+            client_id: '741747269992-1d9m8m0hbcfa593ssaf7t86qr1vfk9oq.apps.googleusercontent.com',
+            scope: 'openid email profile https://www.googleapis.com/auth/calendar.events',
+            ux_mode: 'popup',
+            redirect_uri: 'postmessage',
+            callback: async (response: any) => {
+                if (response.code) {
+                    try {
+                        await googleCalendarService.linkAccount(response.code);
+                        setIsCalendarLinked(true);
+                        await googleCalendarService.syncPlan(selectedPlan._id);
+                        toast.success('Successfully synced to Google Calendar!');
+                    } catch (error: any) {
+                        toast.error(error.response?.data?.message || 'Sync failed');
+                    } finally {
+                        setIsSyncing(false);
+                    }
+                }
+            },
+        });
+        
+        if (isCalendarLinked) {
+            // If already linked, just trigger sync
+            googleCalendarService.syncPlan(selectedPlan._id)
+                .then(() => toast.success('Calendar updated!'))
+                .catch(() => toast.error('Sync failed'))
+                .finally(() => setIsSyncing(false));
+        } else {
+            client.requestCode();
+        }
+    };
 
     const allTasksFlat = useMemo(() => {
         if (!selectedPlan) return [];
@@ -2166,6 +2220,27 @@ const StudyPlanPage: React.FC = () => {
 
                             <div className="flex flex-col items-end gap-6">
                                 <div className="flex flex-wrap items-center gap-4">
+                                    {/* Google Calendar Sync Button */}
+                                    <button
+                                        onClick={handleGoogleSync}
+                                        disabled={isSyncing}
+                                        className={`flex h-[80px] px-8 items-center justify-center gap-4 rounded-[2rem] font-black uppercase tracking-widest text-[10px] transition-all border-2 shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                            isCalendarLinked
+                                            ? 'bg-blue-600 border-blue-500 text-white shadow-blue-200 hover:bg-blue-700'
+                                            : 'bg-white border-blue-500 text-blue-600 hover:bg-blue-50'
+                                        }`}
+                                    >
+                                        {isSyncing ? (
+                                            <Loader2 size={18} className="animate-spin" />
+                                        ) : (
+                                            isCalendarLinked ? <CalendarPlus size={18} /> : <Share2 size={18} />
+                                        )}
+                                        <div className="text-left leading-tight">
+                                            <p className="opacity-70 text-[8px] font-bold">Smart Sync</p>
+                                            <p>{isCalendarLinked ? 'Sync to Calendar' : 'Connect Google'}</p>
+                                        </div>
+                                    </button>
+
                                     <div className="rounded-[2rem] bg-slate-50 px-8 py-5 border border-slate-100 flex flex-col items-center min-w-[120px]">
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</p>
                                         <p className="text-2xl font-bold text-blue-600">{selectedPlan.overallProgress}%</p>

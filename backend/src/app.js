@@ -22,6 +22,7 @@ const jobPostRoutes = require('./routes/jobPostRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const systemRoutes = require('./routes/systemRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const googleCalendarRoutes = require('./routes/googleCalendarRoutes');
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use('/api/v1/jobs', jobPostRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/system', systemRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/google-calendar', googleCalendarRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────
 app.all('*', (req, res, next) => {
