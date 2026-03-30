@@ -372,6 +372,8 @@ const StudyPlanPage: React.FC = () => {
     const [activeAlert, setActiveAlert] = useState<{ title: string; time: string; subject: string; id: string; planId?: string } | null>(null);
     const [welcomeAlertShown, setWelcomeAlertShown] = useState(false);
     
+    const [isTrackerExpanded, setIsTrackerExpanded] = useState(false);
+    
     // Edit task date/time state
     const [editingTaskTime, setEditingTaskTime] = useState<{ sessionId: string; subjectIdx: number; date: string; customStartTime: string; durationMinutes: number; originalDurationMinutes: number } | null>(null);
 
@@ -1117,6 +1119,7 @@ const StudyPlanPage: React.FC = () => {
         });
         setActiveTimerId(taskId);
         setOpenTrackerId(taskId);
+        setIsTrackerExpanded(true);
         if (sessionId && typeof subjectIdx === 'number') {
             handleStatusChange(sessionId, subjectIdx, 'in-progress');
         }
@@ -1260,18 +1263,19 @@ const StudyPlanPage: React.FC = () => {
                     </div>
                     
                     <div className="flex flex-col gap-3 min-w-[200px]">
-                        {plans.length > 0 && (
-                            <button
-                                onClick={() => setViewMode('plans')}
-                                className="btn-premium flex items-center justify-center gap-3 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                            >
-                                <Layout size={18} />
+                        <button
+                            onClick={() => setViewMode('plans')}
+                            className="btn-premium flex items-center justify-center gap-4 group/plans"
+                        >
+                            <Layout size={20} className="text-blue-400 group-hover/plans:text-blue-300 transition-colors" />
+                            <span className="relative">
                                 My Study Plans
-                                <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-blue-500 text-[10px] font-bold text-white ml-2 ring-2 ring-blue-400/30">
-                                    {plans.length}
-                                </span>
-                            </button>
-                        )}
+                                <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-blue-400 transition-all duration-300 group-hover/plans:w-full" />
+                            </span>
+                            <span className="flex min-w-[24px] h-6 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-[10px] font-black text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] ring-2 ring-blue-400/20 group-hover/plans:ring-blue-400 transition-all">
+                                {plans.length}
+                            </span>
+                        </button>
 
                         <button
                             onClick={() => navigate('/dashboard')}
@@ -2128,21 +2132,6 @@ const StudyPlanPage: React.FC = () => {
 
             {viewMode === 'schedule' && selectedPlan && (
                 <div className="space-y-10 animate-slide-in pb-20">
-                    {/* Task Tracker Panel (Tabs: Task List | Time Tracker) */}
-                    <div className="max-w-lg mx-auto w-full mb-8">
-                        <TaskTrackerPanel
-                            tasks={allTasksFlat}
-                            timers={timers}
-                            activeTimerId={activeTimerId}
-                            selectedTrackerId={openTrackerId}
-                            onSelectTask={(taskId) => setOpenTrackerId(taskId)}
-                            onStart={(taskId, sessionId, idx) => handleStartTimer(taskId, sessionId, idx)}
-                            onPause={(taskId) => handlePauseTimer(taskId)}
-                            onReset={(taskId) => handleResetTimer(taskId)}
-                            onComplete={(sessionId, idx, taskId) => handleCompleteTask(sessionId, idx, taskId)}
-                        />
-                    </div>
-
                     {/* Schedule Header */}
                     <div className="group relative overflow-hidden rounded-[2.5rem] bg-white p-10 shadow-xl shadow-slate-200/50 border border-slate-100">
                         <div className="absolute -right-32 -top-32 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl" />
@@ -2175,22 +2164,62 @@ const StudyPlanPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-4">
-                                <div className="rounded-[2rem] bg-slate-50 px-8 py-5 border border-slate-100 flex flex-col items-center min-w-[120px]">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</p>
-                                    <p className="text-2xl font-bold text-blue-600">{selectedPlan.overallProgress}%</p>
+                            <div className="flex flex-col items-end gap-6">
+                                <div className="flex flex-wrap items-center gap-4">
+                                    <div className="rounded-[2rem] bg-slate-50 px-8 py-5 border border-slate-100 flex flex-col items-center min-w-[120px]">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</p>
+                                        <p className="text-2xl font-bold text-blue-600">{selectedPlan.overallProgress}%</p>
+                                    </div>
+                                    <div className="rounded-[2rem] bg-slate-50 px-8 py-5 border border-slate-100 flex flex-col items-center min-w-[120px]">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Total</p>
+                                        <p className="text-2xl font-bold text-slate-900">{totalHours.toFixed(0)}h</p>
+                                    </div>
+                                    <div className="rounded-[2rem] bg-emerald-50 px-8 py-5 border border-emerald-100/50 flex flex-col items-center min-w-[120px]">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">Span</p>
+                                        <p className="text-2xl font-bold text-emerald-700">{selectedPlan.totalStudyDays}d</p>
+                                    </div>
                                 </div>
-                                <div className="rounded-[2rem] bg-slate-50 px-8 py-5 border border-slate-100 flex flex-col items-center min-w-[120px]">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Total</p>
-                                    <p className="text-2xl font-bold text-slate-900">{totalHours.toFixed(0)}h</p>
-                                </div>
-                                <div className="rounded-[2rem] bg-emerald-50 px-8 py-5 border border-emerald-100/50 flex flex-col items-center min-w-[120px]">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">Span</p>
-                                    <p className="text-2xl font-bold text-emerald-700">{selectedPlan.totalStudyDays}d</p>
-                                </div>
+
+                                {/* Compact Task Tracker Toggle */}
+                                <button
+                                    onClick={() => setIsTrackerExpanded(!isTrackerExpanded)}
+                                    className={`flex h-12 px-6 items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest text-[9px] transition-all border-2 shadow-sm hover:scale-105 active:scale-95 ${
+                                        isTrackerExpanded 
+                                        ? 'bg-slate-900 border-slate-700 text-white' 
+                                        : 'bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50'
+                                    }`}
+                                >
+                                    <div className="relative flex items-center justify-center">
+                                        <Timer size={14} />
+                                        {activeTimerId && (
+                                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white"></span>
+                                            </span>
+                                        )}
+                                    </div>
+                                    {isTrackerExpanded ? 'Collapse Tracking' : 'Launch Session Tracker'}
+                                </button>
                             </div>
                         </div>
                     </div>
+
+                    {/* Task Tracker Panel (Tabs: Task List | Time Tracker) - Now Opening Under the Bar */}
+                    {isTrackerExpanded && (
+                        <div className="max-w-lg mx-auto w-full animate-in slide-in-from-top duration-500">
+                            <TaskTrackerPanel
+                                tasks={allTasksFlat}
+                                timers={timers}
+                                activeTimerId={activeTimerId}
+                                selectedTrackerId={openTrackerId}
+                                onSelectTask={(taskId) => setOpenTrackerId(taskId)}
+                                onStart={(taskId, sessionId, idx) => handleStartTimer(taskId, sessionId, idx)}
+                                onPause={(taskId) => handlePauseTimer(taskId)}
+                                onReset={(taskId) => handleResetTimer(taskId)}
+                                onComplete={(sessionId, idx, taskId) => handleCompleteTask(sessionId, idx, taskId)}
+                            />
+                        </div>
+                    )}
 
                     {/* AI Strategy Protocol */}
                     {selectedPlan.aiSummary && (
@@ -2405,7 +2434,7 @@ const StudyPlanPage: React.FC = () => {
                                                                         
                                                                         {isOverdue && !isComplete && (
                                                                             <span className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-rose-200 bg-rose-50 text-rose-600">
-                                                                                Missed Schedule
+                                                                                Missed Task
                                                                             </span>
                                                                         )}
 
