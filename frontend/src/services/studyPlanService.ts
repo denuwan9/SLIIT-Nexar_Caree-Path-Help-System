@@ -46,7 +46,7 @@ export const updateSubjectTime = async (
     planId: string,
     sessionId: string,
     subjectIdx: number,
-    data: { date?: string; customStartTime?: string | null }
+    data: { date?: string; customStartTime?: string | null; durationMinutes?: number }
 ): Promise<StudyPlan> => {
     const res = await api.patch(`/study-plans/${planId}/sessions/${sessionId}/${subjectIdx}/time`, data);
     return res.data.data.plan as StudyPlan;

@@ -700,7 +700,29 @@ exports.updateSubjectTime = async (req, res, next) => {
             subjectData.customStartTime = customStartTime;
         }
 
-        // 2. Adjust session if date is changed
+        // 2. Update durationMinutes safely
+        if (req.body.durationMinutes !== undefined) {
+            const requestedMinutes = parseInt(req.body.durationMinutes, 10);
+            if (!isNaN(requestedMinutes) && requestedMinutes > 0) {
+                // If this is the first time editing, store the original duration
+                if (subjectData.originalDurationMinutes == null) {
+                    subjectData.originalDurationMinutes = subjectData.durationMinutes || Math.round((subjectData.durationHours || 1) * 60);
+                }
+                
+                // Enforce maximum cap to original duration
+                if (requestedMinutes > subjectData.originalDurationMinutes) {
+                    return next(new AppError(`Duration cannot exceed the originally generated ${subjectData.originalDurationMinutes} minutes.`, 400));
+                }
+
+                subjectData.durationMinutes = requestedMinutes;
+                subjectData.durationHours = +(requestedMinutes / 60).toFixed(2);
+            }
+        }
+
+
+
+        // 3. Adjust session if date is changed
+        let targetSession = session;
         if (date) {
             const newDateObj = new Date(date);
             const newDateStr = newDateObj.toISOString().split('T')[0];
@@ -710,7 +732,7 @@ exports.updateSubjectTime = async (req, res, next) => {
                 // Extract subject out
                 const [movedSubject] = session.subjects.splice(subjectIdx, 1);
 
-                let targetSession = plan.sessions.find(s => new Date(s.date).toISOString().split('T')[0] === newDateStr);
+                targetSession = plan.sessions.find(s => new Date(s.date).toISOString().split('T')[0] === newDateStr);
                 if (!targetSession) {
                     // Create new session
                     const newDayNumber = plan.sessions.length > 0 ? Math.max(...plan.sessions.map(s => s.day)) + 1 : 1;
@@ -738,6 +760,54 @@ exports.updateSubjectTime = async (req, res, next) => {
                 }
             }
         }
+
+        // 4. Chronological Analysis & Persistence Re-ordering
+        let nominalHour = 9;
+        let nominalMin = 0;
+
+        // Sync with UI's internship-based logic for nominal starts
+        if (plan.internshipEndTime && Array.isArray(plan.internshipDays) && plan.internshipDays.length > 0) {
+            const dayMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayOfWeek = dayMap[new Date(targetSession.date).getDay()];
+            if (plan.internshipDays.includes(dayOfWeek)) {
+                const [h, m] = plan.internshipEndTime.split(':').map(Number);
+                if (!isNaN(h) && !isNaN(m)) {
+                    nominalHour = (h + 1) % 24;
+                    nominalMin = m;
+                }
+            }
+        }
+        
+        let nominalMins = nominalHour * 60 + nominalMin;
+        
+        // Final mapping pass to determine coordinates
+        const taskCoords = targetSession.subjects.map((sub) => {
+            const dur = sub.durationMinutes || Math.round((sub.durationHours || 1) * 60);
+            let sStart = nominalMins;
+            if (sub.customStartTime) {
+                const [h, m] = sub.customStartTime.split(':').map(Number);
+                if (!isNaN(h) && !isNaN(m)) sStart = h * 60 + m;
+            }
+            nominalMins += dur; 
+            return { sub, start: sStart, end: sStart + dur };
+        });
+
+        // 5. Overlap Validation
+        const sortedForOverlap = [...taskCoords].sort((a, b) => a.start - b.start);
+        for (let i = 0; i < sortedForOverlap.length - 1; i++) {
+            if (sortedForOverlap[i].end > sortedForOverlap[i+1].start) {
+                return next(new AppError(`Overlap detected: "${sortedForOverlap[i].sub.topic || 'Task'}" ends at ${Math.floor(sortedForOverlap[i].end/60)}:${(sortedForOverlap[i].end%60).toString().padStart(2,'0')} but "${sortedForOverlap[i+1].sub.topic || 'Task'}" starts at ${Math.floor(sortedForOverlap[i+1].start/60)}:${(sortedForOverlap[i+1].start%60).toString().padStart(2,'0')}.`, 400));
+            }
+        }
+
+        // 6. Explicit Persistence Ordering (Mongoose subdoc rewrite)
+        // We sort the original task objects into a new array based on the calculated starts
+        const reOrderedSubjects = sortedForOverlap.map(c => c.sub);
+        
+        // Overwrite the subdocument array to force index updates in DB
+        targetSession.set('subjects', reOrderedSubjects);
+
+
 
         await plan.save();
         res.status(200).json({ status: 'success', data: { plan } });

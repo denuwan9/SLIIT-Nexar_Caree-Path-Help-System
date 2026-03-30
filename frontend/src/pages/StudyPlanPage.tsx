@@ -59,21 +59,12 @@ function formatTimer(totalSeconds: number) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} min`;
 }
 
-function formatTaskTime(timestamp: number | null) {
-    if (!timestamp) return '--:--';
-    return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
 
 const formatHours = (hours?: number | null, digits = 1) => {
     const safe = Number.isFinite(hours || 0) ? Number(hours) : 0;
     return safe.toFixed(digits);
 };
 
-const formatClockTime = (timestamp?: number | null) => {
-    if (!timestamp) return '--:--';
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-};
 
 const TaskTrackerPanel: React.FC<{
     tasks: { taskId: string; title?: string; topic?: string; subjectName: string; durationMinutes?: number; durationHours?: number; status?: StudyTaskStatus; isCompleted?: boolean; sessionId: string; idx: number }[];
@@ -359,6 +350,7 @@ const StudyPlanPage: React.FC = () => {
     const [timetableFiles, setTimetableFiles] = useState<File[]>([]);
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
     const [isCreating, setIsCreating] = useState(false);
+    const [, setGenerationStage] = useState<string | null>(null);
     const [isLoadingPlans, setIsLoadingPlans] = useState(false);
     const [plans, setPlans] = useState<StudyPlan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -381,7 +373,7 @@ const StudyPlanPage: React.FC = () => {
     const [welcomeAlertShown, setWelcomeAlertShown] = useState(false);
     
     // Edit task date/time state
-    const [editingTaskTime, setEditingTaskTime] = useState<{ sessionId: string; subjectIdx: number; date: string; customStartTime: string } | null>(null);
+    const [editingTaskTime, setEditingTaskTime] = useState<{ sessionId: string; subjectIdx: number; date: string; customStartTime: string; durationMinutes: number; originalDurationMinutes: number } | null>(null);
 
 
     const selectedPlan = useMemo(
@@ -1004,12 +996,46 @@ const StudyPlanPage: React.FC = () => {
 
     const handleSaveTaskTime = async () => {
         if (!selectedPlan || !editingTaskTime) return;
+
+        if (editingTaskTime.customStartTime) {
+            const targetSession = selectedPlan.sessions.find(s => 
+                new Date(s.date).toISOString().split('T')[0] === editingTaskTime.date
+            ) || { _id: 'temp', subjects: [] };
+
+            const [editH, editM] = editingTaskTime.customStartTime.split(':').map(Number);
+            const editStart = editH * 60 + editM;
+            const editEnd = editStart + editingTaskTime.durationMinutes;
+
+            let nominalMins = 9 * 60;
+            const mappedSubjects = targetSession.subjects.map((sub, i) => {
+                const dur = sub.durationMinutes || Math.round((sub.durationHours || 1) * 60);
+                let sStart = nominalMins;
+
+                if (sub.customStartTime) {
+                    const [h, m] = sub.customStartTime.split(':').map(Number);
+                    if (!isNaN(h) && !isNaN(m)) sStart = h * 60 + m;
+                }
+                nominalMins += dur;
+                return { isSelf: (targetSession._id === editingTaskTime.sessionId && i === editingTaskTime.subjectIdx), title: sub.topic || 'Task', start: sStart, end: sStart + dur };
+            });
+
+            for (const mSub of mappedSubjects) {
+                if (mSub.isSelf) continue;
+                if (editStart < mSub.end && editEnd > mSub.start) {
+                    toast.error(`Cannot save. Time slot overlaps with "${mSub.title}".`);
+                    return;
+                }
+            }
+        }
+
         try {
             const updated = await updateSubjectTime(selectedPlan._id, editingTaskTime.sessionId, editingTaskTime.subjectIdx, {
                 date: editingTaskTime.date,
-                customStartTime: editingTaskTime.customStartTime || null
+                customStartTime: editingTaskTime.customStartTime || null,
+                durationMinutes: editingTaskTime.durationMinutes
             });
             setPlans((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+
             setEditingTaskTime(null);
             toast.success('Task date and time updated');
         } catch (error: any) {
@@ -2151,29 +2177,42 @@ const StudyPlanPage: React.FC = () => {
 
                                             {/* Assignment Stack */}
                                             <div className="grid gap-6">
-                                                {session.subjects.map((subject, idx) => {
-                                                    const currentStatus: StudyTaskStatus = subject.status || (subject.isCompleted ? 'completed' : 'pending');
-                                                    const priorityMeta = PRIORITY_META[subject.priority] || PRIORITY_META.medium;
-                                                    const isComplete = currentStatus === 'completed';
-                                                    const isInProgress = currentStatus === 'in-progress';
-
-                                                    const taskId = `${session._id}-${idx}`;
-                                                    const timerState = timers[taskId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null };
-                                                    const durationMins = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
-                                                    const progressPct = durationMins ? Math.min(100, Math.round((timerState.seconds / (durationMins * 60)) * 100)) : null;
-
-                                                    if (subject.customStartTime) {
-                                                        const [hh, mm] = subject.customStartTime.split(':').map(Number);
-                                                        if (!isNaN(hh) && !isNaN(mm)) {
-                                                            currentStartTime = new Date(currentStartTime);
-                                                            currentStartTime.setHours(hh, mm, 0, 0);
+                                                {(() => {
+                                                    // Failsafe: Re-calculate all task start times and sort them CHRONOLOGICALLY before rendering
+                                                    let nominalTime = new Date(currentStartTime);
+                                                    const subjectsWithTimes = session.subjects.map((sub, sIdx) => {
+                                                        const dur = sub.durationMinutes || Math.round((sub.durationHours || 1) * 60);
+                                                        const tStart = new Date(nominalTime);
+                                                        
+                                                        if (sub.customStartTime) {
+                                                            const [hh, mm] = sub.customStartTime.split(':').map(Number);
+                                                            if (!isNaN(hh) && !isNaN(mm)) {
+                                                                tStart.setHours(hh, mm, 0, 0);
+                                                            }
                                                         }
-                                                    }
+                                                        // Advance nominal base
+                                                        nominalTime = new Date(nominalTime.getTime() + dur * 60000);
+                                                        return { subject: sub, originalIdx: sIdx, taskStartTime: tStart, durationMins: dur };
+                                                    });
 
-                                                    const startTimeStr = formatTime(currentStartTime);
-                                                    currentStartTime = new Date(currentStartTime.getTime() + durationMins * 60000);
-                                                    const endTimeStr = formatTime(currentStartTime);
-                                                    const timeDisplay = `${startTimeStr} - ${endTimeStr}`;
+                                                    // Sort based on their calculated start times
+                                                    subjectsWithTimes.sort((a, b) => a.taskStartTime.getTime() - b.taskStartTime.getTime());
+
+                                                    return subjectsWithTimes.map(({ subject, originalIdx, taskStartTime, durationMins }) => {
+                                                        const idx = originalIdx; // Keep tracking the original index for API calls
+                                                        const currentStatus: StudyTaskStatus = subject.status || (subject.isCompleted ? 'completed' : 'pending');
+                                                        const priorityMeta = PRIORITY_META[subject.priority] || PRIORITY_META.medium;
+                                                        const isComplete = currentStatus === 'completed';
+                                                        const isInProgress = currentStatus === 'in-progress';
+
+                                                        const taskId = `${session._id}-${idx}`;
+                                                        const timerState = timers[taskId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null };
+
+                                                        const startTimeStr = formatTime(taskStartTime);
+                                                        const taskEndTime = new Date(taskStartTime.getTime() + durationMins * 60000);
+                                                        const endTimeStr = formatTime(taskEndTime);
+                                                        const timeDisplay = `${startTimeStr} - ${endTimeStr}`;
+
 
 
                                                     const taskTypeTheme: Record<string, string> = {
@@ -2215,7 +2254,7 @@ const StudyPlanPage: React.FC = () => {
                                                                         </span>
 
                                                                         {editingTaskTime?.sessionId === session._id && editingTaskTime?.subjectIdx === idx ? (
-                                                                            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-blue-200 shadow-inner z-20">
+                                                                            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-blue-200 shadow-inner z-20 flex-wrap">
                                                                                 <input 
                                                                                     type="date" 
                                                                                     value={editingTaskTime.date}
@@ -2228,6 +2267,23 @@ const StudyPlanPage: React.FC = () => {
                                                                                     onChange={(e) => setEditingTaskTime({...editingTaskTime, customStartTime: e.target.value})}
                                                                                     className="text-xs px-2 py-1.5 rounded bg-white border border-slate-200 text-slate-700 outline-none focus:border-blue-500 font-medium"
                                                                                 />
+                                                                                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded px-2 py-1.5">
+                                                                                    <input 
+                                                                                        type="number" 
+                                                                                        min="1"
+                                                                                        max={editingTaskTime.originalDurationMinutes}
+                                                                                        value={editingTaskTime.durationMinutes}
+                                                                                        onChange={(e) => {
+                                                                                            let val = parseInt(e.target.value);
+                                                                                            if (isNaN(val)) val = 1;
+                                                                                            if (val > editingTaskTime.originalDurationMinutes) val = editingTaskTime.originalDurationMinutes;
+                                                                                            if (val < 1) val = 1;
+                                                                                            setEditingTaskTime({...editingTaskTime, durationMinutes: val});
+                                                                                        }}
+                                                                                        className="text-xs w-12 text-slate-700 outline-none focus:border-blue-500 font-medium bg-transparent"
+                                                                                    />
+                                                                                    <span className="text-xs text-slate-400 font-medium">min</span>
+                                                                                </div>
                                                                                 <button onClick={handleSaveTaskTime} className="bg-blue-600 text-white text-[10px] uppercase font-bold px-3 py-1.5 rounded hover:bg-blue-700 transition shadow-sm">Save</button>
                                                                                 <button onClick={() => setEditingTaskTime(null)} className="text-slate-500 hover:text-slate-800 p-1"><X size={14}/></button>
                                                                             </div>
@@ -2235,18 +2291,26 @@ const StudyPlanPage: React.FC = () => {
                                                                             <div className="group/time flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-tight relative">
                                                                                 <Clock size={14} className="text-blue-500" />
                                                                                 {timeDisplay}
+                                                                                <span className="text-slate-300 mx-1">|</span>
+                                                                                <span className="text-slate-500">{durationMins} min</span>
                                                                                 <button 
                                                                                     onClick={() => {
                                                                                         const dtStr = new Date(session.date).toISOString().split('T')[0];
-                                                                                        // To generate a nice default time string 'HH:mm' from the calculated start time:
-                                                                                        let defaultHour = currentStartTime.getHours() - Math.floor(durationMins / 60);
-                                                                                        let defaultMin = currentStartTime.getMinutes() - (durationMins % 60);
-                                                                                        if (defaultMin < 0) { defaultMin += 60; defaultHour--; }
-                                                                                        const hStr = defaultHour.toString().padStart(2, '0');
-                                                                                        const mStr = defaultMin.toString().padStart(2, '0');
+                                                                                        const hStr = taskStartTime.getHours().toString().padStart(2, '0');
+                                                                                        const mStr = taskStartTime.getMinutes().toString().padStart(2, '0');
                                                                                         const fallbackTime = `${hStr}:${mStr}`;
                                                                                         
-                                                                                        setEditingTaskTime({ sessionId: session._id, subjectIdx: idx, date: dtStr, customStartTime: subject.customStartTime || fallbackTime });
+                                                                                        const currentDur = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
+                                                                                        const origDur = subject.originalDurationMinutes || currentDur;
+
+                                                                                        setEditingTaskTime({ 
+                                                                                            sessionId: session._id, 
+                                                                                            subjectIdx: idx, 
+                                                                                            date: dtStr, 
+                                                                                            customStartTime: subject.customStartTime || fallbackTime,
+                                                                                            durationMinutes: currentDur,
+                                                                                            originalDurationMinutes: origDur
+                                                                                        });
                                                                                     }}
                                                                                     className="opacity-0 group-hover/time:opacity-100 p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all ml-1"
                                                                                     title="Edit Date/Time"
@@ -2322,13 +2386,14 @@ const StudyPlanPage: React.FC = () => {
                                                                         </p>
                                                                     )}
                                                                     <p className="text-[10px] font-black uppercase text-slate-300 tracking-tighter">
-                                                                        Task ID: {idx + 1}
+                                                                        Task ID: {originalIdx + 1}
                                                                     </p>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     );
-                                                })}
+                                                });
+                                            })()}
                                             </div>
                                         </div>
                                     </div>

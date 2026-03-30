@@ -19,6 +19,7 @@ export interface StudySessionSubject {
     instruction?: string;
     durationHours: number;
     durationMinutes?: number;
+    originalDurationMinutes?: number;
     technique?: 'pomodoro' | 'spaced' | 'mixed';
     resources?: string[];
     priority: StudyPriority;
