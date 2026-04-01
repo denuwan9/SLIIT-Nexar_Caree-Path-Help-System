@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
             unique: true,
             lowercase: true,
             trim: true,
-            match: [/^[a-zA-Z0-9._%+-]+@sliit\.lk$/, 'Only @sliit.lk domains are permitted'],
+            match: [/^[a-zA-Z0-9._%+-]+@(my\.)?sliit\.lk$/, 'Only @sliit.lk and @my.sliit.lk domains are permitted'],
         },
         currentMajor: {
             type: String,
@@ -76,6 +76,31 @@ const userSchema = new mongoose.Schema(
             type: Date,
             select: false,
         },
+        isVerified: {
+            type: Boolean,
+            default: false,
+        },
+        verificationToken: {
+            type: String,
+            select: false,
+        },
+        verificationTokenExpire: {
+            type: Date,
+            select: false,
+        },
+        resetOTP: {
+            type: String,
+            select: false,
+        },
+        resetOTPExpires: {
+            type: Date,
+            select: false,
+        },
+        resetOTPVerified: {
+            type: Boolean,
+            default: false,
+            select: false,
+        },
     },
     {
         timestamps: true,
@@ -117,6 +142,19 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
         return JWTTimestamp < changedTimestamp;
     }
     return false;
+};
+
+// ── Instance Method: Create Email Verification Token ─────────────
+userSchema.methods.createVerificationToken = function () {
+    const crypto = require('crypto');
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+
+    this.verificationToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
+
+    // Token expires in 24 hours
+    this.verificationTokenExpire = Date.now() + 24 * 60 * 60 * 1000;
+
+    return verificationToken;
 };
 
 module.exports = mongoose.model('User', userSchema);

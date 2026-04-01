@@ -3,6 +3,8 @@ const StudentProfile = require('../models/StudentProfile');
 const AppError = require('../utils/AppError');
 const { sendTokenResponse, verifyRefreshToken, signAccessToken } = require('../services/jwtService');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
+const { sendVerificationEmail, sendResetOTPEmail } = require('../services/emailService');
 
 /**
  * POST /api/auth/register
@@ -45,10 +47,27 @@ exports.register = async (req, res, next) => {
         const { signRefreshToken } = require('../services/jwtService');
         const refreshToken = signRefreshToken(user._id);
         user.refreshToken = refreshToken;
+        
+        // ── Email Verification ───────────────────────────────────────────
+        const verificationToken = user.createVerificationToken();
         await user.save({ validateBeforeSave: false });
 
-        logger.info(`New user registered: ${user.email} (${user.role})`);
-        sendTokenResponse(user, 201, res, refreshToken);
+        const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email/${verificationToken}`;
+        
+        try {
+            await sendVerificationEmail(user, verificationUrl);
+            logger.info(`Verification email sent to: ${user.email}`);
+        } catch (err) {
+            user.verificationToken = undefined;
+            user.verificationTokenExpire = undefined;
+            await user.save({ validateBeforeSave: false });
+            return next(new AppError('Account created but verification email could not be sent. Please contact support.', 500));
+        }
+
+        res.status(201).json({
+            status: 'success',
+            message: 'Verification email sent to your inbox. Please verify to log in.',
+        });
     } catch (error) {
         next(error);
     }
@@ -71,6 +90,10 @@ exports.login = async (req, res, next) => {
 
         if (!user.isActive) {
             return next(new AppError('Your account has been deactivated. Contact support.', 403));
+        }
+
+        if (!user.isVerified) {
+            return next(new AppError('Please verify your email address before logging in.', 401));
         }
 
         const { signRefreshToken } = require('../services/jwtService');
@@ -193,7 +216,7 @@ exports.changeEmail = async (req, res, next) => {
         res.status(200).json({ status: 'success', message: 'Email updated successfully.' });
     } catch (error) {
         if (error.name === 'ValidationError') {
-            return next(new AppError('Only @sliit.lk emails are permitted.', 422));
+            return next(new AppError('Only @sliit.lk and @my.sliit.lk emails are permitted.', 422));
         }
         next(error);
     }
@@ -222,6 +245,128 @@ exports.deleteAccount = async (req, res, next) => {
 
         logger.info(`Account deleted: ${user.email}`);
         res.status(200).json({ status: 'success', message: 'Account permanently deleted.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * GET /api/v1/auth/verify-email/:token
+ * Public — verify user email via token
+ */
+exports.verifyEmail = async (req, res, next) => {
+    try {
+        const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+        const user = await User.findOne({
+            verificationToken: hashedToken,
+            verificationTokenExpire: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return next(new AppError('Token is invalid or has expired.', 400));
+        }
+
+        user.isVerified = true;
+        user.verificationToken = undefined;
+        user.verificationTokenExpire = undefined;
+        await user.save({ validateBeforeSave: false });
+
+        // Optionally send a login response here, or just a success message
+        res.status(200).json({
+            status: 'success',
+            message: 'Email verified successfully! You can now log in.',
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /api/v1/auth/forgot-password
+ * Public — send OTP to email for password reset
+ */
+exports.forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return next(new AppError('There is no user with that email address.', 404));
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
+
+        user.resetOTP = hashedOTP;
+        user.resetOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+        user.resetOTPVerified = false;
+        await user.save({ validateBeforeSave: false });
+
+        try {
+            await sendResetOTPEmail(user, otp);
+            res.status(200).json({ status: 'success', message: 'OTP sent to your institutional inbox.' });
+        } catch (err) {
+            user.resetOTP = undefined;
+            user.resetOTPExpires = undefined;
+            await user.save({ validateBeforeSave: false });
+            return next(new AppError('There was an error sending the email. Try again later', 500));
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /api/v1/auth/verify-otp
+ * Public — verify the 6-digit OTP
+ */
+exports.verifyResetOTP = async (req, res, next) => {
+    try {
+        const { email, otp } = req.body;
+        const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
+
+        const user = await User.findOne({
+            email,
+            resetOTP: hashedOTP,
+            resetOTPExpires: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return next(new AppError('OTP is invalid or has expired.', 400));
+        }
+
+        user.resetOTPVerified = true;
+        await user.save({ validateBeforeSave: false });
+
+        res.status(200).json({ status: 'success', message: 'OTP verified. You can now reset your password.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /api/v1/auth/reset-password
+ * Public — set new password after OTP verification
+ */
+exports.resetPassword = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email }).select('+resetOTPVerified');
+
+        if (!user || !user.resetOTPVerified) {
+            return next(new AppError('Verification required. Please verify OTP first.', 403));
+        }
+
+        // Update password
+        user.password = password;
+        user.resetOTP = undefined;
+        user.resetOTPExpires = undefined;
+        user.resetOTPVerified = false;
+        await user.save();
+
+        res.status(200).json({ status: 'success', message: 'Password reset successful. You can now log in.' });
     } catch (error) {
         next(error);
     }
