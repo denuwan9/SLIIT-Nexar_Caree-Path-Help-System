@@ -16,4 +16,7 @@ router.delete('/users/:id', adminController.deleteUser);
 router.put('/users/:id/role', adminController.updateUserRole);
 router.put('/users/:id/password', adminController.resetUserPassword);
 
+// POST /api/v1/admin/ai-rank-posts — AI-powered job post ranking
+router.post('/ai-rank-posts', adminController.aiRankJobPosts);
+
 module.exports = router;

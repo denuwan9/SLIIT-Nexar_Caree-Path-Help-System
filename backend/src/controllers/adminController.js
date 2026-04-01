@@ -199,3 +199,45 @@ exports.getStudentProfileById = async (req, res, next) => {
         next(error);
     }
 };
+
+/**
+ * POST /api/v1/admin/ai-rank-posts
+ * Protected (Admin) — AI-powered job post ranking based on natural language query
+ */
+exports.aiRankJobPosts = async (req, res, next) => {
+    try {
+        const { query } = req.body;
+
+        if (!query || typeof query !== 'string' || query.trim().length === 0) {
+            return next(new AppError('Query is required and cannot be empty.', 400));
+        }
+
+        if (query.trim().length > 1000) {
+            return next(new AppError('Query cannot exceed 1000 characters.', 400));
+        }
+
+        // Import the AI service
+        const aiService = require('../services/aiService');
+
+        // Get all job posts
+        const JobPost = require('../models/JobPost');
+        const jobPosts = await JobPost.find()
+            .populate('student', 'email')
+            .sort('-createdAt');
+
+        // Use AI service to rank job posts
+        const rankedPosts = await aiService.rankJobPosts(jobPosts, query);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Job posts ranked successfully using AI',
+            data: {
+                rankedPosts,
+                totalPosts: jobPosts.length,
+                query: query.trim()
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
