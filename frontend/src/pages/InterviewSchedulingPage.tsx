@@ -4,7 +4,7 @@ import { useAuth } from '../components/auth/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Clock, Users, CheckCircle2, Bot, ChevronRight,
-  Search, Plus, Trash2, Briefcase, BarChart3, Settings2, AlertCircle, RotateCcw, Zap
+  Search, Plus, Trash2, Briefcase, BarChart3, Settings2, AlertCircle, RotateCcw, Zap, Minus
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
@@ -756,6 +756,15 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                                <div key={iIdx} className="flex gap-2">
                                  <input required placeholder="Name" type="text" className="flex-1 bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 transition-all shadow-sm" value={inv.name} onChange={e => updateInterviewer(i, iIdx, 'name', e.target.value)} />
                                  <input required placeholder="Expertise" type="text" className="flex-1 bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs font-bold text-[blue-600] focus:outline-none focus:border-blue-400 transition-all shadow-sm" value={inv.expertise} onChange={e => updateInterviewer(i, iIdx, 'expertise', e.target.value)} />
+                                 {c.interviewers.length > 1 && (
+                                   <button type="button" onClick={() => {
+                                     const updated = [...companies];
+                                     updated[i].interviewers.splice(iIdx, 1);
+                                     setCompanies(updated);
+                                   }} className="p-2 text-slate-300 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 rounded-xl transition-all border border-slate-100 hover:border-rose-200 shadow-sm flex items-center justify-center">
+                                     <Trash2 size={16} />
+                                   </button>
+                                 )}
                                </div>
                              ))}
                            </div>
@@ -769,11 +778,18 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                  ))}
                </div>
 
-               {companies.length < 20 && (
-                 <button type="button" onClick={() => setCompanies([...companies, { name: '', description: '', interviewers: [{name: '', expertise: ''}] }])} className="w-full py-6 bg-[#F8FAFC] border-2 border-dashed border-slate-200 rounded-[2rem] text-xs font-black text-slate-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all duration-500 uppercase tracking-widest flex items-center justify-center gap-3">
-                   <Plus size={18} /> Integrate New Organization Node
-                 </button>
-               )}
+               <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                 {companies.length < 20 && (
+                   <button type="button" onClick={() => setCompanies([...companies, { name: '', description: '', interviewers: [{name: '', expertise: ''}] }])} className="flex-1 py-6 bg-white border-2 border-dashed border-blue-400 rounded-[2rem] text-xs font-black text-blue-500 hover:bg-blue-50 hover:border-blue-500 hover:text-blue-600 transition-all duration-500 uppercase tracking-widest flex items-center justify-center gap-3 shadow-sm">
+                     <Plus size={18} /> Integrate New Organization Node
+                   </button>
+                 )}
+                 {companies.length > 2 && (
+                   <button type="button" onClick={() => setCompanies(companies.slice(0, -1))} className="flex-1 py-6 bg-[#F8FAFC] border-2 border-dashed border-slate-200 rounded-[2rem] text-xs font-black text-slate-400 hover:border-rose-400 hover:text-rose-500 hover:bg-rose-50/30 transition-all duration-500 uppercase tracking-widest flex items-center justify-center gap-3 shadow-sm">
+                     <Minus size={18} /> Remove Organization Node
+                   </button>
+                 )}
+               </div>
             </div>
           )}
 
