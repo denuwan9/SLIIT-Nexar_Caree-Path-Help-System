@@ -319,7 +319,7 @@ const careerDayEventValidator = [
         .optional()
         .isInt({ min: 1, max: 5 }).withMessage('Max bookings per student must be 1–5'),
     body('companies')
-        .isArray({ min: 2, max: 20 }).withMessage('Career Day must have 2–20 companies'),
+        .isArray({ min: 1, max: 20 }).withMessage('Career Day must have 1–20 companies'),
     body('companies.*.name')
         .trim().notEmpty().withMessage('Each company must have a name'),
 ];

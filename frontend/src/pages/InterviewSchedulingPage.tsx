@@ -508,7 +508,7 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
     setErrors({});
     setLoading(true);
 
-    const nameRegex = /^[A-Za-z\s]+$/;
+    const nameRegex = /^[A-Za-z0-9\s&()\/.,'"-]+$/;
 
     try {
       let currentErrors: { [key: string]: string } = {};
@@ -532,7 +532,6 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
       if (eventType === 'career') {
         if (!formData.startTime || !formData.endTime) return toast.error('Start and End times are required');
         if (formData.endTime <= formData.startTime) return toast.error('End time must be after start time');
-        if (companies.length < 2) return toast.error('At least 2 companies required');
         if (companies.length > 20) return toast.error('Maximum 20 companies allowed');
 
         let companyErrors: { [key: string]: string } = {};
@@ -632,8 +631,8 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                     onClick={() => setEventType(type as any)}
                     className={`flex-1 py-4 px-6 rounded-2xl border-2 transition-all duration-500 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3
                         ${eventType === type
-                          ? (type === 'career' ? 'bg-purple-600 border-purple-600 text-white shadow-xl shadow-purple-200/50' : 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200/50')
-                          : (type === 'career' ? 'bg-white border-slate-100 text-slate-400 hover:border-purple-200 hover:bg-purple-50 hover:text-purple-600' : 'bg-white border-slate-100 text-slate-400 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600')}`}
+                          ? (type === 'career' ? 'bg-purple-600 border-purple-600 text-white shadow-xl shadow-purple-200' : 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-200')
+                          : (type === 'career' ? 'bg-white border-slate-100 text-slate-400 hover:border-purple-200 hover:text-purple-600 hover:bg-purple-50' : 'bg-white border-slate-100 text-slate-400 hover:border-blue-200 hover:text-blue-600 hover:bg-blue-50')}`}
                   >
                     {type === 'career' ? <Briefcase size={16} /> : <Zap size={16} />}
                     {type === 'career' ? 'Career Day' : 'Normal Day'}
@@ -646,6 +645,7 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
               <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Operational Title</label>
               <input
                 required type="text"
+                list="event-titles"
                 className={`w-full bg-[#F8FAFC] border-2 rounded-2xl px-6 py-4 text-sm font-bold text-[#0F172A] focus:outline-none focus:bg-white transition-all shadow-inner ${errors.title ? 'border-rose-400' : 'border-transparent focus:border-blue-400'}`}
                 value={formData.title}
                 onChange={e => {
@@ -654,6 +654,17 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                 }}
                 placeholder="e.g., NEXUS SPRING DRIVE 2026"
               />
+              <datalist id="event-titles">
+                <option value="SOFTWARE ENGINEERING DRIVE" />
+                <option value="DATA SCIENCE & AI RECRUITMENT" />
+                <option value="FULL STACK DEVELOPER FAIR" />
+                <option value="WEB DEVELOPMENT INTERVIEWS" />
+                <option value="MOBILE APP DEVELOPER DRIVE" />
+                <option value="CLOUD & DEVOPS ENGINEERING" />
+                <option value="CYBERSECURITY RECRUITMENT" />
+                <option value="UI/UX DESIGN & ENGINEERING" />
+                <option value="QUALITY ASSURANCE (QA) INTERVIEWS" />
+              </datalist>
               {errors.title && <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-2 flex items-center gap-1"><AlertCircle size={10} /> {errors.title}</p>}
             </div>
 

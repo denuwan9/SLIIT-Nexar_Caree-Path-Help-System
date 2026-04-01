@@ -329,17 +329,12 @@ export default function MockInterviewPage() {
               </div>
 
               {/* Simulation Environment */}
-              <div className="flex-1 p-10 md:p-20 flex flex-col relative w-full">
+              <div className="flex-1 p-6 md:p-10 flex flex-col relative w-full">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:32px_32px] opacity-30 pointer-events-none" />
                 
                 <motion.div key={currentQIndex} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="relative z-10 w-full flex flex-col flex-grow">
-                   <div className="max-w-4xl mx-auto w-full text-center mb-16">
-                     <div className="flex items-center justify-center gap-3 mb-6">
-                       <span className="h-[1px] w-12 bg-slate-100" />
-                       <p className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.4em]">Simulator Prompt</p>
-                       <span className="h-[1px] w-12 bg-slate-100" />
-                     </div>
-                     <h3 className="text-3xl md:text-5xl font-black text-[#0F172A] leading-tight tracking-tight px-4">
+                   <div className="max-w-4xl mx-auto w-full text-center mb-8">
+                     <h3 className="text-2xl md:text-4xl font-semibold text-slate-800 leading-tight tracking-normal px-4">
                        {questions[currentQIndex]}
                      </h3>
                    </div>
@@ -365,7 +360,7 @@ export default function MockInterviewPage() {
                             setAnswers(newAnswers);
                           }}
                           placeholder="Initialize response sequence..."
-                          className="w-full flex-grow min-h-[250px] p-10 text-lg md:text-xl border-2 border-slate-50 bg-white/80 backdrop-blur-xl rounded-[2.2rem] resize-none focus:outline-none focus:border-indigo-400 focus:shadow-2xl focus:shadow-indigo-100/50 shadow-xl shadow-slate-100/50 transition-all text-[#0F172A] placeholder:text-slate-200 font-bold leading-relaxed scrollbar-hide"
+                          className="w-full flex-grow min-h-[200px] p-6 text-lg md:text-xl border-2 border-slate-50 bg-white/80 backdrop-blur-xl rounded-[2.2rem] resize-none focus:outline-none focus:border-indigo-400 focus:shadow-2xl focus:shadow-indigo-100/50 shadow-xl shadow-slate-100/50 transition-all text-[#0F172A] placeholder:text-slate-200 font-bold leading-relaxed scrollbar-hide"
                         />
                      </div>
                    </div>
