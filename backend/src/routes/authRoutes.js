@@ -9,6 +9,7 @@ const { registerValidator, loginValidator } = require('../middleware/validators'
 // Public routes (rate-limited)
 router.post('/register', authLimiter, registerValidator, validate, authController.register);
 router.post('/login', authLimiter, loginValidator, validate, authController.login);
+router.get('/verify-email/:token', authController.verifyEmail);
 router.post('/refresh', authController.refreshToken);
 
 // Protected routes

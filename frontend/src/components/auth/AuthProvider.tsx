@@ -42,16 +42,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             targetRole: "Student"
         };
         const response = await api.post('/auth/register', payload);
-        const { accessToken } = response.data;
-        const { user } = response.data.data;
-        localStorage.setItem('accessToken', accessToken);
-        setState({
-            user,
-            token: accessToken,
-            isAuthenticated: true,
-            isLoading: false,
-        });
-        return user;
+        
+        // With email verification, we no longer log the user in immediately.
+        // We just return the response to the caller (AuthModule) to show the success message.
+        return response.data;
     };
 
     const logout = async () => {

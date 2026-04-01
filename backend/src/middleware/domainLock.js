@@ -9,13 +9,13 @@ const domainLock = (req, res, next) => {
 
     if (!email) return next();
 
-    const sliitRegex = /^[a-zA-Z0-9._%+-]+@sliit\.lk$/;
+    const sliitRegex = /^[a-zA-Z0-9._%+-]+@(my\.)?sliit\.lk$/;
 
     if (!sliitRegex.test(email.toLowerCase())) {
         logger.warn(`[Security Alert] Non-SLIIT domain attempted access: ${email}`);
         return res.status(403).json({
             status: 'error',
-            message: 'Access Restricted: Only @sliit.lk domains are permitted.',
+            message: 'Access Restricted: Only @sliit.lk and @my.sliit.lk domains are permitted.',
             code: 'ENFORCE_DOMAIN_LOCK'
         });
     }

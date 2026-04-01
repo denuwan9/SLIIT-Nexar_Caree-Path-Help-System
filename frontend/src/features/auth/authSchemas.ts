@@ -4,8 +4,8 @@ export const loginSchema = z.object({
   email: z.string()
     .min(1, 'Email address is required')
     .email('Please enter a valid email address')
-    .refine((val) => val.endsWith('@sliit.lk'), {
-      message: 'Only @sliit.lk institutional emails are permitted',
+    .refine((val) => val.endsWith('@sliit.lk') || val.endsWith('@my.sliit.lk'), {
+      message: 'Only @sliit.lk and @my.sliit.lk institutional emails are permitted',
     }),
   password: z.string().min(1, 'Password is required'),
 });
@@ -22,8 +22,8 @@ export const signupSchema = z.object({
   email: z.string()
     .min(1, 'Email address is required')
     .email('Please enter a valid email format')
-    .refine((val) => val.endsWith('@sliit.lk'), {
-      message: 'Only @sliit.lk institutional emails are permitted',
+    .refine((val) => val.endsWith('@sliit.lk') || val.endsWith('@my.sliit.lk'), {
+      message: 'Only @sliit.lk and @my.sliit.lk institutional emails are permitted',
     }),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')

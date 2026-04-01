@@ -5,8 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, ArrowRight, Loader2, UserCircle2 } from 'lucide-react';
 import { loginSchema, signupSchema, type LoginInput, type SignupInput } from './authSchemas';
 import { useAuth } from '../../components/auth/AuthProvider';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { MailCheck } from 'lucide-react'; // Added MailCheck icon
+
 // Use the paths the user specified as imports if possible, otherwise rely on relative string paths
 import logo from '../../assets/logo.png';
 interface AuthModuleProps {
@@ -17,8 +19,20 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
   const [view, setView] = useState<'login' | 'signup'>(initialView);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [verificationSent, setVerificationSent] = useState(false);
   const { login, signup } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check for specialized redirect messages from ProtectedRoute
+  React.useEffect(() => {
+    const state = location.state as { message?: string };
+    if (state?.message) {
+      setAuthError(state.message);
+      // Clear the state so the message doesn't persist on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const toggleView = () => {
     setAuthError(null);
@@ -45,7 +59,15 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
 
       <div className="flex-1 w-full flex flex-col justify-center">
         <AnimatePresence mode="wait">
-          {view === 'login' ? (
+          {verificationSent ? (
+            <VerificationSentView 
+              key="verification-sent" 
+              onBack={() => {
+                setVerificationSent(false);
+                setView('login');
+              }} 
+            />
+          ) : view === 'login' ? (
             <LoginView 
               key="login" 
               onSwitch={toggleView} 
@@ -76,10 +98,9 @@ const AuthModule: React.FC<AuthModuleProps> = ({ initialView = 'login' }) => {
               onSubmit={async (data) => {
                 setAuthError(null);
                 try {
-                  const user = await signup(data);
-                  toast.success('Identity established successfully');
-                  if (user?.role === 'admin') navigate('/admin');
-                  else navigate('/dashboard');
+                  await signup(data);
+                  setVerificationSent(true);
+                  toast.success('Account created! Please verify your email.');
                 } catch (err: any) {
                   const msg = err.response?.data?.message || err.message || 'Registration failed. Please try again.';
                   setAuthError(msg);
@@ -129,21 +150,21 @@ const LoginView = ({ onSwitch, showPassword, setShowPassword, onSubmit, authErro
           </div>
         )}
         <div>
-          <label className="block text-[13px] font-bold text-[#334155] mb-2">Official ID</label>
+          <label className="block text-[13px] font-bold text-[#334155] mb-2">SLIIT Email</label>
           <input 
             {...register('email')}
-            placeholder="student@sliit.lk"
+            placeholder="student@my.sliit.lk or staff@sliit.lk"
             className={`w-full px-5 py-3.5 bg-[#F1F5F9] border rounded-xl text-[14px] font-semibold transition-all outline-none text-[#0F172A] placeholder-[#94A3B8] focus:bg-white ${
                errors.email 
                  ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
                  : 'border-transparent hover:border-[#CBD5E1] focus:border-[#F97316] focus:ring-4 focus:ring-[#F97316]/10'
             }`}
           />
-          {errors.email && <span className="text-[12px] font-bold text-red-500 mt-2 block">Institutional email is required</span>}
+          {errors.email && <span className="text-[12px] font-bold text-red-500 mt-2 block">Institutional email (@sliit.lk or @my.sliit.lk) is required</span>}
         </div>
 
         <div className="relative">
-          <label className="block text-[13px] font-bold text-[#334155] mb-2">Access Protocol</label>
+          <label className="block text-[13px] font-bold text-[#334155] mb-2">Access Password</label>
           <div className="relative">
             <input 
               {...register('password')}
@@ -168,7 +189,7 @@ const LoginView = ({ onSwitch, showPassword, setShowPassword, onSubmit, authErro
 
         <div className="w-full flex justify-end mt-2 mb-6">
           <button type="button" className="text-[13px] font-bold text-[#64748B] hover:text-[#0F172A] transition-colors">
-            Forgot Protocol?
+            Forgot Password?
           </button>
         </div>
 
@@ -192,7 +213,7 @@ const LoginView = ({ onSwitch, showPassword, setShowPassword, onSubmit, authErro
         <span className="text-[14px] font-medium text-[#64748B]">
           Are you new?{' '}
           <button onClick={onSwitch} className="text-[#0ea5e9] font-bold hover:underline">
-            Establish Identity
+            Create an Account
           </button>
         </span>
       </div>
@@ -216,7 +237,7 @@ const SignupView = ({ onSwitch, showPassword, setShowPassword, onSubmit, authErr
       className="w-full flex flex-col text-[#1E293B]"
     >
       <div className="mb-8 text-left">
-        <h2 className="text-3xl font-black text-[#0F172A] tracking-tight mb-2">Establish ID</h2>
+        <h2 className="text-3xl font-black text-[#0F172A] tracking-tight mb-2">Create an Account</h2>
         <p className="text-[#64748B] text-[15px] font-medium">Provision Institutional Access</p>
       </div>
 
@@ -256,10 +277,10 @@ const SignupView = ({ onSwitch, showPassword, setShowPassword, onSubmit, authErr
         </div>
 
         <div>
-           <label className="block text-[13px] font-bold text-[#334155] mb-2">Institutional Alias (Email)</label>
+           <label className="block text-[13px] font-bold text-[#334155] mb-2">Institutional Alias (@sliit.lk or @my.sliit.lk)</label>
           <input 
             {...register('email')} 
-            placeholder="student@sliit.lk" 
+            placeholder="student@my.sliit.lk" 
             className={`w-full px-5 py-3.5 bg-[#F1F5F9] border rounded-xl text-[14px] font-semibold transition-all outline-none text-[#0F172A] placeholder-[#94A3B8] focus:bg-white ${
                errors.email 
                  ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
@@ -315,7 +336,7 @@ const SignupView = ({ onSwitch, showPassword, setShowPassword, onSubmit, authErr
         >
           {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (
             <>
-              Establish Identity
+              Create an Account
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </>
           )}
@@ -326,12 +347,35 @@ const SignupView = ({ onSwitch, showPassword, setShowPassword, onSubmit, authErr
         <span className="text-[14px] font-medium text-[#64748B]">
           Already member?{' '}
           <button onClick={onSwitch} className="text-[#0ea5e9] font-bold hover:underline">
-            Authenticate
+            Login to Nexar
           </button>
         </span>
       </div>
     </motion.div>
   );
 };
+
+/* --- Verification Sent View --- */
+const VerificationSentView = ({ onBack }: { onBack: () => void }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="w-full flex flex-col items-center text-center p-6"
+  >
+    <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-8 text-blue-600">
+      <MailCheck size={40} />
+    </div>
+    <h2 className="text-3xl font-black text-[#0F172A] tracking-tight mb-4">Check your email</h2>
+    <p className="text-[#64748B] text-[16px] font-medium leading-relaxed mb-10 max-w-[320px]">
+      We've dispatched a verification link to your institutional inbox. Please authenticate to complete your enrollment.
+    </p>
+    <button 
+      onClick={onBack}
+      className="w-full h-[52px] bg-[#0F172A] hover:bg-[#1E293B] text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all shadow-lg"
+    >
+      Return to Login
+    </button>
+  </motion.div>
+);
 
 export default AuthModule;

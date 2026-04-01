@@ -3,6 +3,8 @@ const StudentProfile = require('../models/StudentProfile');
 const AppError = require('../utils/AppError');
 const { sendTokenResponse, verifyRefreshToken, signAccessToken } = require('../services/jwtService');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
+const { sendVerificationEmail } = require('../services/emailService');
 
 /**
  * POST /api/auth/register
@@ -45,10 +47,27 @@ exports.register = async (req, res, next) => {
         const { signRefreshToken } = require('../services/jwtService');
         const refreshToken = signRefreshToken(user._id);
         user.refreshToken = refreshToken;
+        
+        // ── Email Verification ───────────────────────────────────────────
+        const verificationToken = user.createVerificationToken();
         await user.save({ validateBeforeSave: false });
 
-        logger.info(`New user registered: ${user.email} (${user.role})`);
-        sendTokenResponse(user, 201, res, refreshToken);
+        const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email/${verificationToken}`;
+        
+        try {
+            await sendVerificationEmail(user, verificationUrl);
+            logger.info(`Verification email sent to: ${user.email}`);
+        } catch (err) {
+            user.verificationToken = undefined;
+            user.verificationTokenExpire = undefined;
+            await user.save({ validateBeforeSave: false });
+            return next(new AppError('Account created but verification email could not be sent. Please contact support.', 500));
+        }
+
+        res.status(201).json({
+            status: 'success',
+            message: 'Verification email sent to your inbox. Please verify to log in.',
+        });
     } catch (error) {
         next(error);
     }
@@ -71,6 +90,10 @@ exports.login = async (req, res, next) => {
 
         if (!user.isActive) {
             return next(new AppError('Your account has been deactivated. Contact support.', 403));
+        }
+
+        if (!user.isVerified) {
+            return next(new AppError('Please verify your email address before logging in.', 401));
         }
 
         const { signRefreshToken } = require('../services/jwtService');
@@ -193,7 +216,7 @@ exports.changeEmail = async (req, res, next) => {
         res.status(200).json({ status: 'success', message: 'Email updated successfully.' });
     } catch (error) {
         if (error.name === 'ValidationError') {
-            return next(new AppError('Only @sliit.lk emails are permitted.', 422));
+            return next(new AppError('Only @sliit.lk and @my.sliit.lk emails are permitted.', 422));
         }
         next(error);
     }
@@ -222,6 +245,38 @@ exports.deleteAccount = async (req, res, next) => {
 
         logger.info(`Account deleted: ${user.email}`);
         res.status(200).json({ status: 'success', message: 'Account permanently deleted.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * GET /api/v1/auth/verify-email/:token
+ * Public — verify user email via token
+ */
+exports.verifyEmail = async (req, res, next) => {
+    try {
+        const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+        const user = await User.findOne({
+            verificationToken: hashedToken,
+            verificationTokenExpire: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return next(new AppError('Token is invalid or has expired.', 400));
+        }
+
+        user.isVerified = true;
+        user.verificationToken = undefined;
+        user.verificationTokenExpire = undefined;
+        await user.save({ validateBeforeSave: false });
+
+        // Optionally send a login response here, or just a success message
+        res.status(200).json({
+            status: 'success',
+            message: 'Email verified successfully! You can now log in.',
+        });
     } catch (error) {
         next(error);
     }
