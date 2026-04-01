@@ -63,3 +63,33 @@ exports.sendVerificationEmail = async (user, verificationUrl) => {
         html,
     });
 };
+
+/**
+ * Send Password Reset OTP Email
+ * @param {Object} user - User object
+ * @param {string} otp - 6-digit OTP
+ */
+exports.sendResetOTPEmail = async (user, otp) => {
+    const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+        <h2 style="color: #0f172a; margin-bottom: 16px;">Password Reset Request</h2>
+        <p style="color: #475569; font-size: 16px; line-height: 1.5;">Hi ${user.firstName},</p>
+        <p style="color: #475569; font-size: 16px; line-height: 1.5;">We received a request to reset your SLIIT Nexar password. Use the following 6-digit OTP to proceed with the reset process:</p>
+        <div style="margin: 32px 0; text-align: center;">
+            <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; padding: 16px; border-radius: 8px; font-size: 32px; letter-spacing: 8px; font-weight: bold; color: #0f172a; display: inline-block;">
+                ${otp}
+            </div>
+        </div>
+        <p style="color: #475569; font-size: 14px;">This OTP is valid for 10 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0;">
+        <p style="color: #94a3b8; font-size: 12px;">© 2024 SLIIT Nexar. All rights reserved.</p>
+    </div>
+    `;
+
+    await sendEmail({
+        email: user.email,
+        subject: 'Password Reset OTP - SLIIT Nexar',
+        message: `Your password reset OTP is: ${otp}. It is valid for 10 minutes.`,
+        html,
+    });
+};

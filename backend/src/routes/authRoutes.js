@@ -11,6 +11,9 @@ router.post('/register', authLimiter, registerValidator, validate, authControlle
 router.post('/login', authLimiter, loginValidator, validate, authController.login);
 router.get('/verify-email/:token', authController.verifyEmail);
 router.post('/refresh', authController.refreshToken);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/verify-otp', authController.verifyResetOTP);
+router.post('/reset-password', authController.resetPassword);
 
 // Protected routes
 router.use(protect);

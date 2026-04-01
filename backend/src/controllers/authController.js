@@ -4,7 +4,7 @@ const AppError = require('../utils/AppError');
 const { sendTokenResponse, verifyRefreshToken, signAccessToken } = require('../services/jwtService');
 const logger = require('../utils/logger');
 const crypto = require('crypto');
-const { sendVerificationEmail } = require('../services/emailService');
+const { sendVerificationEmail, sendResetOTPEmail } = require('../services/emailService');
 
 /**
  * POST /api/auth/register
@@ -277,6 +277,96 @@ exports.verifyEmail = async (req, res, next) => {
             status: 'success',
             message: 'Email verified successfully! You can now log in.',
         });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /api/v1/auth/forgot-password
+ * Public — send OTP to email for password reset
+ */
+exports.forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return next(new AppError('There is no user with that email address.', 404));
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
+
+        user.resetOTP = hashedOTP;
+        user.resetOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+        user.resetOTPVerified = false;
+        await user.save({ validateBeforeSave: false });
+
+        try {
+            await sendResetOTPEmail(user, otp);
+            res.status(200).json({ status: 'success', message: 'OTP sent to your institutional inbox.' });
+        } catch (err) {
+            user.resetOTP = undefined;
+            user.resetOTPExpires = undefined;
+            await user.save({ validateBeforeSave: false });
+            return next(new AppError('There was an error sending the email. Try again later', 500));
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /api/v1/auth/verify-otp
+ * Public — verify the 6-digit OTP
+ */
+exports.verifyResetOTP = async (req, res, next) => {
+    try {
+        const { email, otp } = req.body;
+        const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
+
+        const user = await User.findOne({
+            email,
+            resetOTP: hashedOTP,
+            resetOTPExpires: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return next(new AppError('OTP is invalid or has expired.', 400));
+        }
+
+        user.resetOTPVerified = true;
+        await user.save({ validateBeforeSave: false });
+
+        res.status(200).json({ status: 'success', message: 'OTP verified. You can now reset your password.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /api/v1/auth/reset-password
+ * Public — set new password after OTP verification
+ */
+exports.resetPassword = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email }).select('+resetOTPVerified');
+
+        if (!user || !user.resetOTPVerified) {
+            return next(new AppError('Verification required. Please verify OTP first.', 403));
+        }
+
+        // Update password
+        user.password = password;
+        user.resetOTP = undefined;
+        user.resetOTPExpires = undefined;
+        user.resetOTPVerified = false;
+        await user.save();
+
+        res.status(200).json({ status: 'success', message: 'Password reset successful. You can now log in.' });
     } catch (error) {
         next(error);
     }

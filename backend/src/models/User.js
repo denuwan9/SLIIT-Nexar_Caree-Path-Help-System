@@ -88,6 +88,19 @@ const userSchema = new mongoose.Schema(
             type: Date,
             select: false,
         },
+        resetOTP: {
+            type: String,
+            select: false,
+        },
+        resetOTPExpires: {
+            type: Date,
+            select: false,
+        },
+        resetOTPVerified: {
+            type: Boolean,
+            default: false,
+            select: false,
+        },
     },
     {
         timestamps: true,
