@@ -15,7 +15,7 @@ const registerValidator = [
     body('email')
         .trim()
         .notEmpty().withMessage('Email is required')
-        .matches(/^[a-zA-Z0-9._%+-]+@sliit\.lk$/).withMessage('Only @sliit.lk institutional emails are allowed')
+        .matches(/^[a-zA-Z0-9._%+-]+@(my\.)?sliit\.lk$/).withMessage('Only @sliit.lk and @my.sliit.lk institutional emails are allowed')
         .normalizeEmail(),
     body('skillSet')
         .optional()
@@ -35,7 +35,7 @@ const loginValidator = [
     body('email')
         .trim()
         .notEmpty().withMessage('Email is required')
-        .matches(/^[a-zA-Z0-9._%+-]+@sliit\.lk$/).withMessage('Please use your @sliit.lk email')
+        .matches(/^[a-zA-Z0-9._%+-]+@(my\.)?sliit\.lk$/).withMessage('Please use your @sliit.lk or @my.sliit.lk email')
         .normalizeEmail(),
     body('password')
         .notEmpty().withMessage('Password is required'),

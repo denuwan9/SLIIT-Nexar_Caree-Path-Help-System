@@ -4,7 +4,7 @@ import { useAuth } from '../components/auth/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Clock, Users, CheckCircle2, Bot, ChevronRight,
-  Search, Plus, Trash2, Briefcase, BarChart3, Settings2, AlertCircle, RotateCcw, Zap
+  Search, Plus, Trash2, Briefcase, BarChart3, Settings2, AlertCircle, RotateCcw, Zap, Minus, Filter
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
@@ -48,6 +48,7 @@ function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
   const [events, setEvents] = useState<IInterviewEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<IInterviewEvent | null>(null);
+  const [filterType, setFilterType] = useState<string>('all');
 
   // Booking wizard state
   const [bookingCompany, setBookingCompany] = useState<ICompany | null>(null);
@@ -226,6 +227,8 @@ function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
     );
   }
 
+  const filteredEvents = filterType === 'all' ? events : events.filter(e => e.eventType === filterType);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
       {events.length === 0 ? (
@@ -237,9 +240,27 @@ function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
           <p className="text-slate-500 font-medium max-w-sm mx-auto">No upcoming recruitment windows or professional events detected at this time.</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {events.map((ev) => (
-            <div key={ev._id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 flex flex-col hover:border-blue-100 hover:shadow-2xl hover:shadow-slate-100 transition-all duration-500 group relative overflow-hidden h-full">
+        <div className="space-y-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+             <h3 className="text-xl font-black text-emerald-600 uppercase tracking-tight ml-2">Active Windows</h3>
+             <div className="flex flex-wrap items-center bg-white border border-slate-100 rounded-full p-1.5 shadow-sm">
+               <div className="pl-3 pr-2 text-slate-400">
+                 <Filter size={16} />
+               </div>
+               <button onClick={() => setFilterType('all')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${filterType === 'all' ? 'bg-[#0F172A] text-white shadow-md shadow-slate-200' : 'text-slate-500 hover:bg-slate-50 hover:text-[#0F172A]'}`}>All Viewing</button>
+               <button onClick={() => setFilterType('career-day')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${filterType === 'career-day' ? 'bg-purple-600 text-white shadow-md shadow-purple-200' : 'text-slate-500 hover:bg-purple-50 hover:text-purple-600'}`}>Career Day</button>
+               <button onClick={() => setFilterType('normal-day')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${filterType === 'normal-day' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600'}`}>Normal Day</button>
+             </div>
+          </div>
+
+          {filteredEvents.length === 0 ? (
+            <div className="text-center p-12 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+              <p className="text-slate-500 font-medium">No active windows found for this filter.</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredEvents.map((ev) => (
+                <div key={ev._id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 flex flex-col hover:border-blue-100 hover:shadow-2xl hover:shadow-slate-100 transition-all duration-500 group relative overflow-hidden h-full">
               <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full -z-0 opacity-40 group-hover:scale-125 transition-transform duration-700" />
               
               <div className="relative z-10 flex flex-col h-full">
@@ -276,6 +297,8 @@ function StudentBrowseEvents({ onBookSuccess }: { onBookSuccess: () => void }) {
               </div>
             </div>
           ))}
+            </div>
+          )}
         </div>
       )}
     </motion.div>
@@ -756,6 +779,15 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                                <div key={iIdx} className="flex gap-2">
                                  <input required placeholder="Name" type="text" className="flex-1 bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 transition-all shadow-sm" value={inv.name} onChange={e => updateInterviewer(i, iIdx, 'name', e.target.value)} />
                                  <input required placeholder="Expertise" type="text" className="flex-1 bg-white border border-slate-100 rounded-xl px-4 py-2 text-xs font-bold text-[blue-600] focus:outline-none focus:border-blue-400 transition-all shadow-sm" value={inv.expertise} onChange={e => updateInterviewer(i, iIdx, 'expertise', e.target.value)} />
+                                 {c.interviewers.length > 1 && (
+                                   <button type="button" onClick={() => {
+                                     const updated = [...companies];
+                                     updated[i].interviewers.splice(iIdx, 1);
+                                     setCompanies(updated);
+                                   }} className="p-2 text-slate-300 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 rounded-xl transition-all border border-slate-100 hover:border-rose-200 shadow-sm flex items-center justify-center">
+                                     <Trash2 size={16} />
+                                   </button>
+                                 )}
                                </div>
                              ))}
                            </div>
@@ -769,11 +801,18 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                  ))}
                </div>
 
-               {companies.length < 20 && (
-                 <button type="button" onClick={() => setCompanies([...companies, { name: '', description: '', interviewers: [{name: '', expertise: ''}] }])} className="w-full py-6 bg-[#F8FAFC] border-2 border-dashed border-slate-200 rounded-[2rem] text-xs font-black text-slate-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all duration-500 uppercase tracking-widest flex items-center justify-center gap-3">
-                   <Plus size={18} /> Integrate New Organization Node
-                 </button>
-               )}
+               <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                 {companies.length < 20 && (
+                   <button type="button" onClick={() => setCompanies([...companies, { name: '', description: '', interviewers: [{name: '', expertise: ''}] }])} className="flex-1 py-6 bg-white border-2 border-dashed border-blue-400 rounded-[2rem] text-xs font-black text-blue-500 hover:bg-blue-50 hover:border-blue-500 hover:text-blue-600 transition-all duration-500 uppercase tracking-widest flex items-center justify-center gap-3 shadow-sm">
+                     <Plus size={18} /> Integrate New Organization Node
+                   </button>
+                 )}
+                 {companies.length > 2 && (
+                   <button type="button" onClick={() => setCompanies(companies.slice(0, -1))} className="flex-1 py-6 bg-[#F8FAFC] border-2 border-dashed border-slate-200 rounded-[2rem] text-xs font-black text-slate-400 hover:border-rose-400 hover:text-rose-500 hover:bg-rose-50/30 transition-all duration-500 uppercase tracking-widest flex items-center justify-center gap-3 shadow-sm">
+                     <Minus size={18} /> Remove Organization Node
+                   </button>
+                 )}
+               </div>
             </div>
           )}
 

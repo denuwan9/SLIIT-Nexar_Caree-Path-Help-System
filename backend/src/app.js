@@ -23,6 +23,7 @@ const applicationRoutes = require('./routes/applicationRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const systemRoutes = require('./routes/systemRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const googleCalendarRoutes = require('./routes/googleCalendarRoutes');
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use('/api/v1/applications', applicationRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/system', systemRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/google-calendar', googleCalendarRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────
 app.all('*', (req, res, next) => {

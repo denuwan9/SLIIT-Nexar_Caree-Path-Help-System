@@ -23,6 +23,7 @@ const MockInterviewPage = React.lazy(() => import('./pages/MockInterviewPage'));
 const JobPostingDashboard = React.lazy(() => import('./pages/JobPostingDashboard'));
 const CreateJobPost = React.lazy(() => import('./pages/CreateJobPost'));
 const JobPostDetails = React.lazy(() => import('./pages/JobPostDetails'));
+const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage'));
 
 const RootRedirect: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -61,6 +62,7 @@ const App: React.FC = () => {
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

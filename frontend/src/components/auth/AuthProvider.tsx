@@ -6,6 +6,9 @@ import type { SignupInput } from '../../features/auth/authSchemas';
 interface AuthContextType extends AuthState {
     login: (email: string, password: string) => Promise<any>;
     signup: (data: SignupInput) => Promise<any>;
+    forgotPassword: (email: string) => Promise<any>;
+    verifyOTP: (email: string, otp: string) => Promise<any>;
+    resetPassword: (email: string, password: string) => Promise<any>;
     logout: () => void;
     checkAuth: () => Promise<void>;
     updateUser: (data: Partial<import('../../types/auth').User>) => void;
@@ -42,16 +45,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             targetRole: "Student"
         };
         const response = await api.post('/auth/register', payload);
-        const { accessToken } = response.data;
-        const { user } = response.data.data;
-        localStorage.setItem('accessToken', accessToken);
-        setState({
-            user,
-            token: accessToken,
-            isAuthenticated: true,
-            isLoading: false,
-        });
-        return user;
+        
+        // With email verification, we no longer log the user in immediately.
+        // We just return the response to the caller (AuthModule) to show the success message.
+        return response.data;
+    };
+
+    const forgotPassword = async (email: string) => {
+        const response = await api.post('/auth/forgot-password', { email });
+        return response.data;
+    };
+
+    const verifyOTP = async (email: string, otp: string) => {
+        const response = await api.post('/auth/verify-otp', { email, otp });
+        return response.data;
+    };
+
+    const resetPassword = async (email: string, password: string) => {
+        const response = await api.post('/auth/reset-password', { email, password });
+        return response.data;
     };
 
     const logout = async () => {
@@ -109,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     return (
-        <AuthContext.Provider value={{ ...state, login, signup, logout, checkAuth, updateUser }}>
+        <AuthContext.Provider value={{ ...state, login, signup, forgotPassword, verifyOTP, resetPassword, logout, checkAuth, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

@@ -21,7 +21,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     }
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return (
+            <Navigate 
+                to="/login" 
+                state={{ 
+                    from: location,
+                    message: "Authentication required. Please log in to access this page." 
+                }} 
+                replace 
+            />
+        );
     }
 
     if (allowedRoles && user && !allowedRoles.includes(user.role)) {
