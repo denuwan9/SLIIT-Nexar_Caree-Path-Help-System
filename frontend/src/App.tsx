@@ -16,9 +16,13 @@ const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const AdminCareerProfiles = React.lazy(() => import('./pages/AdminCareerProfiles'));
 const AdminStudentPreview = React.lazy(() => import('./pages/AdminStudentPreview'));
+const AdminJobPosts = React.lazy(() => import('./pages/AdminJobPosts'));
 const StudyPlanPage = React.lazy(() => import('./pages/StudyPlanPage'));
 const InterviewSchedulingPage = React.lazy(() => import('./pages/InterviewSchedulingPage'));
 const MockInterviewPage = React.lazy(() => import('./pages/MockInterviewPage'));
+const JobPostingDashboard = React.lazy(() => import('./pages/JobPostingDashboard'));
+const CreateJobPost = React.lazy(() => import('./pages/CreateJobPost'));
+const JobPostDetails = React.lazy(() => import('./pages/JobPostDetails'));
 const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage'));
 
 const RootRedirect: React.FC = () => {
@@ -68,12 +72,11 @@ const App: React.FC = () => {
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/advisor" element={<AiAdvisorPage />} />
                 <Route path="/study" element={<StudyPlanPage />} />
-                <Route
-                  path="/careers"
-                  element={<ComingSoon title="Career Explored" description="Discover your ideal career path with our advanced matching engine and job market analysis tools." />}
-                />
+                <Route path="/job-postings" element={<JobPostingDashboard />} />
+                <Route path="/job-postings/new" element={<CreateJobPost />} />
+                <Route path="/job-postings/:id" element={<JobPostDetails />} />
               </Route>
-              
+
               {/* Shared Routes */}
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/interviews" element={<InterviewSchedulingPage />} />
@@ -84,6 +87,7 @@ const App: React.FC = () => {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/profiles" element={<AdminCareerProfiles />} />
                 <Route path="/admin/profiles/:id" element={<AdminStudentPreview />} />
+                <Route path="/admin/job-posts" element={<AdminJobPosts />} />
               </Route>
             </Route>
 
