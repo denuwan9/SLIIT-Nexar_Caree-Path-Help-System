@@ -372,6 +372,8 @@ const StudyPlanPage: React.FC = () => {
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [lastNotifiedTask, setLastNotifiedTask] = useState<string | null>(null);
     const [activeAlert, setActiveAlert] = useState<{ title: string; time: string; subject: string; id: string; planId?: string } | null>(null);
+    const [pendingFocusTaskId, setPendingFocusTaskId] = useState<string | null>(null);
+    const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
     const [welcomeAlertShown, setWelcomeAlertShown] = useState(false);
     
     const [isTrackerExpanded, setIsTrackerExpanded] = useState(false);
@@ -458,6 +460,71 @@ const StudyPlanPage: React.FC = () => {
         );
     }, [selectedPlan]);
     const taskRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+
+    const queueTaskFocusFromNotification = (taskId?: string | null, planId?: string) => {
+        const firstId = plans[0]?._id;
+        const targetPlanId = planId || selectedPlanId || firstId;
+
+        if (targetPlanId) {
+            setSelectedPlanId(targetPlanId);
+        }
+
+        setViewMode('schedule');
+        setIsTrackerExpanded(true);
+
+        if (!taskId) return;
+
+        setOpenTrackerId(taskId);
+        setPendingFocusTaskId(taskId);
+    };
+
+    useEffect(() => {
+        if (!pendingFocusTaskId) return;
+
+        const hasTask = allTasksFlat.some((task) => task.taskId === pendingFocusTaskId);
+        if (!hasTask) return;
+
+        const target = taskRefs.current[pendingFocusTaskId];
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        setOpenTrackerId(pendingFocusTaskId);
+        setHighlightedTaskId(pendingFocusTaskId);
+        toast.success('Task opened from notification', { duration: 2600 });
+
+        setPendingFocusTaskId(null);
+    }, [pendingFocusTaskId, allTasksFlat]);
+
+    useEffect(() => {
+        if (!highlightedTaskId) return;
+
+        const separatorIndex = highlightedTaskId.lastIndexOf('-');
+        if (separatorIndex <= 0) return;
+
+        const sessionId = highlightedTaskId.slice(0, separatorIndex);
+        const idxStr = highlightedTaskId.slice(separatorIndex + 1);
+        const subjectIdx = Number(idxStr);
+
+        if (!sessionId || Number.isNaN(subjectIdx)) return;
+
+        let matchedSubject: { status?: StudyTaskStatus; isCompleted?: boolean } | null = null;
+
+        for (const plan of plans) {
+            const session = plan.sessions.find((s) => s._id === sessionId);
+            if (session && session.subjects[subjectIdx]) {
+                matchedSubject = session.subjects[subjectIdx];
+                break;
+            }
+        }
+
+        if (!matchedSubject) return;
+
+        const isDone = matchedSubject.status === 'completed' || !!matchedSubject.isCompleted;
+        if (isDone) {
+            setHighlightedTaskId(null);
+        }
+    }, [highlightedTaskId, plans]);
 
 
     const persistTimers = (nextTimers: TimerMap, activeId: string | null) => {
@@ -736,9 +803,9 @@ const StudyPlanPage: React.FC = () => {
             const next = getNextTaskForPlan(activePlan);
             if (next) {
                 setActiveAlert({
-                    id: 'welcome',
+                    id: next.taskId,
                     title: next.title,
-                    subject: "Scheduled Session",
+                    subject: next.subject,
                     time: next.time,
                     planId: activePlan._id
                 });
@@ -803,7 +870,9 @@ const StudyPlanPage: React.FC = () => {
             // Check status first - we want the first non-completed one
             if (subject.status !== 'completed') {
                 return {
+                    taskId: `${todaySession._id}-${i}`,
                     title: subject.title || subject.topic || subject.subjectName,
+                    subject: subject.subjectName || 'Scheduled Session',
                     time: taskStartTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
                 };
             }
@@ -813,6 +882,16 @@ const StudyPlanPage: React.FC = () => {
         }
         return null;
     };
+
+    useEffect(() => {
+        if (viewMode !== 'schedule' || !selectedPlan) return;
+        if (pendingFocusTaskId || highlightedTaskId) return;
+
+        const next = getNextTaskForPlan(selectedPlan);
+        if (!next) return;
+
+        queueTaskFocusFromNotification(next.taskId, selectedPlan._id);
+    }, [viewMode, selectedPlan?._id, plans, pendingFocusTaskId, highlightedTaskId]);
 
     // ── Reminder Engine ───────────────────────────────────────────────
     useEffect(() => {
@@ -879,8 +958,7 @@ const StudyPlanPage: React.FC = () => {
                     
                     notification.onclick = () => {
                         window.focus();
-                        setSelectedPlanId(selectedPlan._id);
-                        setViewMode('schedule');
+                        queueTaskFocusFromNotification(taskId, selectedPlan._id);
                         setActiveAlert(null); // Dismiss in-app alert when notification is clicked
                         notification.close();
                     };
@@ -1231,12 +1309,13 @@ const StudyPlanPage: React.FC = () => {
             const next = getNextTaskForPlan(updatedPlan);
             if (next) {
                 setActiveAlert({
-                    id: `next-${Date.now()}`,
+                    id: next.taskId,
                     title: next.title,
-                    subject: "Consecutive Mission",
+                    subject: next.subject,
                     time: next.time,
                     planId: updatedPlan._id
                 });
+                queueTaskFocusFromNotification(next.taskId, updatedPlan._id);
                 const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
                 audio.volume = 0.5;
                 audio.play().catch(() => {});
@@ -1273,10 +1352,7 @@ const StudyPlanPage: React.FC = () => {
                         <div className="flex items-center gap-3 relative z-10 shrink-0">
                             <button 
                                 onClick={() => {
-                                    const firstId = plans[0]?._id;
-                                    const targetPlanId = activeAlert.planId || selectedPlanId || firstId;
-                                    setSelectedPlanId(targetPlanId);
-                                    setViewMode('schedule');
+                                    queueTaskFocusFromNotification(activeAlert.id, activeAlert.planId);
                                     setActiveAlert(null);
                                 }}
                                 className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold uppercase tracking-wider transition-all hover:scale-110 active:scale-95 shadow-lg shadow-blue-600/20 flex items-center gap-2"
@@ -2472,6 +2548,7 @@ const StudyPlanPage: React.FC = () => {
                                                         const isOverdue = !isComplete && taskEndTime < now;
 
                                                         const taskId = `${session._id}-${idx}`;
+                                                        const isNotificationFocused = highlightedTaskId === taskId;
                                                         const timerState = timers[taskId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null };
 
                                                         const startTimeStr = formatTime(taskStartTime);
@@ -2494,7 +2571,9 @@ const StudyPlanPage: React.FC = () => {
                                                             key={`${session._id}-${originalIdx}`}
                                                             ref={el => { taskRefs.current[taskId] = el; }}
                                                             className={`group relative overflow-hidden rounded-[2rem] border p-8 transition-all ${
-                                                                isComplete
+                                                                isNotificationFocused
+                                                                    ? 'border-fuchsia-400 bg-fuchsia-50/40 ring-4 ring-fuchsia-200 shadow-2xl shadow-fuchsia-200/70'
+                                                                    : isComplete
                                                                     ? 'border-emerald-200 bg-emerald-50/20 opacity-80'
                                                                     : isInProgress
                                                                         ? 'border-blue-200 bg-white shadow-xl shadow-blue-100 scale-[1.01]'
@@ -2503,6 +2582,12 @@ const StudyPlanPage: React.FC = () => {
                                                                             : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-lg hover:shadow-slate-200/50'
                                                             }`}
                                                         >
+                                                            {isNotificationFocused && (
+                                                                <div className="absolute top-0 left-0 px-6 py-2 bg-fuchsia-500 text-white text-[10px] font-black uppercase tracking-widest rounded-br-3xl shadow-lg animate-pulse">
+                                                                    Focused From Notification
+                                                                </div>
+                                                            )}
+
                                                             {/* Top indicator for sorted active task */}
                                                             {isInProgress && (
                                                                 <div className="absolute top-0 right-0 px-6 py-2 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-3xl shadow-lg">
