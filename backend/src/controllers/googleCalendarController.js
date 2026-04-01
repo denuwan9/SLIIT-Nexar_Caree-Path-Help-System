@@ -1,3 +1,18 @@
+/**
+ * Fetch all Nexar study events from user's Google Calendar
+ */
+exports.getCalendarEvents = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user._id).select('+googleRefreshToken');
+        if (!user.googleRefreshToken) {
+            return next(new AppError('Please link your Google Calendar first', 400));
+        }
+        const events = await googleCalendarService.fetchNexarEvents(user);
+        res.status(200).json({ events });
+    } catch (error) {
+        next(error);
+    }
+};
 const googleCalendarService = require('../services/googleCalendarService');
 const StudyPlan = require('../models/StudyPlan');
 const User = require('../models/User');

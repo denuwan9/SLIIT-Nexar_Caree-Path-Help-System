@@ -8,5 +8,6 @@ router.use(protect);
 router.get('/status', googleCalendarController.getSyncStatus);
 router.post('/link', googleCalendarController.linkCalendar);
 router.post('/sync/:planId', googleCalendarController.syncStudyPlan);
+router.get('/events', googleCalendarController.getCalendarEvents);
 
 module.exports = router;

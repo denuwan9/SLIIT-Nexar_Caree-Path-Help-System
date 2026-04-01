@@ -1,3 +1,31 @@
+/**
+ * Fetch all Nexar study events from user's Google Calendar
+ * Only returns events with privateExtendedProperty: app=nexar-study
+ */
+exports.fetchNexarEvents = async (user) => {
+    const calendar = await getCalendarClient(user);
+    let pageToken = undefined;
+    const events = [];
+    do {
+        const listRes = await calendar.events.list({
+            calendarId: 'primary',
+            privateExtendedProperty: 'app=nexar-study',
+            pageToken: pageToken,
+        });
+        const items = listRes.data.items || [];
+        for (const event of items) {
+            events.push({
+                id: event.id,
+                title: event.summary,
+                start: event.start?.dateTime || event.start?.date,
+                end: event.end?.dateTime || event.end?.date,
+                description: event.description,
+            });
+        }
+        pageToken = listRes.data.nextPageToken;
+    } while (pageToken);
+    return events;
+};
 const { google } = require('googleapis');
 const logger = require('../utils/logger');
 const User = require('../models/User');
@@ -100,18 +128,41 @@ exports.syncPlanToCalendar = async (user, plan) => {
                     const dateStr = session.date instanceof Date 
                         ? session.date.toISOString().split('T')[0] 
                         : new Date(session.date).toISOString().split('T')[0];
-                    
                     const startTimeStr = subject.customStartTime || '09:00';
                     const duration = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
-
                     const startDateTime = new Date(`${dateStr}T${startTimeStr}:00`);
                     if (isNaN(startDateTime.getTime())) continue;
-
                     const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
 
+                    // Extra check: skip if identical event already exists
+
+                    // Compose a clear summary with subject and topic/task
+
+                    const taskName = subject.title || subject.topic || 'Task';
+                    const eventSummary = `${taskName} — ${subject.subjectName}`;
+
+
+                    const existingEventsRes = await calendar.events.list({
+                        calendarId: 'primary',
+                        timeMin: startDateTime.toISOString(),
+                        timeMax: endDateTime.toISOString(),
+                        privateExtendedProperty: 'app=nexar-study',
+                        q: eventSummary,
+                    });
+                    const exists = (existingEventsRes.data.items || []).some(ev =>
+                        ev.summary === eventSummary &&
+                        ev.start?.dateTime === startDateTime.toISOString() &&
+                        ev.end?.dateTime === endDateTime.toISOString() &&
+                        ev.extendedProperties?.private?.app === 'nexar-study'
+                    );
+                    if (exists) {
+                        logger.info(`Skipped duplicate event for ${eventSummary} at ${startDateTime.toISOString()}`);
+                        continue;
+                    }
+
                     const event = {
-                        summary: `📚 ${subject.subjectName}`,
-                        description: `Topic: ${subject.topic || 'General Practice'}\nInstruction: ${subject.instruction || ''}\nFrom Nexar Study Plan: "${plan.title}"`,
+                        summary: eventSummary,
+                        description: `Subject: ${subject.subjectName}\nTask: ${taskName}\nTopic: ${subject.topic || ''}\nInstruction: ${subject.instruction || ''}\nFrom Nexar Study Plan: "${plan.title}"`,
                         start: { dateTime: startDateTime.toISOString(), timeZone: 'UTC' },
                         end: { dateTime: endDateTime.toISOString(), timeZone: 'UTC' },
                         extendedProperties: {
