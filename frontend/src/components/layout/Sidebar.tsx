@@ -7,6 +7,7 @@ import {
     Calendar,
     BookOpen,
     Briefcase,
+    ClipboardList,
     Settings,
     LogOut,
     Menu,
@@ -22,12 +23,13 @@ const navItems = [
     { to: '/advisor', icon: Sparkles, label: 'AI Advisor' },
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
     { to: '/study', icon: BookOpen, label: 'Study' },
-    { to: '/careers', icon: Briefcase, label: 'Careers' },
+    { to: '/job-postings', icon: ClipboardList, label: 'Job Posts' },
 ];
 
 const adminNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: 'Command Center' },
     { to: '/admin/profiles', icon: Briefcase, label: 'Career Profiles' },
+    { to: '/admin/job-posts', icon: ClipboardList, label: 'Job Posts' },
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
 ];
 
