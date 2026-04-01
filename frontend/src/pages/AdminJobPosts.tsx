@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, ArrowLeft } from 'lucide-react';
 import { fetchAllJobPosts, type JobPost } from '../services/jobPostService';
 import { applyForJob } from '../services/applicationService';
 
@@ -50,7 +50,9 @@ const AdminJobPosts: React.FC = () => {
   const [filteredRoles, setFilteredRoles] = useState(targetRolesList);
   const [selectedJobPost, setSelectedJobPost] = useState<JobPost | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalAnimating, setIsModalAnimating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [clickOrigin, setClickOrigin] = useState<{ x: number; y: number } | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -106,9 +108,23 @@ const AdminJobPosts: React.FC = () => {
     setIsDropdownOpen(false);
   };
 
-  const handleJobPostClick = (jobPost: JobPost) => {
+  const handleJobPostClick = (jobPost: JobPost, event: React.MouseEvent) => {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    setClickOrigin({
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    });
     setSelectedJobPost(jobPost);
     setIsModalOpen(true);
+    setTimeout(() => setIsModalAnimating(true), 10);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalAnimating(false);
+    setTimeout(() => {
+      setIsModalOpen(false);
+      setSelectedJobPost(null);
+    }, 300); // Match the animation duration
   };
 
   const handleApply = async () => {
@@ -117,7 +133,7 @@ const AdminJobPosts: React.FC = () => {
     try {
       await applyForJob(selectedJobPost._id);
       alert('Application submitted successfully!');
-      setIsModalOpen(false);
+      handleCloseModal();
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Failed to apply');
     } finally {
@@ -129,7 +145,15 @@ const AdminJobPosts: React.FC = () => {
     <div className="w-full h-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div className="mb-4 sm:mb-0">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A]">Admin Job Posts</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <button
+              onClick={() => window.history.back()}
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+            >
+              <ArrowLeft size={16} className="text-slate-600" />
+            </button>
+            <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A]">Admin Job Posts</h1>
+          </div>
           <p className="text-sm text-[#64748B] mt-1">Manage and review all student job postings.</p>
         </div>
         <div className="flex gap-3">
@@ -189,7 +213,7 @@ const AdminJobPosts: React.FC = () => {
             {filteredPosts.length === 0 ? (
               <div className="col-span-full p-6 text-center text-slate-500">No job posts found.</div>
             ) : filteredPosts.map((post) => (
-              <div key={post._id} className="border border-slate-100 rounded-2xl p-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handleJobPostClick(post)}>
+              <div key={post._id} className="border border-slate-100 rounded-2xl p-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={(e) => handleJobPostClick(post, e)}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-bold text-[#0F172A]">{post.title}</h3>
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{post.jobType}</span>
@@ -209,50 +233,110 @@ const AdminJobPosts: React.FC = () => {
         </div>
       )}
 
-      {/* Job Post Details Modal */}
+      {/* Job Post Details Popup Modal */}
       {isModalOpen && selectedJobPost && (
-        <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-2xl mx-4 max-h-[85vh] overflow-y-auto shadow-lg border border-slate-200">
-            <div className="p-5">
-              <div className="flex justify-between items-center mb-4">
+        <div
+          onClick={handleCloseModal}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          style={{
+            paddingLeft: '280px', // Account for sidebar (260px) + some margin
+            paddingRight: '20px',
+            opacity: isModalAnimating ? 1 : 0,
+            transition: 'opacity 0.3s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="modal-content bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            style={{
+              transform: isModalAnimating
+                ? 'scale(1) translate(0, 0)'
+                : 'scale(0.3) translate(0, 0)',
+              opacity: isModalAnimating ? 1 : 0,
+              transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              transformOrigin: 'center center',
+              paddingRight: '12px'
+            }}
+          >
+            <style>
+              {`
+                .modal-content::-webkit-scrollbar {
+                  width: 8px;
+                  border-radius: 16px;
+                }
+                .modal-content::-webkit-scrollbar-track {
+                  background: #f8fafc;
+                  border-radius: 16px;
+                }
+                .modal-content::-webkit-scrollbar-thumb {
+                  background: #cbd5e1;
+                  border-radius: 16px;
+                }
+                .modal-content::-webkit-scrollbar-thumb:hover {
+                  background: #94a3b8;
+                }
+              `}
+            </style>
+            <div className="p-6 lg:p-8">
+              <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">{selectedJobPost.title}</h2>
-                  <p className="text-sm text-slate-500">
+                  <h2 className="text-2xl font-bold text-slate-900">{selectedJobPost.title}</h2>
+                  <p className="text-sm text-slate-500 mt-1">
                     {typeof selectedJobPost.student === 'object'
                       ? (selectedJobPost.student as any).name || (selectedJobPost.student as any).email || 'Unknown'
                       : selectedJobPost.student || 'Unknown'}
                   </p>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="text-slate-500 hover:text-slate-700">✕</button>
+                <button
+                  onClick={handleCloseModal}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                  ✕
+                </button>
               </div>
 
-              <div className="space-y-3 text-sm text-slate-700">
-                <p><strong>Role:</strong> {selectedJobPost.targetRole}</p>
-                <p><strong>Type:</strong> {selectedJobPost.jobType}</p>
-                <p><strong>Location:</strong> {selectedJobPost.preferredLocation || 'Any location'} • {selectedJobPost.isRemoteOk ? 'Remote' : 'Onsite'}</p>
-                <p><strong>Salary:</strong> {selectedJobPost.salaryExpectation?.min ? `${selectedJobPost.salaryExpectation.currency || 'LKR'} ${selectedJobPost.salaryExpectation.min}` : 'N/A'}{selectedJobPost.salaryExpectation?.max ? ` - ${selectedJobPost.salaryExpectation.currency || 'LKR'} ${selectedJobPost.salaryExpectation.max}` : ''}</p>
+              <div className="space-y-4 text-sm text-slate-700 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="font-medium text-slate-900">Role:</span> {selectedJobPost.targetRole}
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="font-medium text-slate-900">Type:</span> {selectedJobPost.jobType}
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="font-medium text-slate-900">Location:</span> {selectedJobPost.preferredLocation || 'Any location'} • {selectedJobPost.isRemoteOk ? 'Remote' : 'Onsite'}
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="font-medium text-slate-900">Salary:</span> {selectedJobPost.salaryExpectation?.min ? `${selectedJobPost.salaryExpectation.currency || 'LKR'} ${selectedJobPost.salaryExpectation.min}` : 'N/A'}{selectedJobPost.salaryExpectation?.max ? ` - ${selectedJobPost.salaryExpectation.currency || 'LKR'} ${selectedJobPost.salaryExpectation.max}` : ''}
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-4 bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm text-slate-700">
-                {selectedJobPost.summary}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Job Summary</h3>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-sm text-slate-700 leading-relaxed">
+                  {selectedJobPost.summary}
+                </div>
               </div>
 
               {selectedJobPost.skills?.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-slate-900 mb-2">Skills</h3>
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-3">Required Skills</h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedJobPost.skills.map((skill, index) => (
-                      <span key={index} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">{skill}</span>
+                      <span key={index} className="text-sm bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-medium">
+                        {skill}
+                      </span>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="mt-5">
+              <div className="flex justify-end pt-4 border-t border-slate-200">
                 <button
                   onClick={handleApply}
                   disabled={isApplying}
-                  className="w-full py-2 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-indigo-300/30 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-60 transition-all transform hover:scale-105"
                 >
                   {isApplying ? 'Applying...' : 'Apply for this Job'}
                 </button>
