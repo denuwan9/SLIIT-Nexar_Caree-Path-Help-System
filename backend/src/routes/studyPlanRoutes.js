@@ -14,6 +14,7 @@ router.get('/', studyPlanController.getMyStudyPlans);
 router.get('/:id', studyPlanController.getStudyPlanById);
 router.patch('/:id/sessions/:sessionId/:subjectIdx/complete', studyPlanController.markSubjectComplete);
 router.patch('/:id/sessions/:sessionId/:subjectIdx/status', studyPlanController.updateSubjectStatus);
+router.patch('/:id/sessions/:sessionId/:subjectIdx/time', studyPlanController.updateSubjectTime);
 router.delete('/:id', studyPlanController.deleteStudyPlan);
 
 module.exports = router;

@@ -60,6 +60,10 @@ const userSchema = new mongoose.Schema(
             type: String,
             select: false,
         },
+        googleRefreshToken: {
+            type: String,
+            select: false,
+        },
         lastLogin: {
             type: Date,
         },
