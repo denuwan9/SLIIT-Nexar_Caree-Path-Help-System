@@ -491,7 +491,7 @@ const StudyPlanPage: React.FC = () => {
 
         setOpenTrackerId(pendingFocusTaskId);
         setHighlightedTaskId(pendingFocusTaskId);
-        toast.success('Task opened from notification', { duration: 2600 });
+        toast.success('Task next to be completed', { duration: 2600 });
 
         setPendingFocusTaskId(null);
     }, [pendingFocusTaskId, allTasksFlat]);
@@ -2584,7 +2584,7 @@ const StudyPlanPage: React.FC = () => {
                                                         >
                                                             {isNotificationFocused && (
                                                                 <div className="absolute top-0 left-0 px-6 py-2 bg-fuchsia-500 text-white text-[10px] font-black uppercase tracking-widest rounded-br-3xl shadow-lg animate-pulse">
-                                                                    Focused From Notification
+                                                                    Task Next To Be Completed
                                                                 </div>
                                                             )}
 
