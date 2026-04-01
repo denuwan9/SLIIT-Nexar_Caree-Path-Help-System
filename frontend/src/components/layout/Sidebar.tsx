@@ -24,7 +24,6 @@ const navItems = [
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
     { to: '/study', icon: BookOpen, label: 'Study' },
     { to: '/job-postings', icon: ClipboardList, label: 'Job Posts' },
-    { to: '/careers', icon: Briefcase, label: 'Careers' },
 ];
 
 const adminNavItems = [

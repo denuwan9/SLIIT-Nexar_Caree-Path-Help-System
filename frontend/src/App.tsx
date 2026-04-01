@@ -10,7 +10,6 @@ const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const SignupPage = React.lazy(() => import('./pages/SignupPage'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
-const ComingSoon = React.lazy(() => import('./pages/ComingSoon'));
 const AiAdvisorPage = React.lazy(() => import('./pages/AiAdvisorPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
