@@ -31,12 +31,12 @@ const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, on
 );
 
 const StatCard = ({ title, value, icon: Icon, color }: any) => (
-  <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-100 transition-all duration-500 group flex flex-col items-center text-center">
+  <div className="bg-white/90 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-slate-300/50 hover:-translate-y-1 transition-all duration-500 group flex flex-col items-center text-center">
     <div className={`p-4 rounded-2xl ${color} mb-4 group-hover:scale-110 transition-transform duration-500 shadow-lg shadow-current/10`}>
       <Icon size={24} />
     </div>
     <span className="text-4xl font-black text-[#0F172A] leading-none mb-2 tracking-tight">{value}</span>
-    <span className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400 group-hover:text-slate-600 transition-colors uppercase">{title}</span>
+    <span className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400 group-hover:text-slate-600 transition-colors">{title}</span>
   </div>
 );
 
@@ -969,7 +969,7 @@ export default function InterviewSchedulingPage() {
   const [activeTab, setActiveTab] = useState(isAdmin ? 'dashboard' : 'browse');
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] font-main selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-[#F4F7FB] font-main selection:bg-blue-100 selection:text-blue-900">
       {/* Immersive Header */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-10 sticky top-0 z-50 shadow-sm transition-all duration-300">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 max-w-7xl mx-auto">

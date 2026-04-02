@@ -142,6 +142,28 @@ export default function MockInterviewPage() {
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const recognitionRef = useRef<any>(null);
 
+  const [timeLeft, setTimeLeft] = useState(25);
+
+  useEffect(() => {
+    if (isInterviewing && !isFinished) {
+      setTimeLeft(25);
+    }
+  }, [currentQIndex, isInterviewing, isFinished]);
+
+  useEffect(() => {
+    let timer: any;
+    if (isInterviewing && !isFinished) {
+      if (timeLeft > 0) {
+        timer = setTimeout(() => {
+          setTimeLeft(timeLeft - 1);
+        }, 1000);
+      } else {
+        handleNextQuestion();
+      }
+    }
+    return () => clearTimeout(timer);
+  }, [isInterviewing, isFinished, timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -390,7 +412,9 @@ export default function MockInterviewPage() {
                   <div className="h-8 w-[1px] bg-slate-800" />
                   <div className="flex items-center gap-3 text-slate-400">
                      <Clock size={16} />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Nexus Uptime: Active</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest">
+                       Time Remaining: <span className={timeLeft <= 5 ? "text-rose-500 text-sm ml-1" : "text-white text-sm ml-1"}>00:{timeLeft.toString().padStart(2, '0')}</span>
+                     </span>
                   </div>
                 </div>
                 <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 relative z-10">
