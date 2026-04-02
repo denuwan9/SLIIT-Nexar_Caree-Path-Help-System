@@ -234,15 +234,10 @@ const AdminJobPosts: React.FC = () => {
             {isAIFilterActive ? `AI Filtered Results: "${aiQueryUsed}"` : 'Manage and review all student job postings.'}
           </p>
         </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <div className="flex gap-3">
-          {isAIFilterActive && (
-            <button
-              onClick={handleCancelAIFilter}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-300/30 hover:bg-red-700 transition-all transform hover:scale-105"
-            >
-              ❌ Cancel AI Filter
-            </button>
-          )}
           <button
             onClick={() => {
               setIsAIFilterModalOpen(true);
@@ -253,10 +248,16 @@ const AdminJobPosts: React.FC = () => {
           >
             🤖 AI Filter
           </button>
+          {isAIFilterActive && (
+            <button
+              onClick={handleCancelAIFilter}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-300/30 hover:bg-red-700 transition-all transform hover:scale-105"
+            >
+              Clear
+            </button>
+          )}
         </div>
-      </div>
 
-      <div className="flex justify-end mb-4">
         <div className="relative w-80" ref={searchRef}>
           <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
           <input
