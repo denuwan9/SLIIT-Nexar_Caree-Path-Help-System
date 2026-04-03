@@ -2350,26 +2350,24 @@ const StudyPlanPage: React.FC = () => {
                                         <p className="text-2xl font-bold text-emerald-700">{selectedPlan.totalStudyDays}d</p>
                                     </div>
                                 </div>
-
-                                {/* Compact Task Tracker Toggle */}
                                 <button
-                                    onClick={() => setIsTrackerExpanded(!isTrackerExpanded)}
-                                    className={`flex h-12 px-6 items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest text-[9px] transition-all border-2 shadow-sm hover:scale-105 active:scale-95 ${
-                                        isTrackerExpanded 
-                                        ? 'bg-slate-900 border-slate-700 text-white' 
-                                        : 'bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50'
+                                    onClick={() => setIsTrackerExpanded((prev) => !prev)}
+                                    aria-label={isTrackerExpanded ? 'Collapse task tracker' : 'Expand task tracker'}
+                                    title={isTrackerExpanded ? 'Collapse Task Tracker' : 'Open Task Tracker'}
+                                    className={`relative flex h-12 w-12 items-center justify-center self-end rounded-xl transition-all border-2 shadow-sm hover:scale-105 active:scale-95 ${
+                                        isTrackerExpanded
+                                            ? 'bg-slate-900 border-slate-700 text-white'
+                                            : 'bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50'
                                     }`}
                                 >
-                                    <div className="relative flex items-center justify-center">
-                                        <Timer size={14} />
-                                        {activeTimerId && (
-                                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white"></span>
-                                            </span>
-                                        )}
-                                    </div>
-                                    {isTrackerExpanded ? 'Collapse Tracking' : 'Launch Session Tracker'}
+                                    {isTrackerExpanded ? <X size={18} /> : <Timer size={18} />}
+                                    {activeTimerId && (
+                                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white"></span>
+                                        </span>
+                                    )}
+                                    <span className="sr-only">{isTrackerExpanded ? 'Collapse Task Tracker' : 'Open Task Tracker'}</span>
                                 </button>
                             </div>
                         </div>
