@@ -17,7 +17,6 @@ const googleCalendarService = require('../services/googleCalendarService');
 const StudyPlan = require('../models/StudyPlan');
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
-const logger = require('../utils/logger');
 
 /**
  * Exchange Authorization Code for Tokens
@@ -53,11 +52,24 @@ exports.syncStudyPlan = async (req, res, next) => {
             return next(new AppError('Please link your Google Calendar first', 400));
         }
 
-        await googleCalendarService.syncPlanToCalendar(user, plan);
+        const syncSummary = await googleCalendarService.syncPlanToCalendar(user, plan);
+
+        const messageParts = [];
+        if (syncSummary.removedFromOtherPlans > 0) messageParts.push(`${syncSummary.removedFromOtherPlans} previous-plan tasks removed`);
+        if (syncSummary.removedStaleInCurrentPlan > 0) messageParts.push(`${syncSummary.removedStaleInCurrentPlan} stale tasks removed`);
+        if (syncSummary.added > 0) messageParts.push(`${syncSummary.added} added`);
+        if (syncSummary.updated > 0) messageParts.push(`${syncSummary.updated} updated`);
+        if (syncSummary.skippedDuplicates > 0) messageParts.push(`${syncSummary.skippedDuplicates} duplicates skipped`);
+        if (syncSummary.skippedOverlaps > 0) messageParts.push(`${syncSummary.skippedOverlaps} overlaps skipped`);
+
+        const message = messageParts.length > 0
+            ? `Sync complete: ${messageParts.join(', ')}`
+            : 'No study sessions were synced.';
 
         res.status(200).json({
             status: 'success',
-            message: 'All study sessions have been synced to your Google Calendar!'
+            message,
+            syncSummary,
         });
     } catch (error) {
         next(error);
