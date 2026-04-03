@@ -357,6 +357,7 @@ const StudyPlanPage: React.FC = () => {
     const [isLoadingPlans, setIsLoadingPlans] = useState(false);
     const [plans, setPlans] = useState<StudyPlan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+    const [regenerateFromPlanId, setRegenerateFromPlanId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'builder' | 'plans' | 'schedule'>('builder');
     const [justGenerated, setJustGenerated] = useState(false);
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
@@ -1170,11 +1171,38 @@ const StudyPlanPage: React.FC = () => {
             } else {
                 created = await createStudyPlan(payload);
             }
+
+            let removedPreviousPlan = false;
+            const previousPlanId = regenerateFromPlanId;
+
+            if (previousPlanId && previousPlanId !== created._id) {
+                try {
+                    await deleteStudyPlan(previousPlanId);
+                    removedPreviousPlan = true;
+                } catch (deleteErr) {
+                    toast.error('New plan created, but failed to remove the previous plan.');
+                }
+            }
+
             if (!planInput.title.trim()) {
                 setPlanInput((prev) => ({ ...prev, title: safeTitle }));
             }
-            toast.success('Study plan generated');
-            setPlans((prev) => [created, ...prev]);
+
+            if (removedPreviousPlan) {
+                toast.success('Study plan regenerated and previous plan removed');
+            } else {
+                toast.success('Study plan generated');
+            }
+
+            setPlans((prev) => {
+                const withoutCreated = prev.filter((p) => p._id !== created._id);
+                const withoutPrevious = removedPreviousPlan && previousPlanId
+                    ? withoutCreated.filter((p) => p._id !== previousPlanId)
+                    : withoutCreated;
+                return [created, ...withoutPrevious];
+            });
+
+            setRegenerateFromPlanId(null);
             setSelectedPlanId(created._id);
             setViewMode('builder');
             setCurrentStep(3);
@@ -1258,6 +1286,7 @@ const StudyPlanPage: React.FC = () => {
 
     const handleRegeneratePlan = () => {
         if (!selectedPlan) return;
+        setRegenerateFromPlanId(selectedPlan._id);
         
         setPlanInput({
             title: selectedPlan.title,
