@@ -328,14 +328,6 @@ const AdminJobPosts: React.FC = () => {
                   <span>{new Date(post.createdAt || '').toLocaleDateString()}</span>
                   <span>{(post.viewCount || 0)} views</span>
                 </div>
-                <div className="mt-4 flex gap-2 items-center">
-                  <span className="px-2 py-1 text-[11px] rounded-full bg-emerald-50 text-emerald-600 font-semibold">{(post as any).applications || 0} applications</span>
-                  {isAIFilterActive && post.aiReason && (
-                    <span className="px-2 py-1 text-[11px] rounded-full bg-blue-50 text-blue-600 font-semibold truncate" title={post.aiReason}>
-                      AI: {post.aiReason.substring(0, 20)}...
-                    </span>
-                  )}
-                </div>
               </div>
             ))}
           </div>
