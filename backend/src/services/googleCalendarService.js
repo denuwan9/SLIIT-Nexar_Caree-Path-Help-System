@@ -1,40 +1,79 @@
-/**
- * Fetch all Nexar study events from user's Google Calendar
- * Only returns events with privateExtendedProperty: app=nexar-study
- */
-exports.fetchNexarEvents = async (user) => {
-    const calendar = await getCalendarClient(user);
-    let pageToken = undefined;
-    const events = [];
-    do {
-        const listRes = await calendar.events.list({
-            calendarId: 'primary',
-            privateExtendedProperty: 'app=nexar-study',
-            pageToken: pageToken,
-        });
-        const items = listRes.data.items || [];
-        for (const event of items) {
-            events.push({
-                id: event.id,
-                title: event.summary,
-                start: event.start?.dateTime || event.start?.date,
-                end: event.end?.dateTime || event.end?.date,
-                description: event.description,
-            });
-        }
-        pageToken = listRes.data.nextPageToken;
-    } while (pageToken);
-    return events;
-};
 const { google } = require('googleapis');
 const logger = require('../utils/logger');
 const User = require('../models/User');
+
+const APP_TAG = 'nexar-study';
+const COLOR_IDS = ['1', '2', '3', '4', '5', '7', '8', '9', '10', '11'];
 
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
 );
+
+const parseEventDate = (value) => {
+    if (!value) return null;
+    const parsed = new Date(value.dateTime || value.date);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const parseTimeToHourMinute = (timeStr = '') => {
+    const [h, m] = String(timeStr).split(':').map((v) => parseInt(v, 10));
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return { h, m };
+};
+
+const getSessionNominalStart = (sessionDateInput, plan) => {
+    const sessionDate = new Date(sessionDateInput);
+    if (Number.isNaN(sessionDate.getTime())) return null;
+
+    let hour = 9;
+    let minute = 0;
+
+    const workDays = Array.isArray(plan.internshipDays) ? plan.internshipDays : [];
+    const dayOfWeek = sessionDate.toLocaleDateString('en-US', { weekday: 'short' });
+    const isWorkDay = workDays.includes(dayOfWeek);
+
+    if (isWorkDay && plan.internshipEndTime) {
+        const parsedEnd = parseTimeToHourMinute(plan.internshipEndTime);
+        if (parsedEnd) {
+            hour = (parsedEnd.h + 1) % 24;
+            minute = parsedEnd.m;
+        }
+    }
+
+    sessionDate.setHours(hour, minute, 0, 0);
+    return sessionDate;
+};
+
+const isOverlapping = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
+
+const isSameRange = (aStart, aEnd, bStart, bEnd) => (
+    aStart.getTime() === bStart.getTime() && aEnd.getTime() === bEnd.getTime()
+);
+
+const buildTaskKey = (planId, sessionId, subjectIdx) => `${planId}:${sessionId}:${subjectIdx}`;
+
+const listCalendarEvents = async (calendar, params = {}) => {
+    let pageToken;
+    const all = [];
+
+    do {
+        const res = await calendar.events.list({
+            calendarId: 'primary',
+            singleEvents: true,
+            showDeleted: false,
+            maxResults: 2500,
+            ...params,
+            pageToken,
+        });
+
+        all.push(...(res.data.items || []));
+        pageToken = res.data.nextPageToken;
+    } while (pageToken);
+
+    return all;
+};
 
 /**
  * Exchange Authorization Code for Access & Refresh Tokens
@@ -79,114 +118,275 @@ const getCalendarClient = async (user) => {
 };
 
 /**
- * Sync Study Plan Sessions to Google Calendar with Deep Clean & Polish
+ * Fetch all Nexar study events from user's Google Calendar
+ * Only returns events with privateExtendedProperty: app=nexar-study
+ */
+exports.fetchNexarEvents = async (user) => {
+    const calendar = await getCalendarClient(user);
+    const events = await listCalendarEvents(calendar, {
+        privateExtendedProperty: `app=${APP_TAG}`,
+        orderBy: 'startTime',
+    });
+
+    return events
+        .filter((event) => event.status !== 'cancelled')
+        .map((event) => ({
+            id: event.id,
+            title: event.summary,
+            start: event.start?.dateTime || event.start?.date,
+            end: event.end?.dateTime || event.end?.date,
+            description: event.description,
+            link: event.htmlLink,
+        }));
+};
+
+/**
+ * Sync study plan sessions to Google Calendar without overlaps or duplicates.
  */
 exports.syncPlanToCalendar = async (user, plan) => {
     try {
         const calendar = await getCalendarClient(user);
-        
-        // 1. RECURSIVE DEEP CLEAN (Paginated Deletion)
-        logger.info(`Starting Deep Clean for user: ${user._id}`);
-        let pageToken = undefined;
-        let deletedCount = 0;
+        const currentPlanId = String(plan._id);
+        const syncSummary = {
+            planned: 0,
+            added: 0,
+            updated: 0,
+            skippedDuplicates: 0,
+            skippedOverlaps: 0,
+            skippedInvalid: 0,
+            removedFromOtherPlans: 0,
+            removedStaleInCurrentPlan: 0,
+            overlapSamples: [],
+        };
 
-        do {
-            const listRes = await calendar.events.list({
-                calendarId: 'primary',
-                privateExtendedProperty: 'app=nexar-study',
-                pageToken: pageToken,
-            });
+        const sessions = Array.isArray(plan.sessions) ? plan.sessions : [];
 
-            const items = listRes.data.items || [];
-            if (items.length > 0) {
-                // Delete in a tight loop
-                await Promise.all(items.map(event => 
-                    calendar.events.delete({ calendarId: 'primary', eventId: event.id })
-                        .catch(e => logger.warn(`Delete failed for ${event.id}: ${e.message}`))
-                ));
-                deletedCount += items.length;
-            }
-            pageToken = listRes.data.nextPageToken;
-        } while (pageToken);
-
-        logger.info(`Deep Clean complete. Removed ${deletedCount} stale Nexar events.`);
-
-        // 2. FRESH INSERTION WITH COLOR CODING
-        const results = [];
         const subjectColorMap = new Map();
-        const colors = ['1', '2', '3', '4', '5', '7', '8', '9', '10', '11']; // Google colorIds
+        const uniqueSubjects = [...new Set(sessions.flatMap((s) => (s.subjects || []).map((sub) => sub.subjectName || 'General')))];
+        uniqueSubjects.forEach((sub, i) => subjectColorMap.set(sub, COLOR_IDS[i % COLOR_IDS.length]));
 
-        // Map colors to unique subjects in the plan
-        const uniqueSubjects = [...new Set(plan.sessions.flatMap(s => s.subjects.map(sub => sub.subjectName)))];
-        uniqueSubjects.forEach((sub, i) => subjectColorMap.set(sub, colors[i % colors.length]));
+        const normalizedTasks = [];
 
-        for (const session of plan.sessions) {
-            if (!session.date) continue;
+        for (const session of sessions) {
+            if (!session?.date || !Array.isArray(session.subjects)) continue;
 
-            for (const subject of session.subjects) {
-                try {
-                    const dateStr = session.date instanceof Date 
-                        ? session.date.toISOString().split('T')[0] 
-                        : new Date(session.date).toISOString().split('T')[0];
-                    const startTimeStr = subject.customStartTime || '09:00';
-                    const duration = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
-                    const startDateTime = new Date(`${dateStr}T${startTimeStr}:00`);
-                    if (isNaN(startDateTime.getTime())) continue;
-                    const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
+            let nominalStart = getSessionNominalStart(session.date, plan);
+            if (!nominalStart) continue;
 
-                    // Extra check: skip if identical event already exists
+            for (let idx = 0; idx < session.subjects.length; idx += 1) {
+                const subject = session.subjects[idx];
+                syncSummary.planned += 1;
 
-                    // Compose a clear summary with subject and topic/task
-
-                    const taskName = subject.title || subject.topic || 'Task';
-                    const eventSummary = `${taskName} — ${subject.subjectName}`;
-
-
-                    const existingEventsRes = await calendar.events.list({
-                        calendarId: 'primary',
-                        timeMin: startDateTime.toISOString(),
-                        timeMax: endDateTime.toISOString(),
-                        privateExtendedProperty: 'app=nexar-study',
-                        q: eventSummary,
-                    });
-                    const exists = (existingEventsRes.data.items || []).some(ev =>
-                        ev.summary === eventSummary &&
-                        ev.start?.dateTime === startDateTime.toISOString() &&
-                        ev.end?.dateTime === endDateTime.toISOString() &&
-                        ev.extendedProperties?.private?.app === 'nexar-study'
-                    );
-                    if (exists) {
-                        logger.info(`Skipped duplicate event for ${eventSummary} at ${startDateTime.toISOString()}`);
-                        continue;
-                    }
-
-                    const event = {
-                        summary: eventSummary,
-                        description: `Subject: ${subject.subjectName}\nTask: ${taskName}\nTopic: ${subject.topic || ''}\nInstruction: ${subject.instruction || ''}\nFrom Nexar Study Plan: "${plan.title}"`,
-                        start: { dateTime: startDateTime.toISOString(), timeZone: 'UTC' },
-                        end: { dateTime: endDateTime.toISOString(), timeZone: 'UTC' },
-                        extendedProperties: {
-                            private: { app: 'nexar-study' }
-                        },
-                        reminders: {
-                            useDefault: false,
-                            overrides: [{ method: 'popup', minutes: 15 }],
-                        },
-                        colorId: subjectColorMap.get(subject.subjectName) || '6',
-                    };
-
-                    const created = await calendar.events.insert({
-                        calendarId: 'primary',
-                        resource: event,
-                    });
-                    results.push(created.data);
-                } catch (e) {
-                    logger.error(`Event placement failed: ${e.message}`);
+                const duration = subject.durationMinutes || Math.round((subject.durationHours || 1) * 60);
+                if (!duration || duration <= 0) {
+                    syncSummary.skippedInvalid += 1;
+                    continue;
                 }
+
+                const startDateTime = new Date(nominalStart);
+
+                const customTime = parseTimeToHourMinute(subject.customStartTime);
+                if (customTime) {
+                    startDateTime.setHours(customTime.h, customTime.m, 0, 0);
+                }
+
+                if (Number.isNaN(startDateTime.getTime())) {
+                    syncSummary.skippedInvalid += 1;
+                    continue;
+                }
+
+                const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
+                const taskName = subject.title || subject.topic || 'Study Task';
+                const summary = `Study: ${subject.subjectName || 'General'} | ${taskName}`;
+                const taskKey = buildTaskKey(String(plan._id), String(session._id), idx);
+
+                normalizedTasks.push({
+                    session,
+                    subject,
+                    idx,
+                    summary,
+                    taskName,
+                    taskKey,
+                    startDateTime,
+                    endDateTime,
+                    colorId: subjectColorMap.get(subject.subjectName || 'General') || '6',
+                });
+
+                nominalStart = new Date(nominalStart.getTime() + duration * 60000);
             }
         }
 
-        return results;
+        const currentTaskKeys = new Set(normalizedTasks.map((task) => task.taskKey));
+
+        // Remove old Nexar events that do not belong to the currently synced plan,
+        // and remove stale events in the same plan that no longer exist in current tasks.
+        const allNexarEvents = await listCalendarEvents(calendar, {
+            privateExtendedProperty: `app=${APP_TAG}`,
+        });
+
+        const eventsToRemove = allNexarEvents.filter((event) => {
+            if (event.status === 'cancelled') return false;
+
+            const eventPlanId = event.extendedProperties?.private?.planId;
+            const eventTaskKey = event.extendedProperties?.private?.taskKey;
+
+            if (!eventPlanId || eventPlanId !== currentPlanId) return true;
+            if (!eventTaskKey || !currentTaskKeys.has(eventTaskKey)) return true;
+
+            return false;
+        });
+
+        for (const event of eventsToRemove) {
+            try {
+                await calendar.events.delete({
+                    calendarId: 'primary',
+                    eventId: event.id,
+                });
+
+                const eventPlanId = event.extendedProperties?.private?.planId;
+                if (eventPlanId && eventPlanId === currentPlanId) {
+                    syncSummary.removedStaleInCurrentPlan += 1;
+                } else {
+                    syncSummary.removedFromOtherPlans += 1;
+                }
+            } catch (deleteError) {
+                logger.warn(`Failed to delete old calendar event ${event.id}: ${deleteError.message}`);
+            }
+        }
+
+        if (!normalizedTasks.length) {
+            return syncSummary;
+        }
+
+        const minStart = normalizedTasks.reduce((min, t) => (t.startDateTime < min ? t.startDateTime : min), normalizedTasks[0].startDateTime);
+        const maxEnd = normalizedTasks.reduce((max, t) => (t.endDateTime > max ? t.endDateTime : max), normalizedTasks[0].endDateTime);
+
+        const timeMin = new Date(minStart.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        const timeMax = new Date(maxEnd.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+        const existingEvents = await listCalendarEvents(calendar, {
+            timeMin,
+            timeMax,
+            orderBy: 'startTime',
+        });
+
+        const eventByTaskKey = new Map();
+        existingEvents.forEach((event) => {
+            const key = event.extendedProperties?.private?.taskKey;
+            if (key) {
+                eventByTaskKey.set(key, event);
+            }
+        });
+
+        for (const task of normalizedTasks) {
+            const currentByKey = eventByTaskKey.get(task.taskKey);
+            const resource = {
+                summary: task.summary,
+                description: [
+                    `Plan: ${plan.title}`,
+                    `Subject: ${task.subject.subjectName || 'General'}`,
+                    `Task: ${task.taskName}`,
+                    `Topic: ${task.subject.topic || '-'}`,
+                    `Instruction: ${task.subject.instruction || '-'}`,
+                ].join('\n'),
+                start: { dateTime: task.startDateTime.toISOString() },
+                end: { dateTime: task.endDateTime.toISOString() },
+                extendedProperties: {
+                    private: {
+                        app: APP_TAG,
+                        planId: String(plan._id),
+                        sessionId: String(task.session._id),
+                        subjectIdx: String(task.idx),
+                        taskKey: task.taskKey,
+                    },
+                },
+                reminders: {
+                    useDefault: false,
+                    overrides: [{ method: 'popup', minutes: 15 }],
+                },
+                colorId: task.colorId,
+            };
+
+            const hasExactDuplicate = existingEvents.some((event) => {
+                if (event.status === 'cancelled') return false;
+                const eventStart = parseEventDate(event.start);
+                const eventEnd = parseEventDate(event.end);
+                if (!eventStart || !eventEnd) return false;
+                return (
+                    event.summary === task.summary &&
+                    isSameRange(task.startDateTime, task.endDateTime, eventStart, eventEnd)
+                );
+            });
+
+            if (!currentByKey && hasExactDuplicate) {
+                syncSummary.skippedDuplicates += 1;
+                continue;
+            }
+
+            if (currentByKey) {
+                const currentStart = parseEventDate(currentByKey.start);
+                const currentEnd = parseEventDate(currentByKey.end);
+                const unchanged = currentStart && currentEnd
+                    ? currentByKey.summary === task.summary && isSameRange(task.startDateTime, task.endDateTime, currentStart, currentEnd)
+                    : false;
+
+                if (unchanged) {
+                    syncSummary.skippedDuplicates += 1;
+                    continue;
+                }
+            }
+
+            const overlapEvent = existingEvents.find((event) => {
+                if (event.status === 'cancelled') return false;
+                if (currentByKey && event.id === currentByKey.id) return false;
+
+                const eventStart = parseEventDate(event.start);
+                const eventEnd = parseEventDate(event.end);
+                if (!eventStart || !eventEnd) return false;
+
+                return isOverlapping(task.startDateTime, task.endDateTime, eventStart, eventEnd);
+            });
+
+            if (overlapEvent) {
+                syncSummary.skippedOverlaps += 1;
+                if (syncSummary.overlapSamples.length < 5) {
+                    syncSummary.overlapSamples.push({
+                        task: task.summary,
+                        conflictWith: overlapEvent.summary || 'Existing calendar event',
+                        start: task.startDateTime.toISOString(),
+                        end: task.endDateTime.toISOString(),
+                    });
+                }
+                continue;
+            }
+
+            if (currentByKey) {
+                const updated = await calendar.events.patch({
+                    calendarId: 'primary',
+                    eventId: currentByKey.id,
+                    resource,
+                });
+
+                syncSummary.updated += 1;
+                const existingIdx = existingEvents.findIndex((event) => event.id === currentByKey.id);
+                if (existingIdx !== -1) {
+                    existingEvents[existingIdx] = updated.data;
+                }
+                eventByTaskKey.set(task.taskKey, updated.data);
+                continue;
+            }
+
+            const created = await calendar.events.insert({
+                calendarId: 'primary',
+                resource,
+            });
+
+            syncSummary.added += 1;
+            existingEvents.push(created.data);
+            eventByTaskKey.set(task.taskKey, created.data);
+        }
+
+        return syncSummary;
     } catch (error) {
         logger.error(`Critical Sync Error: ${error.message}`);
         throw new Error('Sync failed. Please try again.');

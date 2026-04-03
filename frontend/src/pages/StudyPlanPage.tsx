@@ -35,6 +35,7 @@ import {
 
 import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPlans, updateSubjectStatus, updateSubjectTime } from '../services/studyPlanService';
 import { googleCalendarService } from '../services/googleCalendarService';
+import type { GoogleCalendarEvent, GoogleSyncSummary } from '../services/googleCalendarService';
 import { Share2, CalendarPlus } from 'lucide-react';
 import type {
     CreateStudyPlanInput,
@@ -356,6 +357,7 @@ const StudyPlanPage: React.FC = () => {
     const [isLoadingPlans, setIsLoadingPlans] = useState(false);
     const [plans, setPlans] = useState<StudyPlan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+    const [regenerateFromPlanId, setRegenerateFromPlanId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'builder' | 'plans' | 'schedule'>('builder');
     const [justGenerated, setJustGenerated] = useState(false);
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
@@ -380,6 +382,9 @@ const StudyPlanPage: React.FC = () => {
     const [isCalendarLinked, setIsCalendarLinked] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [showViewCalendar, setShowViewCalendar] = useState(false);
+    const [isCalendarViewOpen, setIsCalendarViewOpen] = useState(false);
+    const [isLoadingCalendarEvents, setIsLoadingCalendarEvents] = useState(false);
+    const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>([]);
     
     // Edit task date/time state
     const [editingTaskTime, setEditingTaskTime] = useState<{ sessionId: string; subjectIdx: number; date: string; customStartTime: string; durationMinutes: number; originalDurationMinutes: number } | null>(null);
@@ -404,9 +409,57 @@ const StudyPlanPage: React.FC = () => {
         }
     }, [viewMode]);
 
+    const prevViewModeRef = React.useRef(viewMode);
+    useEffect(() => {
+        if (viewMode === 'schedule' && prevViewModeRef.current !== 'schedule') {
+            setIsTrackerExpanded(false);
+        }
+        prevViewModeRef.current = viewMode;
+    }, [viewMode]);
+
+    const formatSyncSummary = (summary: GoogleSyncSummary) => {
+        const parts: string[] = [];
+        if (summary.removedFromOtherPlans > 0) parts.push(`${summary.removedFromOtherPlans} previous-plan removed`);
+        if (summary.removedStaleInCurrentPlan > 0) parts.push(`${summary.removedStaleInCurrentPlan} stale removed`);
+        if (summary.added > 0) parts.push(`${summary.added} added`);
+        if (summary.updated > 0) parts.push(`${summary.updated} updated`);
+        if (summary.skippedDuplicates > 0) parts.push(`${summary.skippedDuplicates} duplicate skipped`);
+        if (summary.skippedOverlaps > 0) parts.push(`${summary.skippedOverlaps} overlap skipped`);
+        if (summary.skippedInvalid > 0) parts.push(`${summary.skippedInvalid} invalid skipped`);
+        return parts.length > 0 ? `Google Calendar sync: ${parts.join(' | ')}` : 'No study sessions were synced.';
+    };
+
+    const loadCalendarEvents = async () => {
+        setIsLoadingCalendarEvents(true);
+        try {
+            const events = await googleCalendarService.getEvents();
+            const sorted = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+            setCalendarEvents(sorted);
+        } catch {
+            toast.error('Failed to load Google Calendar events');
+        } finally {
+            setIsLoadingCalendarEvents(false);
+        }
+    };
+
     const handleGoogleSync = () => {
         if (!selectedPlan || isSyncing) return;
         setIsSyncing(true);
+
+        const syncSelectedPlan = async () => {
+            const result = await googleCalendarService.syncPlan(selectedPlan._id);
+            toast.success(formatSyncSummary(result.syncSummary), { duration: 5000 });
+
+            if (result.syncSummary.skippedOverlaps > 0) {
+                toast.error(`${result.syncSummary.skippedOverlaps} sessions were skipped because they overlap existing calendar events.`, {
+                    duration: 6000,
+                });
+            }
+
+            setShowViewCalendar(true);
+            await loadCalendarEvents();
+        };
+
         const client = (window as any).google?.accounts.oauth2.initCodeClient({
             client_id: '741747269992-1d9m8m0hbcfa593ssaf7t86qr1vfk9oq.apps.googleusercontent.com',
             scope: 'openid email profile https://www.googleapis.com/auth/calendar.events',
@@ -417,33 +470,35 @@ const StudyPlanPage: React.FC = () => {
                     try {
                         await googleCalendarService.linkAccount(response.code);
                         setIsCalendarLinked(true);
-                        await googleCalendarService.syncPlan(selectedPlan._id);
-                        toast.success('Successfully synced to Google Calendar!');
-                        setShowViewCalendar(true);
+                        await syncSelectedPlan();
                     } catch (error: any) {
                         toast.error(error.response?.data?.message || 'Sync failed');
                     } finally {
                         setIsSyncing(false);
                     }
+                } else {
+                    setIsSyncing(false);
                 }
             },
         });
+
         if (isCalendarLinked) {
             // If already linked, just trigger sync
-            googleCalendarService.syncPlan(selectedPlan._id)
-                .then(() => {
-                    toast.success('Calendar updated!');
-                    setShowViewCalendar(true);
-                })
+            syncSelectedPlan()
                 .catch(() => toast.error('Sync failed'))
                 .finally(() => setIsSyncing(false));
         } else {
+            if (!client) {
+                toast.error('Google authentication is not ready. Please reload and try again.');
+                setIsSyncing(false);
+                return;
+            }
             client.requestCode();
         }
     };
 
     const handleViewCalendar = () => {
-        window.open('https://calendar.google.com/', '_blank');
+        window.open('https://calendar.google.com/calendar/u/0/r/week', '_blank', 'noopener,noreferrer');
     };
 
     const allTasksFlat = useMemo(() => {
@@ -470,7 +525,6 @@ const StudyPlanPage: React.FC = () => {
         }
 
         setViewMode('schedule');
-        setIsTrackerExpanded(true);
 
         if (!taskId) return;
 
@@ -1117,11 +1171,38 @@ const StudyPlanPage: React.FC = () => {
             } else {
                 created = await createStudyPlan(payload);
             }
+
+            let removedPreviousPlan = false;
+            const previousPlanId = regenerateFromPlanId;
+
+            if (previousPlanId && previousPlanId !== created._id) {
+                try {
+                    await deleteStudyPlan(previousPlanId);
+                    removedPreviousPlan = true;
+                } catch (deleteErr) {
+                    toast.error('New plan created, but failed to remove the previous plan.');
+                }
+            }
+
             if (!planInput.title.trim()) {
                 setPlanInput((prev) => ({ ...prev, title: safeTitle }));
             }
-            toast.success('Study plan generated');
-            setPlans((prev) => [created, ...prev]);
+
+            if (removedPreviousPlan) {
+                toast.success('Study plan regenerated and previous plan removed');
+            } else {
+                toast.success('Study plan generated');
+            }
+
+            setPlans((prev) => {
+                const withoutCreated = prev.filter((p) => p._id !== created._id);
+                const withoutPrevious = removedPreviousPlan && previousPlanId
+                    ? withoutCreated.filter((p) => p._id !== previousPlanId)
+                    : withoutCreated;
+                return [created, ...withoutPrevious];
+            });
+
+            setRegenerateFromPlanId(null);
             setSelectedPlanId(created._id);
             setViewMode('builder');
             setCurrentStep(3);
@@ -1137,6 +1218,11 @@ const StudyPlanPage: React.FC = () => {
 
     const handleSaveTaskTime = async () => {
         if (!selectedPlan || !editingTaskTime) return;
+
+        if (editingTaskTime.date && editingTaskTime.date < todayISO) {
+            toast.error('You cannot move a task to a past date. Choose today or a future date.');
+            return;
+        }
 
         if (editingTaskTime.customStartTime) {
             const targetSession = selectedPlan.sessions.find(s => 
@@ -1200,6 +1286,7 @@ const StudyPlanPage: React.FC = () => {
 
     const handleRegeneratePlan = () => {
         if (!selectedPlan) return;
+        setRegenerateFromPlanId(selectedPlan._id);
         
         setPlanInput({
             title: selectedPlan.title,
@@ -1258,7 +1345,6 @@ const StudyPlanPage: React.FC = () => {
         });
         setActiveTimerId(taskId);
         setOpenTrackerId(taskId);
-        setIsTrackerExpanded(true);
         if (sessionId && typeof subjectIdx === 'number') {
             handleStatusChange(sessionId, subjectIdx, 'in-progress');
         }
@@ -2350,26 +2436,24 @@ const StudyPlanPage: React.FC = () => {
                                         <p className="text-2xl font-bold text-emerald-700">{selectedPlan.totalStudyDays}d</p>
                                     </div>
                                 </div>
-
-                                {/* Compact Task Tracker Toggle */}
                                 <button
-                                    onClick={() => setIsTrackerExpanded(!isTrackerExpanded)}
-                                    className={`flex h-12 px-6 items-center justify-center gap-2 rounded-xl font-black uppercase tracking-widest text-[9px] transition-all border-2 shadow-sm hover:scale-105 active:scale-95 ${
-                                        isTrackerExpanded 
-                                        ? 'bg-slate-900 border-slate-700 text-white' 
-                                        : 'bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50'
+                                    onClick={() => setIsTrackerExpanded((prev) => !prev)}
+                                    aria-label={isTrackerExpanded ? 'Collapse task tracker' : 'Expand task tracker'}
+                                    title={isTrackerExpanded ? 'Collapse Task Tracker' : 'Open Task Tracker'}
+                                    className={`relative flex h-12 w-12 items-center justify-center self-end rounded-xl transition-all border-2 shadow-sm hover:scale-105 active:scale-95 ${
+                                        isTrackerExpanded
+                                            ? 'bg-slate-900 border-slate-700 text-white'
+                                            : 'bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50'
                                     }`}
                                 >
-                                    <div className="relative flex items-center justify-center">
-                                        <Timer size={14} />
-                                        {activeTimerId && (
-                                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white"></span>
-                                            </span>
-                                        )}
-                                    </div>
-                                    {isTrackerExpanded ? 'Collapse Tracking' : 'Launch Session Tracker'}
+                                    {isTrackerExpanded ? <X size={18} /> : <Timer size={18} />}
+                                    {activeTimerId && (
+                                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white"></span>
+                                        </span>
+                                    )}
+                                    <span className="sr-only">{isTrackerExpanded ? 'Collapse Task Tracker' : 'Open Task Tracker'}</span>
                                 </button>
                             </div>
                         </div>
@@ -2622,8 +2706,9 @@ const StudyPlanPage: React.FC = () => {
                                                                             <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-blue-200 shadow-inner z-20 flex-wrap">
                                                                                 <input 
                                                                                     type="date" 
+                                                                                    min={todayISO}
                                                                                     value={editingTaskTime.date}
-                                                                                    onChange={(e) => setEditingTaskTime({...editingTaskTime, date: e.target.value})}
+                                                                                    onChange={(e) => setEditingTaskTime({...editingTaskTime, date: clampToToday(e.target.value)})}
                                                                                     className="text-xs px-2 py-1.5 rounded bg-white border border-slate-200 text-slate-700 outline-none focus:border-blue-500 font-medium"
                                                                                 />
                                                                                 <input 
@@ -2765,6 +2850,99 @@ const StudyPlanPage: React.FC = () => {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {isCalendarViewOpen && (
+                <div className="fixed inset-0 z-[250] bg-slate-900/70 backdrop-blur-sm p-4 md:p-8">
+                    <div className="mx-auto h-full max-w-4xl flex items-center justify-center">
+                        <div className="w-full max-h-[88vh] rounded-[2rem] bg-white border border-slate-200 shadow-2xl overflow-hidden">
+                            <div className="flex items-center justify-between gap-4 px-6 py-5 border-b border-slate-200 bg-white">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Google Calendar View</p>
+                                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Student Study Timeline</h3>
+                                    <p className="text-xs text-slate-500 font-medium">Clear daily view of synced study sessions.</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => window.open('https://calendar.google.com/calendar/u/0/r/week', '_blank')}
+                                        className="px-4 py-2 rounded-xl bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider hover:bg-blue-700 transition"
+                                    >
+                                        Open Google Calendar
+                                    </button>
+                                    <button
+                                        onClick={() => setIsCalendarViewOpen(false)}
+                                        className="h-10 w-10 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition flex items-center justify-center"
+                                        aria-label="Close calendar view"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="max-h-[72vh] overflow-y-auto bg-slate-50 p-6">
+                                <div className="space-y-4">
+                                {isLoadingCalendarEvents ? (
+                                    <div className="py-20 text-center">
+                                        <Loader2 size={28} className="mx-auto animate-spin text-blue-600" />
+                                        <p className="mt-3 text-sm font-semibold text-slate-500">Loading calendar events...</p>
+                                    </div>
+                                ) : calendarEvents.length === 0 ? (
+                                    <div className="py-20 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+                                        <CalendarClock size={34} className="mx-auto text-slate-300" />
+                                        <p className="mt-3 text-base font-bold text-slate-700">No synced study events found</p>
+                                        <p className="mt-1 text-sm text-slate-500">Run sync to send your study plan sessions to Google Calendar.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {calendarEvents.map((event, idx) => {
+                                            const eventDate = new Date(event.start);
+                                            const prevDate = idx > 0 ? new Date(calendarEvents[idx - 1].start) : null;
+                                            const showDateHeading = !prevDate || eventDate.toDateString() !== prevDate.toDateString();
+                                            const timeLabel = `${eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(event.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+                                            return (
+                                                <div key={event.id} className="space-y-2">
+                                                    {showDateHeading && (
+                                                        <div className="pt-2">
+                                                            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                                                {eventDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                                        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                                                            <div className="space-y-1">
+                                                                <p className="text-base font-black text-slate-900 tracking-tight">{event.title}</p>
+                                                                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">{timeLabel}</p>
+                                                            </div>
+                                                            {event.link && (
+                                                                <a
+                                                                    href={event.link}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="text-[11px] font-bold text-blue-600 hover:text-blue-700"
+                                                                >
+                                                                    Open event
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                        {event.description && (
+                                                            <div className="mt-3 pt-3 border-t border-slate-100">
+                                                                <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">{event.description}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
