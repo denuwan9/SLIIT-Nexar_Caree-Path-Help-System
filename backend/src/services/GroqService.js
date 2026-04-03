@@ -187,6 +187,28 @@ ${profileJson}
     }
 
     /**
+     * General prompt response for non-profile-based tasks.
+     * Accepts a ready-made user prompt and returns the model response.
+     */
+    async generateResponse(prompt) {
+        if (!prompt || typeof prompt !== 'string') {
+            throw new Error('Prompt must be a non-empty string');
+        }
+
+        const response = await this.client.chat.completions.create({
+            model: JSON_MODEL,
+            messages: [
+                { role: 'system', content: 'You are a powerful AI assistant that returns concise JSON or textual output based on user instruction.' },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.2,
+            max_tokens: 700,
+        });
+
+        return response.choices[0].message.content;
+    }
+
+    /**
      * TASK 03a — Career Path Simulator
      * Returns a structured JSON roadmap across 3 phases.
      */

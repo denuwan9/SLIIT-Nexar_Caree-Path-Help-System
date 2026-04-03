@@ -24,6 +24,8 @@ export type JobPost = {
   isPublished?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  aiScore?: number;
+  aiReason?: string;
 };
 
 export const fetchMyJobPosts = async (): Promise<JobPost[]> => {

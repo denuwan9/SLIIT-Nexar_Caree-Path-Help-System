@@ -47,6 +47,39 @@ const CreateJobPost: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [filteredRoles, setFilteredRoles] = useState(targetRolesList);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isDropdownOpen) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev < filteredRoles.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev > 0 ? prev - 1 : filteredRoles.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < filteredRoles.length) {
+          onChange('targetRole', filteredRoles[highlightedIndex]);
+          setIsDropdownOpen(false);
+          setHighlightedIndex(-1);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsDropdownOpen(false);
+        setHighlightedIndex(-1);
+        break;
+    }
+  };
 
   const [data, setData] = useState({
     title: '',
@@ -167,21 +200,35 @@ const CreateJobPost: React.FC = () => {
                 setFilteredRoles(targetRolesList.filter(role =>
                   role.toLowerCase().includes(e.target.value.toLowerCase())
                 ));
+                setHighlightedIndex(-1); // Reset highlight when typing
               }}
-              onFocus={() => setIsDropdownOpen(true)}
-              onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+              onFocus={() => {
+                setIsDropdownOpen(true);
+                setHighlightedIndex(-1);
+              }}
+              onBlur={() => setTimeout(() => {
+                setIsDropdownOpen(false);
+                setHighlightedIndex(-1);
+              }, 200)}
+              onKeyDown={handleKeyDown}
               className="w-full p-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-300"
             />
             {isDropdownOpen && filteredRoles.length > 0 && (
               <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-40 overflow-y-auto mt-1">
-                {filteredRoles.map((role) => (
+                {filteredRoles.map((role, index) => (
                   <li
                     key={role}
-                    onClick={() => {
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Prevent blur event from firing
                       onChange('targetRole', role);
                       setIsDropdownOpen(false);
+                      setHighlightedIndex(-1);
                     }}
-                    className="p-2 hover:bg-slate-100 cursor-pointer text-sm"
+                    className={`p-2 cursor-pointer text-sm ${
+                      index === highlightedIndex
+                        ? 'bg-purple-100 text-purple-900'
+                        : 'hover:bg-slate-100'
+                    }`}
                   >
                     {role}
                   </li>

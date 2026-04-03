@@ -112,6 +112,12 @@ exports.getJobPostById = async (req, res, next) => {
             return next(new AppError('Access denied.', 403));
         }
 
+        // Increment view count for admin views or student views of other posts
+        if (req.user.role === 'admin' || (req.user.role === 'student' && post.student._id.toString() !== req.user._id.toString())) {
+            await JobPost.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } });
+            post.viewCount += 1; // Update the in-memory object for immediate response
+        }
+
         res.status(200).json({ status: 'success', data: { post } });
     } catch (error) {
         next(error);

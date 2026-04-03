@@ -1,7 +1,13 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Search, Filter, ArrowLeft } from 'lucide-react';
 import { fetchAllJobPosts, type JobPost } from '../services/jobPostService';
+
+type JobPostWithAI = JobPost & {
+  aiScore?: number;
+  aiReason?: string;
+};
 import { applyForJob } from '../services/applicationService';
+import api from '../api/axios';
 
 const targetRolesList = [
   'Frontend Engineer',
@@ -41,18 +47,25 @@ const targetRolesList = [
 ];
 
 const AdminJobPosts: React.FC = () => {
-  const [posts, setPosts] = useState<JobPost[]>([]);
+  const [posts, setPosts] = useState<JobPostWithAI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchByRole, setIsSearchByRole] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [filteredRoles, setFilteredRoles] = useState(targetRolesList);
-  const [selectedJobPost, setSelectedJobPost] = useState<JobPost | null>(null);
+  const [selectedJobPost, setSelectedJobPost] = useState<JobPostWithAI | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalAnimating, setIsModalAnimating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [clickOrigin, setClickOrigin] = useState<{ x: number; y: number } | null>(null);
+  const [isAIFilterModalOpen, setIsAIFilterModalOpen] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiResults, setAiResults] = useState<JobPostWithAI[]>([]);
+  const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [isAIFilterActive, setIsAIFilterActive] = useState(false);
+  const [aiQueryUsed, setAiQueryUsed] = useState('');
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,6 +94,11 @@ const AdminJobPosts: React.FC = () => {
   }, []);
 
   const filteredPosts = useMemo(() => {
+    if (isAIFilterActive) {
+      const source = aiResults.length > 0 ? aiResults : posts;
+      return [...source].sort((a, b) => (b.aiScore ?? 0) - (a.aiScore ?? 0));
+    }
+
     if (!searchQuery) return posts;
     if (isSearchByRole) {
       return posts.filter(post => post.targetRole.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -91,7 +109,7 @@ const AdminJobPosts: React.FC = () => {
         post.targetRole.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-  }, [posts, searchQuery, isSearchByRole]);
+  }, [posts, searchQuery, isSearchByRole, isAIFilterActive, aiResults]);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -141,6 +159,64 @@ const AdminJobPosts: React.FC = () => {
     }
   };
 
+  const handleAIAnalyze = async () => {
+    if (!aiQuery.trim()) {
+      setAiError('Please enter a query to analyze.');
+      return;
+    }
+
+    setIsAIAnalyzing(true);
+    setAiError(null);
+
+    try {
+      const response = await api.post('/admin/ai-rank-posts', { query: aiQuery });
+      const ranked = Array.isArray(response.data?.data?.rankedPosts)
+        ? response.data.data.rankedPosts
+        : Array.isArray(response.data?.rankedPosts)
+        ? response.data.rankedPosts
+        : [];
+
+      if (!ranked.length) {
+        setAiError('AI analysis succeeded but returned no ranked posts. Showing standard job posts.');
+        setIsAIFilterActive(false);
+        setAiResults([]);
+        setIsAIAnalyzing(false);
+        return;
+      }
+
+      const normalized = ranked.map((post: JobPostWithAI) => ({
+        ...post,
+        aiScore: post.aiScore != null ? Number(post.aiScore) : 0,
+        aiReason: post.aiReason || 'No reasoning provided',
+      }));
+
+      const sortedRanked = normalized.sort((a: JobPostWithAI, b: JobPostWithAI) => (b.aiScore ?? 0) - (a.aiScore ?? 0));
+      setAiResults(sortedRanked);
+      setPosts(sortedRanked);
+      setAiQueryUsed(aiQuery);
+      setIsAIFilterActive(true);
+      setIsAIFilterModalOpen(false); // Close the modal
+      setAiQuery(''); // Clear the query for next use
+    } catch (error: any) {
+      setAiError(error.response?.data?.message || error.message || 'An error occurred while analyzing job posts.');
+    } finally {
+      setIsAIAnalyzing(false);
+    }
+  };
+
+  const handleCancelAIFilter = () => {
+    setIsAIFilterActive(false);
+    setAiResults([]);
+    setAiQueryUsed('');
+    setAiError(null);
+  };
+
+  const getAIScoreColor = (score: number) => {
+    if (score >= 80) return 'bg-green-100 text-green-800 border-green-200';
+    if (score >= 50) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    return 'bg-red-100 text-red-800 border-red-200';
+  };
+
   return (
     <div className="w-full h-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -154,48 +230,72 @@ const AdminJobPosts: React.FC = () => {
             </button>
             <h1 className="text-2xl md:text-3xl font-bold text-[#0F172A]">Admin Job Posts</h1>
           </div>
-          <p className="text-sm text-[#64748B] mt-1">Manage and review all student job postings.</p>
+          <p className="text-sm text-[#64748B] mt-1">
+            {isAIFilterActive ? `AI Filtered Results: "${aiQueryUsed}"` : 'Manage and review all student job postings.'}
+          </p>
         </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <div className="flex gap-3">
-          <div className="relative w-80" ref={searchRef}>
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder={isSearchByRole ? "Search by role..." : "Search posts..."}
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              onFocus={() => isSearchByRole && setIsDropdownOpen(true)}
-              className="w-full pl-9 pr-20 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 shadow-sm"
-            />
+          <button
+            onClick={() => {
+              setIsAIFilterModalOpen(true);
+              setAiQuery(''); // Reset query when opening modal
+              setAiError(null);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-300/30 hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105"
+          >
+            🤖 AI Filter
+          </button>
+          {isAIFilterActive && (
             <button
-              onClick={() => {
-                const newState = !isSearchByRole;
-                setIsSearchByRole(newState);
-                if (!newState) {
-                  setIsDropdownOpen(false);
-                  setSearchQuery('');
-                }
-              }}
-              className={`absolute right-2 top-1/2 transform -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 rounded-lg font-semibold transition-all text-xs ${
-                isSearchByRole ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+              onClick={handleCancelAIFilter}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-300/30 hover:bg-red-700 transition-all transform hover:scale-105"
             >
-              <Filter size={12} /> Role
+              Clear
             </button>
-            {isSearchByRole && isDropdownOpen && filteredRoles.length > 0 && (
-              <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-40 overflow-y-auto mt-1">
-                {filteredRoles.map((role) => (
-                  <li
-                    key={role}
-                    onClick={() => handleRoleSelect(role)}
-                    className="p-2 hover:bg-slate-100 cursor-pointer text-sm"
-                  >
-                    {role}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
+        </div>
+
+        <div className="relative w-80" ref={searchRef}>
+          <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder={isSearchByRole ? "Search by role..." : "Search posts..."}
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onFocus={() => isSearchByRole && setIsDropdownOpen(true)}
+            className="w-full pl-9 pr-20 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 shadow-sm"
+          />
+          <button
+            onClick={() => {
+              const newState = !isSearchByRole;
+              setIsSearchByRole(newState);
+              if (!newState) {
+                setIsDropdownOpen(false);
+                setSearchQuery('');
+              }
+            }}
+            className={`absolute right-2 top-1/2 transform -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 rounded-lg font-semibold transition-all text-xs ${
+              isSearchByRole ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Filter size={12} /> Role
+          </button>
+          {isSearchByRole && isDropdownOpen && filteredRoles.length > 0 && (
+            <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-40 overflow-y-auto mt-1">
+              {filteredRoles.map((role) => (
+                <li
+                  key={role}
+                  onClick={() => handleRoleSelect(role)}
+                  className="p-2 hover:bg-slate-100 cursor-pointer text-sm"
+                >
+                  {role}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -216,16 +316,17 @@ const AdminJobPosts: React.FC = () => {
               <div key={post._id} className="border border-slate-100 rounded-2xl p-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={(e) => handleJobPostClick(post, e)}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-bold text-[#0F172A]">{post.title}</h3>
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{post.jobType}</span>
+                  {isAIFilterActive && post.aiScore !== undefined && (
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full border ${getAIScoreColor(post.aiScore)}`}>
+                      {post.aiScore}%
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-[#64748B] mb-2">{post.targetRole}</p>
                 <p className="text-sm text-[#64748B]">{post.preferredLocation || 'Any location'} • {post.isRemoteOk ? 'Remote okay' : 'Onsite only'}</p>
                 <div className="mt-3 flex items-center justify-between text-[12px] text-slate-500">
                   <span>{new Date(post.createdAt || '').toLocaleDateString()}</span>
                   <span>{(post.viewCount || 0)} views</span>
-                </div>
-                <div className="mt-4 flex gap-2 items-center">
-                  <span className="px-2 py-1 text-[11px] rounded-full bg-emerald-50 text-emerald-600 font-semibold">{(post as any).applications || 0} applications</span>
                 </div>
               </div>
             ))}
@@ -309,6 +410,14 @@ const AdminJobPosts: React.FC = () => {
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                     <span className="font-medium text-slate-900">Salary:</span> {selectedJobPost.salaryExpectation?.min ? `${selectedJobPost.salaryExpectation.currency || 'LKR'} ${selectedJobPost.salaryExpectation.min}` : 'N/A'}{selectedJobPost.salaryExpectation?.max ? ` - ${selectedJobPost.salaryExpectation.currency || 'LKR'} ${selectedJobPost.salaryExpectation.max}` : ''}
                   </div>
+                  {isAIFilterActive && selectedJobPost.aiScore !== undefined && (
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 md:col-span-2">
+                      <span className="font-medium text-slate-900">AI Match Score:</span>
+                      <span className={`ml-2 text-sm font-bold px-2 py-1 rounded-full border ${getAIScoreColor(selectedJobPost.aiScore)}`}>
+                        {selectedJobPost.aiScore}%
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -332,6 +441,15 @@ const AdminJobPosts: React.FC = () => {
                 </div>
               )}
 
+              {isAIFilterActive && selectedJobPost.aiReason && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-3">AI Analysis</h3>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-700 leading-relaxed">
+                    {selectedJobPost.aiReason}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end pt-4 border-t border-slate-200">
                 <button
                   onClick={handleApply}
@@ -341,6 +459,107 @@ const AdminJobPosts: React.FC = () => {
                   {isApplying ? 'Applying...' : 'Apply for this Job'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Filter Modal */}
+      {isAIFilterModalOpen && (
+        <div
+          onClick={() => setIsAIFilterModalOpen(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          style={{
+            paddingLeft: '280px',
+            paddingRight: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            style={{
+              transform: 'scale(1)',
+              opacity: 1,
+              transition: 'all 0.3s ease-out',
+              paddingRight: '12px'
+            }}
+          >
+            <div className="p-6 lg:p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">🤖 AI Job Post Ranking</h2>
+                <button
+                  onClick={() => setIsAIFilterModalOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {!aiResults.length ? (
+                <>
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-3">Describe the job posts you want</h3>
+                    <textarea
+                      value={aiQuery}
+                      onChange={(e) => setAiQuery(e.target.value)}
+                      placeholder="Example: Show me the best frontend developer job posts with strong React skills and a clear professional summary"
+                      className="w-full h-32 p-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 resize-none"
+                      disabled={isAIAnalyzing}
+                    />
+                    {aiError && (
+                      <p className="text-red-600 text-sm mt-2">{aiError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setIsAIFilterModalOpen(false)}
+                      className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAIAnalyze}
+                      disabled={!aiQuery.trim() || isAIAnalyzing}
+                      className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-300/30 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      {isAIAnalyzing ? 'Analyzing...' : 'Analyze'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">AI Ranked Results</h3>
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {aiResults.map((result, index) => (
+                      <div key={result._id || index} className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold text-slate-900">{result.title}</h4>
+                          <span className="text-sm font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                            Score: {result.aiScore || 'N/A'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600 mb-2">{result.targetRole}</p>
+                        {result.aiReason && (
+                          <p className="text-sm text-slate-700 italic">"{result.aiReason}"</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={() => {
+                        setAiResults([]);
+                        setAiQuery('');
+                        setAiError(null);
+                      }}
+                      className="px-4 py-2 text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      New Search
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
