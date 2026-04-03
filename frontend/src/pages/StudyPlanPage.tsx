@@ -408,6 +408,14 @@ const StudyPlanPage: React.FC = () => {
         }
     }, [viewMode]);
 
+    const prevViewModeRef = React.useRef(viewMode);
+    useEffect(() => {
+        if (viewMode === 'schedule' && prevViewModeRef.current !== 'schedule') {
+            setIsTrackerExpanded(false);
+        }
+        prevViewModeRef.current = viewMode;
+    }, [viewMode]);
+
     const formatSyncSummary = (summary: GoogleSyncSummary) => {
         const parts: string[] = [];
         if (summary.removedFromOtherPlans > 0) parts.push(`${summary.removedFromOtherPlans} previous-plan removed`);
@@ -516,7 +524,6 @@ const StudyPlanPage: React.FC = () => {
         }
 
         setViewMode('schedule');
-        setIsTrackerExpanded(true);
 
         if (!taskId) return;
 
@@ -1304,7 +1311,6 @@ const StudyPlanPage: React.FC = () => {
         });
         setActiveTimerId(taskId);
         setOpenTrackerId(taskId);
-        setIsTrackerExpanded(true);
         if (sessionId && typeof subjectIdx === 'number') {
             handleStatusChange(sessionId, subjectIdx, 'in-progress');
         }
