@@ -1191,6 +1191,11 @@ const StudyPlanPage: React.FC = () => {
     const handleSaveTaskTime = async () => {
         if (!selectedPlan || !editingTaskTime) return;
 
+        if (editingTaskTime.date && editingTaskTime.date < todayISO) {
+            toast.error('You cannot move a task to a past date. Choose today or a future date.');
+            return;
+        }
+
         if (editingTaskTime.customStartTime) {
             const targetSession = selectedPlan.sessions.find(s => 
                 new Date(s.date).toISOString().split('T')[0] === editingTaskTime.date
@@ -2672,8 +2677,9 @@ const StudyPlanPage: React.FC = () => {
                                                                             <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-blue-200 shadow-inner z-20 flex-wrap">
                                                                                 <input 
                                                                                     type="date" 
+                                                                                    min={todayISO}
                                                                                     value={editingTaskTime.date}
-                                                                                    onChange={(e) => setEditingTaskTime({...editingTaskTime, date: e.target.value})}
+                                                                                    onChange={(e) => setEditingTaskTime({...editingTaskTime, date: clampToToday(e.target.value)})}
                                                                                     className="text-xs px-2 py-1.5 rounded bg-white border border-slate-200 text-slate-700 outline-none focus:border-blue-500 font-medium"
                                                                                 />
                                                                                 <input 

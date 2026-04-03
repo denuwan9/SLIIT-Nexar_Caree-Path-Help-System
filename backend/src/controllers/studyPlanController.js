@@ -725,6 +725,19 @@ exports.updateSubjectTime = async (req, res, next) => {
         let targetSession = session;
         if (date) {
             const newDateObj = new Date(date);
+            if (Number.isNaN(newDateObj.getTime())) {
+                return next(new AppError('Invalid date format.', 400));
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const requestedDate = new Date(newDateObj);
+            requestedDate.setHours(0, 0, 0, 0);
+
+            if (requestedDate < today) {
+                return next(new AppError('Task date cannot be in the past. Please select today or a future date.', 400));
+            }
+
             const newDateStr = newDateObj.toISOString().split('T')[0];
             const oldDateStr = new Date(session.date).toISOString().split('T')[0];
 
