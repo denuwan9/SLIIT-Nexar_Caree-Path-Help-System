@@ -342,6 +342,32 @@ exports.bookSlot = async (req, res, next) => {
 
         const userId = req.user._id.toString();
 
+        // --- NEW VALIDATION: Global limit of 2 bookings per student ---
+        const allEvents = await InterviewEvent.find({ status: { $ne: 'cancelled' } });
+        let globalBookings = 0;
+        allEvents.forEach((ev) => {
+            if (ev.eventType === 'career-day') {
+                ev.companies.forEach((c) => {
+                    c.slots.forEach((s) => {
+                        if (s.bookedBy?.toString() === userId && s.status === 'booked') {
+                            globalBookings++;
+                        }
+                    });
+                });
+            } else {
+                ev.slots.forEach((s) => {
+                    if (s.bookedBy?.toString() === userId && s.status === 'booked') {
+                        globalBookings++;
+                    }
+                });
+            }
+        });
+
+        if (globalBookings >= 2) {
+            return next(new AppError('You have reached the maximum limit. A student can only book up to 2 slots in total.', 409));
+        }
+        // --------------------------------------------------------------
+
         if (event.eventType === 'career-day') {
             const { companyId } = req.body;
             if (!companyId) return next(new AppError('companyId is required for career day booking.', 400));
