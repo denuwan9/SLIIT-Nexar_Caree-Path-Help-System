@@ -147,6 +147,25 @@ export const deleteEvent = async (id: string) => {
   return res.data;
 };
 
+/** Admin: update editable fields of an event */
+export const updateEvent = async (
+  id: string,
+  payload: {
+    title?: string;
+    description?: string;
+    eventDate?: string;
+    startTime?: string;
+    endTime?: string;
+    venue?: string;
+    maxBookingsPerStudent?: number;
+    maxCandidates?: number;
+    requireDifferentCompanies?: boolean;
+  }
+) => {
+  const res = await api.patch(`/interviews/events/${id}`, payload);
+  return res.data.data.event as IInterviewEvent;
+};
+
 /** Student: book a slot (career-day needs companyId) */
 export const bookSlot = async (eventId: string, slotId: string, companyId?: string) => {
   const res = await api.post(

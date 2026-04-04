@@ -4,12 +4,12 @@ import { useAuth } from '../components/auth/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Clock, Users, CheckCircle2, Bot, ChevronRight,
-  Search, Plus, Trash2, Briefcase, BarChart3, Settings2, AlertCircle, RotateCcw, Zap, Minus, Filter
+  Search, Plus, Trash2, Briefcase, BarChart3, Settings2, AlertCircle, RotateCcw, Zap, Minus, Filter, Pencil, X, Save
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
   getEvents, getMyBookings, getEventStats, createCareerDayEvent,
-  createNormalDayEvent, publishEvent, cancelEvent, deleteEvent, bookSlot, cancelBooking
+  createNormalDayEvent, publishEvent, deleteEvent, updateEvent, bookSlot, cancelBooking
 } from '../services/interviewService';
 import type { IInterviewEvent, IMyBooking, IEventStats, ICompany, ISlot } from '../services/interviewService';
 
@@ -841,9 +841,209 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN: Edit Event Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AdminEditEventModal({ event, onClose, onSaved }: { event: IInterviewEvent; onClose: () => void; onSaved: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    title: event.title,
+    eventDate: event.eventDate ? new Date(event.eventDate).toISOString().split('T')[0] : '',
+    startTime: event.startTime || '09:00',
+    endTime: event.endTime || '17:00',
+    description: event.description || '',
+    maxBookingsPerStudent: event.maxBookingsPerStudent ?? 2,
+    maxCandidates: event.maxCandidates ?? 50,
+    requireDifferentCompanies: event.requireDifferentCompanies ?? true,
+  });
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim()) return toast.error('Title is required');
+    if (!form.eventDate) return toast.error('Date is required');
+    if (form.endTime <= form.startTime) return toast.error('End time must be after start time');
+
+    setSaving(true);
+    try {
+      const payload: any = {
+        title: form.title.trim(),
+        eventDate: form.eventDate,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        description: form.description.trim() || undefined,
+      };
+      if (event.eventType === 'career-day') {
+        payload.maxBookingsPerStudent = form.maxBookingsPerStudent;
+        payload.requireDifferentCompanies = form.requireDifferentCompanies;
+      } else {
+        payload.maxCandidates = form.maxCandidates;
+      }
+      await updateEvent(event._id, payload);
+      toast.success('Schedule updated successfully!');
+      onSaved();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update event');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backdropFilter: 'blur(8px)', background: 'rgba(15,23,42,0.55)' }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 30 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+        className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-900/30 w-full max-w-2xl overflow-hidden relative"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-10 py-8 border-b border-slate-100 bg-[#F8FAFC]">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+              <Pencil size={22} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-[#0F172A] uppercase tracking-tight">Edit Schedule</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">
+                {event.eventType.replace('-', ' ')} · {event.status}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-2xl border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50 transition-all"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSave} className="p-10 space-y-8">
+
+          {/* Title */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Operational Title</label>
+            <input
+              required type="text"
+              className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-5 py-3.5 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner"
+              value={form.title}
+              onChange={e => setForm({ ...form, title: e.target.value })}
+              placeholder="Event title"
+            />
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Description <span className="text-slate-300">(optional)</span></label>
+            <textarea
+              rows={2}
+              className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-5 py-3.5 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner resize-none"
+              value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              placeholder="Brief description of the event"
+            />
+          </div>
+
+          {/* Date + Time */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Event Date</label>
+              <input
+                required type="date"
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-5 py-3.5 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner"
+                value={form.eventDate}
+                onChange={e => setForm({ ...form, eventDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Start Time</label>
+              <input
+                required type="time"
+                className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-5 py-3.5 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner"
+                value={form.startTime}
+                onChange={e => setForm({ ...form, startTime: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">End Time</label>
+              <input
+                required type="time"
+                className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-5 py-3.5 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner"
+                value={form.endTime}
+                onChange={e => setForm({ ...form, endTime: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Booking limit */}
+          <div className="space-y-2">
+            {event.eventType === 'career-day' ? (
+              <>
+                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Booking Limit Per Student</label>
+                <input
+                  type="number" min={1} max={5} required
+                  className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-5 py-3.5 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner"
+                  value={form.maxBookingsPerStudent}
+                  onChange={e => setForm({ ...form, maxBookingsPerStudent: parseInt(e.target.value) })}
+                />
+                <label className="flex items-center gap-3 mt-3 cursor-pointer group">
+                  <div
+                    onClick={() => setForm({ ...form, requireDifferentCompanies: !form.requireDifferentCompanies })}
+                    className={`w-10 h-6 rounded-full transition-all duration-300 flex items-center px-1 ${
+                      form.requireDifferentCompanies ? 'bg-blue-600' : 'bg-slate-200'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${form.requireDifferentCompanies ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                  <span className="text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] group-hover:text-[#0F172A] transition-colors">
+                    Require Different Companies
+                  </span>
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Max Candidates (Reservation Cap)</label>
+                <input
+                  type="number" min={1} max={500} required
+                  className="w-full bg-[#F8FAFC] border-2 border-transparent rounded-2xl px-5 py-3.5 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-blue-400 focus:bg-white transition-all shadow-inner"
+                  value={form.maxCandidates}
+                  onChange={e => setForm({ ...form, maxCandidates: parseInt(e.target.value) })}
+                />
+              </>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-4 pt-4 border-t border-slate-50">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-4 bg-slate-50 text-slate-500 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Save size={14} />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
 function AdminManageEvents() {
   const [events, setEvents] = useState<IInterviewEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingEvent, setEditingEvent] = useState<IInterviewEvent | null>(null);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -864,15 +1064,6 @@ function AdminManageEvents() {
     } catch { toast.error('Failed to publish'); }
   };
 
-  const handleCancel = async (id: string) => {
-    if (!window.confirm('Terminate this Nexus entry? Active reservations will be voided.')) return;
-    try {
-      await cancelEvent(id);
-      toast.success('Event termination protocol complete.');
-      fetchEvents();
-    } catch { toast.error('Failed to cancel'); }
-  };
-
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm("Permanently purge " + title + " from Nexus records? This is irreversible.")) return;
     try {
@@ -890,70 +1081,84 @@ function AdminManageEvents() {
   );
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      {events.length === 0 ? (
-        <div className="text-center p-20 bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-50">
-          <h3 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight mb-2">No Records</h3>
-          <p className="text-slate-500 font-medium">Create a new recruitment window to populate Nexus.</p>
-        </div>
-      ) : events.map(ev => (
-        <div key={ev._id} className="bg-white border border-slate-50 rounded-[2rem] p-8 flex flex-col md:flex-row gap-8 justify-between items-center hover:border-slate-100 hover:shadow-2xl hover:shadow-slate-50 transition-all duration-500 relative overflow-hidden group">
-          <div className="flex-1 w-full relative z-10">
-            <div className="flex items-center gap-4 mb-4">
-              <span className={`px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl border-2 ${ev.status === 'published' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : ev.status === 'cancelled' ? 'border-rose-100 bg-rose-50 text-rose-600' : 'border-amber-100 bg-amber-50 text-amber-600'}`}>
-                {ev.status}
-              </span>
-              <span className="text-[10px] font-black text-slate-400 border border-slate-100 bg-slate-50/50 px-3 py-1 rounded-lg uppercase tracking-widest">{ev.eventType.replace('-', ' ')}</span>
-            </div>
-            <h3 className="text-2xl font-black text-[#0F172A] leading-tight mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{ev.title}</h3>
-            <p className="text-sm text-slate-500 font-bold mb-6 flex items-center gap-2">
-              <Calendar size={14} className="text-blue-500" />
-              {new Date(ev.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              <span className="text-slate-200">|</span>
-              <Clock size={14} className="text-blue-500" />
-              {ev.startTime} — {ev.endTime}
-            </p>
-            <div className="flex gap-8 text-[11px] uppercase font-black tracking-[0.1em]">
-              <div className="flex items-center gap-2 text-slate-400">
-                <div className="w-2 h-2 rounded-full bg-slate-200" />
-                {ev.totalSlots} Total Slots
-              </div>
-              <div className="flex items-center gap-2 text-blue-600">
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                {ev.totalBookings} Active Reservations
-              </div>
-            </div>
-          </div>
+    <>
+      <AnimatePresence>
+        {editingEvent && (
+          <AdminEditEventModal
+            key={editingEvent._id}
+            event={editingEvent}
+            onClose={() => setEditingEvent(null)}
+            onSaved={() => { setEditingEvent(null); fetchEvents(); }}
+          />
+        )}
+      </AnimatePresence>
 
-          <div className="flex items-center gap-3 w-full md:w-auto relative z-10">
-            {ev.status === 'draft' && (
-              <button
-                onClick={() => handlePublish(ev._id)}
-                className="flex-1 md:flex-none px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-100"
-              >
-                Synchronize
-              </button>
-            )}
-            {ev.status !== 'cancelled' && (
-              <button
-                onClick={() => handleCancel(ev._id)}
-                className="flex-1 md:flex-none px-6 py-3 bg-white border-2 border-amber-100 text-amber-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white hover:border-amber-500 hover:scale-105 active:scale-95 transition-all"
-              >
-                Terminate
-              </button>
-            )}
-            <button
-              onClick={() => handleDelete(ev._id, ev.title)}
-              className="p-4 text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 rounded-2xl transition-all border border-transparent"
-              title="Purge Record"
-            >
-              <Trash2 size={24} />
-            </button>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        {events.length === 0 ? (
+          <div className="text-center p-20 bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-50">
+            <h3 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight mb-2">No Records</h3>
+            <p className="text-slate-500 font-medium">Create a new recruitment window to populate Nexus.</p>
           </div>
-          <div className="absolute bottom-0 right-0 w-32 h-32 bg-slate-50 rounded-tl-full -z-0 opacity-40 group-hover:scale-110 transition-transform duration-700" />
-        </div>
-      ))}
-    </motion.div>
+        ) : events.map(ev => (
+          <div key={ev._id} className="bg-white border border-slate-50 rounded-[2rem] p-8 flex flex-col md:flex-row gap-8 justify-between items-center hover:border-slate-100 hover:shadow-2xl hover:shadow-slate-50 transition-all duration-500 relative overflow-hidden group">
+            <div className="flex-1 w-full relative z-10">
+              <div className="flex items-center gap-4 mb-4">
+                <span className={`px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl border-2 ${ev.status === 'published' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : ev.status === 'cancelled' ? 'border-rose-100 bg-rose-50 text-rose-600' : 'border-amber-100 bg-amber-50 text-amber-600'}`}>
+                  {ev.status}
+                </span>
+                <span className="text-[10px] font-black text-slate-400 border border-slate-100 bg-slate-50/50 px-3 py-1 rounded-lg uppercase tracking-widest">{ev.eventType.replace('-', ' ')}</span>
+              </div>
+              <h3 className="text-2xl font-black text-[#0F172A] leading-tight mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{ev.title}</h3>
+              <p className="text-sm text-slate-500 font-bold mb-6 flex items-center gap-2">
+                <Calendar size={14} className="text-blue-500" />
+                {new Date(ev.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <span className="text-slate-200">|</span>
+                <Clock size={14} className="text-blue-500" />
+                {ev.startTime} — {ev.endTime}
+              </p>
+              <div className="flex gap-8 text-[11px] uppercase font-black tracking-[0.1em]">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <div className="w-2 h-2 rounded-full bg-slate-200" />
+                  {ev.totalSlots} Total Slots
+                </div>
+                <div className="flex items-center gap-2 text-blue-600">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  {ev.totalBookings} Active Reservations
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto relative z-10">
+              {ev.status === 'draft' && (
+                <button
+                  onClick={() => handlePublish(ev._id)}
+                  className="flex-1 md:flex-none px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-100"
+                >
+                  Synchronize
+                </button>
+              )}
+              {ev.status !== 'cancelled' && (
+                <button
+                  onClick={() => setEditingEvent(ev)}
+                  className="flex-1 md:flex-none px-6 py-3 bg-white border-2 border-blue-100 text-blue-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 justify-center"
+                >
+                  <Pencil size={14} />
+                  Edit
+                </button>
+              )}
+              <button
+                onClick={() => handleDelete(ev._id, ev.title)}
+                className="p-4 text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 rounded-2xl transition-all border border-transparent"
+                title="Purge Record"
+              >
+                <Trash2 size={24} />
+              </button>
+            </div>
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-slate-50 rounded-tl-full -z-0 opacity-40 group-hover:scale-110 transition-transform duration-700" />
+          </div>
+        ))}
+      </motion.div>
+    </>
   );
 }
 

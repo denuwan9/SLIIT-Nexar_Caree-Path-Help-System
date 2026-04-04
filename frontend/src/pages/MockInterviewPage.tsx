@@ -256,7 +256,7 @@ export default function MockInterviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] font-main selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-[#F4F7FB] font-main selection:bg-blue-100 selection:text-blue-900">
       
       {/* Immersive Header */}
       {!isInterviewing && (
