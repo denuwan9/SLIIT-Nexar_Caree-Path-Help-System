@@ -20,10 +20,10 @@ import type { IInterviewEvent, IMyBooking, IEventStats, ICompany, ISlot } from '
 const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-500 whitespace-nowrap
+    className={`flex items-center gap-3 px-6 py-3.5 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 whitespace-nowrap
       ${active
-        ? 'bg-[#0F172A] text-white shadow-xl shadow-slate-200 translate-y-[-2px]'
-        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100/80 hover:translate-y-[-1px]'}`}
+        ? 'bg-[#151B2B] text-white shadow-inner border border-white/10'
+        : 'text-slate-400 hover:text-white bg-transparent border border-transparent hover:bg-white/5 hover:border-white/5'}`}
   >
     <Icon size={14} className={active ? "text-blue-400" : ""} />
     {label}
@@ -655,15 +655,29 @@ function AdminCreateEvent({ onCreated }: { onCreated: () => void }) {
                 placeholder="e.g., NEXUS SPRING DRIVE 2026"
               />
               <datalist id="event-titles">
-                <option value="SOFTWARE ENGINEERING DRIVE" />
-                <option value="DATA SCIENCE & AI RECRUITMENT" />
-                <option value="FULL STACK DEVELOPER FAIR" />
-                <option value="WEB DEVELOPMENT INTERVIEWS" />
-                <option value="MOBILE APP DEVELOPER DRIVE" />
-                <option value="CLOUD & DEVOPS ENGINEERING" />
-                <option value="CYBERSECURITY RECRUITMENT" />
-                <option value="UI/UX DESIGN & ENGINEERING" />
-                <option value="QUALITY ASSURANCE (QA) INTERVIEWS" />
+                <option value="Software Engineering" />
+                <option value="Web Development" />
+                <option value="Mobile Application Development" />
+                <option value="Full Stack Development" />
+                <option value="Frontend Development" />
+                <option value="Backend Development" />
+                <option value="Game Development" />
+                <option value="Software Quality Assurance (QA)" />
+                <option value="IT Project Management" />
+                <option value="Product Management" />
+                <option value="Business Analysis (BA)" />
+                <option value="Systems Engineering" />
+                <option value="Cloud Computing" />
+                <option value="Cloud Engineering" />
+                <option value="DevOps Engineering" />
+                <option value="Cybersecurity" />
+                <option value="Information Security" />
+                <option value="Network Engineering" />
+                <option value="Data Analysis" />
+                <option value="Data Engineering" />
+                <option value="Big Data Engineering" />
+                <option value="Machine Learning Engineering" />
+                <option value="Deep Learning Engineering" />
               </datalist>
               {errors.title && <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 ml-2 flex items-center gap-1"><AlertCircle size={10} /> {errors.title}</p>}
             </div>
@@ -1174,40 +1188,54 @@ export default function InterviewSchedulingPage() {
   const [activeTab, setActiveTab] = useState(isAdmin ? 'dashboard' : 'browse');
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB] font-main selection:bg-blue-100 selection:text-blue-900">
-      {/* Immersive Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-10 sticky top-0 z-50 shadow-sm transition-all duration-300">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 max-w-7xl mx-auto">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-1">
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <div className="w-2 h-2 rounded-full bg-blue-300 animate-pulse delay-75" />
-                <div className="w-2 h-2 rounded-full bg-blue-100 animate-pulse delay-150" />
-              </div>
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em]">Nexus Network Active</span>
+    <div className="min-h-screen bg-gradient-to-br from-[#F0EEFF] via-[#F0F4FB] to-[#EDE8FE] font-main selection:bg-blue-100 selection:text-blue-900 relative overflow-hidden">
+      {/* Decorative Background Orbs */}
+      <div className="fixed top-[-20%] right-[-10%] w-[600px] h-[600px] bg-blue-200/30 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-[-15%] left-[-5%] w-[500px] h-[500px] bg-indigo-200/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[40%] left-[50%] w-[400px] h-[400px] bg-purple-100/15 rounded-full blur-[80px] pointer-events-none" />
+
+      {/* Dark Theme Standalone Header Card */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-50">
+        <div className="bg-[#0B1121] rounded-[2rem] p-8 md:p-12 shadow-2xl shadow-blue-900/10 border border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+          <div className="space-y-4 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 w-fit">
+              <Bot size={12} className="text-blue-400" />
+              <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Nexus Network Active</span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-[#0F172A] flex flex-wrap items-center gap-x-4">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white flex flex-wrap items-center gap-x-3">
               {isAdmin ? (
                 <>
-                  Central <span className="text-blue-600">Command</span> <span className="text-slate-200">/</span> Interviews
+                  Central <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Command</span>
                 </>
               ) : (
                 <>
-                  Recruitment <span className="text-blue-600">Nexus</span>
+                  Interview <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Scheduling</span>
                 </>
               )}
             </h1>
-            <p className="text-slate-400 text-sm font-medium max-w-lg">
+            <p className="text-slate-400 text-sm font-medium leading-relaxed">
               {isAdmin
                 ? "Orchestrating high-impact recruitment windows and professional student engagement."
-                : "Your professional gateway to high-tier industry placements and recruitment windows."}
+                : "Secure your perfect interview schedule. Our system turns available recruitment windows into an easy-to-follow plan."}
             </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/5 bg-white/[0.02]">
+                <div className="w-4 h-4 rounded-full flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+                <span className="text-[11px] font-bold text-slate-300">System: Online</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/5 bg-white/[0.02]">
+                <Zap size={14} className="text-blue-400" />
+                <span className="text-[11px] font-bold text-slate-300">Powered by Nexus</span>
+              </div>
+            </div>
           </div>
 
           {/* Precision Navigation Tabs */}
-          <div className="flex p-1.5 bg-slate-100/50 rounded-[2rem] border border-slate-100 shadow-inner overflow-x-auto hide-scrollbar w-full lg:w-auto">
+          <div className="flex p-1.5 bg-[#050810] border border-white/5 rounded-[2.5rem] overflow-x-auto hide-scrollbar w-full lg:w-auto">
             {!isAdmin ? (
               <>
                 <TabButton active={activeTab === 'browse'} onClick={() => setActiveTab('browse')} icon={Search} label="Browse Events" />

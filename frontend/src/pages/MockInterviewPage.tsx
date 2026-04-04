@@ -256,11 +256,15 @@ export default function MockInterviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB] font-main selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-gradient-to-br from-[#F0EEFF] via-[#F0F4FB] to-[#EDE8FE] font-main selection:bg-blue-100 selection:text-blue-900 relative overflow-hidden">
+      {/* Decorative Background Orbs */}
+      <div className="fixed top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-200/30 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-[-15%] left-[-5%] w-[500px] h-[500px] bg-purple-200/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[40%] left-[50%] w-[400px] h-[400px] bg-blue-100/15 rounded-full blur-[80px] pointer-events-none" />
       
       {/* Immersive Header */}
       {!isInterviewing && (
-        <div className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-10 sticky top-0 z-50 shadow-sm transition-all duration-300">
+        <div className="bg-white/70 backdrop-blur-2xl border-b border-white/50 px-8 py-10 sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.04)] transition-all duration-300">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 max-w-7xl mx-auto">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
@@ -280,10 +284,10 @@ export default function MockInterviewPage() {
               </p>
             </div>
 
-            <div className="flex p-1.5 bg-slate-100/50 rounded-[2rem] border border-slate-100 shadow-inner overflow-x-auto hide-scrollbar">
+            <div className="flex p-1.5 bg-white/60 rounded-[2rem] border border-white/80 shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-x-auto hide-scrollbar backdrop-blur-md">
               <button
                 onClick={() => navigate('/interviews')}
-                className="flex items-center gap-3 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all bg-white text-slate-400 border border-slate-100 hover:text-blue-600 hover:border-blue-100 hover:shadow-lg shadow-slate-100"
+                className="flex items-center gap-3 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all bg-white/80 text-slate-400 border border-white/60 hover:text-blue-600 hover:border-blue-100 hover:shadow-lg shadow-slate-100"
               >
                 <Calendar size={14} /> Book Human Interview
               </button>
