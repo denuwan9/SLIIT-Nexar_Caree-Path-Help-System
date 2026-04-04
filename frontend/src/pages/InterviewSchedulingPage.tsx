@@ -31,12 +31,12 @@ const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, on
 );
 
 const StatCard = ({ title, value, icon: Icon, color }: any) => (
-  <div className="bg-white/90 backdrop-blur-md p-8 rounded-[2rem] border border-white shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-slate-300/50 hover:-translate-y-1 transition-all duration-500 group flex flex-col items-center text-center">
-    <div className={`p-4 rounded-2xl ${color} mb-4 group-hover:scale-110 transition-transform duration-500 shadow-lg shadow-current/10`}>
+  <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:shadow-slate-100/50 hover:-translate-y-1 transition-all duration-500 flex flex-col items-center justify-center text-center h-full border border-slate-50/50">
+    <div className={`w-14 h-14 flex items-center justify-center rounded-[1.25rem] ${color} mb-6 group-hover:scale-110 transition-transform duration-500`}>
       <Icon size={24} />
     </div>
-    <span className="text-4xl font-black text-[#0F172A] leading-none mb-2 tracking-tight">{value}</span>
-    <span className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400 group-hover:text-slate-600 transition-colors">{title}</span>
+    <span className="text-4xl md:text-[2.5rem] font-black text-[#0F172A] leading-none mb-3 tracking-tight">{value}</span>
+    <span className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">{title}</span>
   </div>
 );
 
@@ -436,16 +436,16 @@ function AdminDashboard() {
               <BarChart3 size={24} className="text-blue-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight">Ecosystem Intelligence</h2>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Real-time recruitment throughput</p>
+              <h2 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight">Booking Analytics</h2>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Real-time Interview Capacity</p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <p className="text-slate-500 text-lg font-medium leading-relaxed mb-8">
-                Nexus is currently operating at <span className="text-[#0F172A] font-black">{utilization}% utilization</span>.
-                Optimization protocols suggest opening more slots if utilization exceeds 85% to ensure student accessibility.
+                The system is currently operating at <span className="text-[#0F172A] font-black">{utilization}% booking utilization</span>.
+                We recommend opening additional interview slots if usage exceeds 85% to ensure sufficient availability for all students.
               </p>
               <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden shadow-inner">
                 <motion.div
@@ -462,12 +462,12 @@ function AdminDashboard() {
                 {utilization < 30 ? <AlertCircle size={32} /> : <CheckCircle2 size={32} />}
               </div>
               <h4 className="text-lg font-black text-[#0F172A] uppercase tracking-tight mb-2">
-                {utilization < 30 ? 'Awaiting Momentum' : 'Healthy Engagement'}
+                {utilization < 30 ? 'Needs Attention' : 'Healthy Engagement'}
               </h4>
               <p className="text-xs text-slate-500 font-medium">
                 {utilization < 30
-                  ? 'Encourage students to browse active events through Nexus notifications.'
-                  : 'The ecosystem is showing robust interaction patterns today.'}
+                  ? 'Encourage students to browse and book active interview sessions through the university portal.'
+                  : 'The interview systems are showing robust booking interaction patterns today.'}
               </p>
             </div>
           </div>
@@ -1204,20 +1204,10 @@ export default function InterviewSchedulingPage() {
             </div>
 
             <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white flex flex-wrap items-center gap-x-3">
-              {isAdmin ? (
-                <>
-                  Central <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Command</span>
-                </>
-              ) : (
-                <>
-                  Interview <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Scheduling</span>
-                </>
-              )}
+              Interview <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Scheduling</span>
             </h1>
             <p className="text-slate-400 text-sm font-medium leading-relaxed">
-              {isAdmin
-                ? "Orchestrating high-impact recruitment windows and professional student engagement."
-                : "Secure your perfect interview schedule. Our system turns available recruitment windows into an easy-to-follow plan."}
+              Secure your perfect interview schedule. Our system turns available recruitment windows into an easy-to-follow plan.
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
