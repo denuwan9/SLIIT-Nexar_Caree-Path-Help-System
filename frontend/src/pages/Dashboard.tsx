@@ -150,12 +150,12 @@ const Dashboard: React.FC = () => {
                     {/* Quick Actions (Additional Feature) */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
-                            { label: 'Analyze Resume', icon: <BookOpen size={16} />, color: 'bg-blue-50 text-blue-600', path: '/resume' },
-                            { label: 'Mock Interview', icon: <Activity size={16} />, color: 'bg-rose-50 text-rose-600', path: '/interview' },
-                            { label: 'Skill Gap', icon: <Target size={16} />, color: 'bg-emerald-50 text-emerald-600', path: '/skills' },
-                            { label: 'AI Strategy', icon: <Zap size={16} />, color: 'bg-amber-50 text-amber-600', path: '/ai-advisor' }
+                            { label: 'Analyze Resume', icon: <BookOpen size={16} />, color: 'bg-blue-50 text-blue-600', path: '/advisor', state: { tab: 'resume' } },
+                            { label: 'Mock Interview', icon: <Activity size={16} />, color: 'bg-rose-50 text-rose-600', path: '/mock-interview' },
+                            { label: 'Skill Gap', icon: <Target size={16} />, color: 'bg-emerald-50 text-emerald-600', path: '/advisor', state: { tab: 'gap' } },
+                            { label: 'AI Strategy', icon: <Zap size={16} />, color: 'bg-amber-50 text-amber-600', path: '/advisor', state: { tab: 'chat' } }
                         ].map((action, aIdx) => (
-                            <button key={aIdx} onClick={() => navigate(action.path)} className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-1 transition-all flex flex-col items-center gap-3 text-center group">
+                            <button key={aIdx} onClick={() => navigate(action.path, { state: action.state })} className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-1 transition-all flex flex-col items-center gap-3 text-center group">
                                 <div className={`w-10 h-10 rounded-2xl ${action.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                                     {action.icon}
                                 </div>

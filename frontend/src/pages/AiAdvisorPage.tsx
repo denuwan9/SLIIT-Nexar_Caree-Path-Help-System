@@ -6,9 +6,10 @@
  * Matches the existing glassmorphism white theme.
  * ─────────────────────────────────────────────────────────────────────────
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, BarChart2, Rocket, Target, FileText } from 'lucide-react';
 
+import { useLocation } from 'react-router-dom';
 import AiAdvisorChat from '../features/ai/AiAdvisorChat';
 import SkillDashboard from '../features/ai/SkillDashboard';
 import CareerSimulator from '../features/ai/CareerSimulator';
@@ -61,9 +62,16 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id'];
 
-// ── Page Component ────────────────────────────────────────────────────────
 const AiAdvisorPage: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<TabId>('chat');
+    const location = useLocation();
+    const [activeTab, setActiveTab] = useState<TabId>((location.state as any)?.tab || 'chat');
+
+    // Handle updates if the state changes (e.g., navigating from sidebar)
+    useEffect(() => {
+        if ((location.state as any)?.tab) {
+            setActiveTab((location.state as any).tab);
+        }
+    }, [location.state]);
 
     const current = TABS.find(t => t.id === activeTab)!;
     const ActiveComponent = current.component;
