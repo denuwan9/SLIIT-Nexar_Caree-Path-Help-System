@@ -347,7 +347,7 @@ function StudentMyBookings() {
           <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
             <Calendar className="w-10 h-10 text-slate-300" />
           </div>
-          <h3 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight mb-2">Portfolio Clear</h3>
+          <h3 className="text-2xl font-black text-[#0F172A] uppercase tracking-tight mb-2">Schedule Clear</h3>
           <p className="text-slate-500 font-medium max-w-sm mx-auto">You haven't reserved any interview windows yet. Head to Browse Events to start.</p>
         </div>
       ) : (
@@ -1229,7 +1229,7 @@ export default function InterviewSchedulingPage() {
             {!isAdmin ? (
               <>
                 <TabButton active={activeTab === 'browse'} onClick={() => setActiveTab('browse')} icon={Search} label="Browse Events" />
-                <TabButton active={activeTab === 'my-bookings'} onClick={() => setActiveTab('my-bookings')} icon={Calendar} label="My Portfolio" />
+                <TabButton active={activeTab === 'my-bookings'} onClick={() => setActiveTab('my-bookings')} icon={Calendar} label="My Schedule" />
               </>
             ) : (
               <>
@@ -1249,7 +1249,7 @@ export default function InterviewSchedulingPage() {
             <StudentBrowseEvents
               key="student-browse"
               onBookSuccess={() => {
-                toast.success('Synchronization payload received. Redirecting to portfolio.');
+                toast.success('Synchronization payload received. Redirecting to schedule.');
                 setActiveTab('my-bookings');
               }}
             />
