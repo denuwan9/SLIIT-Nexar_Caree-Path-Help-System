@@ -46,3 +46,13 @@ export const createJobPost = async (payload: Partial<JobPost>): Promise<JobPost>
 export const deleteJobPost = async (id: string): Promise<void> => {
   await api.delete(`/jobs/${id}`);
 };
+
+export const fetchJobPostById = async (id: string): Promise<JobPost> => {
+  const res = await api.get(`/jobs/${id}`);
+  return res.data.data.post as JobPost;
+};
+
+export const updateJobPost = async (id: string, payload: Partial<JobPost>): Promise<JobPost> => {
+  const res = await api.patch(`/jobs/${id}`, payload);
+  return res.data.data.post as JobPost;
+};

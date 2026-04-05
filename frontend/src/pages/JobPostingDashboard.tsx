@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Briefcase, UserCheck, Calendar, Percent } from 'lucide-react';
+import { Plus, Briefcase, UserCheck, Calendar, Percent, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../components/auth/AuthProvider';
-import { fetchMyJobPosts } from '../services/jobPostService';
+import { fetchMyJobPosts, deleteJobPost } from '../services/jobPostService';
 import { fetchApplicationsForJobPost, type Application } from '../services/applicationService';
 import type { JobPost } from '../services/jobPostService';
 
@@ -17,6 +18,28 @@ const JobPostingDashboard: React.FC = () => {
   const [applications, setApplications] = useState<Record<string, Application[]>>({});
   const [selectedPost, setSelectedPost] = useState<JobPost | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleDeletePost = async (postId: string) => {
+    const confirmed = window.confirm('Delete this job post? This action cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      await deleteJobPost(postId);
+      setPosts((prev) => prev.filter((post) => post._id !== postId));
+      setApplications((prev) => {
+        const next = { ...prev };
+        delete next[postId];
+        return next;
+      });
+      if (selectedPost?._id === postId) {
+        setSelectedPost(null);
+        setIsModalOpen(false);
+      }
+      toast.success('Job post deleted successfully.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete job post.');
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -35,14 +58,21 @@ const JobPostingDashboard: React.FC = () => {
 
   useEffect(() => {
     if (posts.length > 0) {
-      posts.forEach(async (post) => {
-        try {
-          const apps = await fetchApplicationsForJobPost(post._id);
-          setApplications(prev => ({ ...prev, [post._id]: apps }));
-        } catch (err) {
-          console.error('Failed to load applications for post', post._id, err);
-        }
-      });
+      const loadApplications = async () => {
+        const results = await Promise.all(posts.map(async (post) => {
+          try {
+            const apps = await fetchApplicationsForJobPost(post._id);
+            return [post._id, apps] as const;
+          } catch (err) {
+            console.error('Failed to load applications for post', post._id, err);
+            return [post._id, []] as const;
+          }
+        }));
+
+        setApplications(Object.fromEntries(results));
+      };
+
+      loadApplications();
     }
   }, [posts]);
 
@@ -118,31 +148,73 @@ const JobPostingDashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {posts.length === 0 ? (
                 <div className="col-span-full p-6 text-center text-slate-500">No job posts yet. Create your first posting to get started.</div>
-              ) : posts.map((post) => (
-                <div key={post._id} className="border border-slate-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-bold text-[#0F172A]">{post.title}</h3>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{post.jobType}</span>
-                  </div>
-                  <p className="text-sm text-[#64748B]">{post.preferredLocation || 'Any location'} • {post.isRemoteOk ? 'Remote okay' : 'Onsite only'}</p>
-                  <div className="mt-3 flex items-center justify-between text-[12px] text-slate-500">
-                    <span>{new Date(post.createdAt || '').toLocaleDateString()}</span>
-                    <span>{(post.viewCount || 0)} views</span>
-                  </div>
+              ) : posts.map((post) => {
+                const postApplications = applications[post._id] || [];
+                return (
+                  <div
+                    key={post._id}
+                    onClick={() => navigate(`/job-postings/${post._id}/edit`)}
+                    className="border border-slate-100 rounded-2xl p-4 hover:shadow-md transition-shadow cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-bold text-[#0F172A]">{post.title}</h3>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{post.jobType}</span>
+                    </div>
+                    <p className="text-sm text-[#64748B]">{post.preferredLocation || 'Any location'} • {post.isRemoteOk ? 'Remote okay' : 'Onsite only'}</p>
+                    <div className="mt-3 flex items-center justify-between text-[12px] text-slate-500">
+                      <span>{new Date(post.createdAt || '').toLocaleDateString()}</span>
+                      <span>{(post.viewCount || 0)} views</span>
+                    </div>
 
-                  <div className="mt-4 flex gap-2 items-center">
-                    <span
-                      className="px-2 py-1 text-[11px] rounded-full bg-emerald-50 text-emerald-600 font-semibold cursor-pointer hover:bg-emerald-100 transition-colors"
-                      onClick={() => {
-                        setSelectedPost(post);
-                        setIsModalOpen(true);
-                      }}
-                    >
-                      {applications[post._id]?.length || 0} applications
-                    </span>
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3 text-[13px] text-slate-600">
+                        <span className="font-medium">Applications received</span>
+                        <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold">{postApplications.length}</span>
+                      </div>
+
+                      {postApplications.length > 0 ? (
+                        <div className="space-y-1 text-sm text-slate-500">
+                          {postApplications.slice(0, 2).map((app) => (
+                            <div key={app._id} className="flex items-center justify-between gap-2">
+                              <span className="truncate">{app.applicant.name}</span>
+                              <span className="text-[11px] uppercase tracking-wider text-slate-400">{app.status}</span>
+                            </div>
+                          ))}
+                          {postApplications.length > 2 && (
+                            <p className="text-xs text-slate-400">+{postApplications.length - 2} more application{postApplications.length - 2 > 1 ? 's' : ''}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-400">No applications yet. Click to edit or view details.</p>
+                      )}
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPost(post);
+                            setIsModalOpen(true);
+                          }}
+                          className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors"
+                        >
+                          View applicants
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePost(post._id);
+                          }}
+                          className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
+                        >
+                          <Trash2 size={14} className="mr-1" /> Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -159,14 +231,22 @@ const JobPostingDashboard: React.FC = () => {
 
       {/* Applicants Modal */}
       {isModalOpen && selectedPost && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setIsModalOpen(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          style={{ paddingLeft: '280px', paddingRight: '20px' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            style={{ transform: 'scale(1)', opacity: 1, transition: 'all 0.3s ease-out', paddingRight: '12px' }}
+          >
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <h2 className="text-xl font-bold text-[#0F172A]">Applicants for "{selectedPost.title}"</h2>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
                 >
                   ✕
                 </button>

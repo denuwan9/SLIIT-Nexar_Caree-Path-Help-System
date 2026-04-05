@@ -10,6 +10,7 @@ router.use(protect);
 // Student routes
 router.post('/', restrictTo('student'), jobPostValidator, validate, jobPostController.createJobPost);
 router.get('/me', restrictTo('student', 'admin'), jobPostController.getMyJobPosts);
+router.patch('/:id', restrictTo('student'), jobPostValidator, validate, jobPostController.updateJobPost);
 router.delete('/:id', restrictTo('student'), jobPostController.deleteJobPost);
 
 // Admin routes

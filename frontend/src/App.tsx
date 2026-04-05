@@ -21,6 +21,7 @@ const InterviewSchedulingPage = React.lazy(() => import('./pages/InterviewSchedu
 const MockInterviewPage = React.lazy(() => import('./pages/MockInterviewPage'));
 const JobPostingDashboard = React.lazy(() => import('./pages/JobPostingDashboard'));
 const CreateJobPost = React.lazy(() => import('./pages/CreateJobPost'));
+const EditJobPost = React.lazy(() => import('./pages/EditJobPost'));
 const JobPostDetails = React.lazy(() => import('./pages/JobPostDetails'));
 const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage'));
 
@@ -73,6 +74,7 @@ const App: React.FC = () => {
                 <Route path="/study" element={<StudyPlanPage />} />
                 <Route path="/job-postings" element={<JobPostingDashboard />} />
                 <Route path="/job-postings/new" element={<CreateJobPost />} />
+                <Route path="/job-postings/:id/edit" element={<EditJobPost />} />
                 <Route path="/job-postings/:id" element={<JobPostDetails />} />
               </Route>
 
