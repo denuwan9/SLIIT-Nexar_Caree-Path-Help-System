@@ -189,6 +189,40 @@ exports.reviewJobPost = async (req, res, next) => {
 };
 
 /**
+ * PATCH /api/jobs/:id
+ * Student (own) — update a job post
+ */
+exports.updateJobPost = async (req, res, next) => {
+    try {
+        const updateData = {
+            title: req.body.title,
+            summary: req.body.summary,
+            targetRole: req.body.targetRole,
+            jobType: req.body.jobType,
+            skills: req.body.skills,
+            preferredLocation: req.body.preferredLocation,
+            isRemoteOk: req.body.isRemoteOk,
+            salaryExpectation: req.body.salaryExpectation,
+        };
+
+        const post = await JobPost.findOneAndUpdate(
+            { _id: req.params.id, student: req.user._id },
+            updateData,
+            { new: true, runValidators: true }
+        );
+
+        if (!post) return next(new AppError('Job post not found or you are not the owner.', 404));
+
+        post.aiRating = rateJobPost(post);
+        await post.save({ validateBeforeSave: false });
+
+        res.status(200).json({ status: 'success', data: { post } });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * DELETE /api/jobs/:id
  * Student (own) — delete a job post
  */
