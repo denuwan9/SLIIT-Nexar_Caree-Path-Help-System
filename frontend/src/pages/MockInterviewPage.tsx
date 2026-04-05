@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Zap, CheckCircle2, ChevronRight, RefreshCcw, Bot, Terminal, Clock, Sparkles, Users } from 'lucide-react';
+import { Calendar, Zap, CheckCircle2, ChevronRight, RefreshCcw, Bot, Terminal, Clock, Sparkles, Users, Mic, MicOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // ─── Question Bank ─────────────────────────────────────────────────────────────
@@ -138,6 +138,90 @@ export default function MockInterviewPage() {
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
 
+  // Audio Recording State
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const [timeLeft, setTimeLeft] = useState(25);
+
+  useEffect(() => {
+    if (isInterviewing && !isFinished) {
+      setTimeLeft(25);
+    }
+  }, [currentQIndex, isInterviewing, isFinished]);
+
+  useEffect(() => {
+    let timer: any;
+    if (isInterviewing && !isFinished) {
+      if (timeLeft > 0) {
+        timer = setTimeout(() => {
+          setTimeLeft(timeLeft - 1);
+        }, 1000);
+      } else {
+        handleNextQuestion();
+      }
+    }
+    return () => clearTimeout(timer);
+  }, [isInterviewing, isFinished, timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const rec = new SpeechRecognitionAPI();
+      rec.continuous = true;
+      rec.interimResults = true;
+      
+      rec.onresult = (event: any) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          }
+        }
+        if (finalTranscript) {
+          setAnswers(prev => {
+            const newAnswers = [...prev];
+            newAnswers[currentQIndex] = (newAnswers[currentQIndex] || '') + finalTranscript;
+            return newAnswers;
+          });
+        }
+      };
+
+      rec.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsRecordingAudio(false);
+      };
+
+      rec.onend = () => {
+        setIsRecordingAudio(false);
+      };
+
+      recognitionRef.current = rec;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [currentQIndex]);
+
+  const toggleRecording = () => {
+    if (!recognitionRef.current) return alert("Speech recognition is not supported in your browser.");
+
+    if (isRecordingAudio) {
+      recognitionRef.current.stop();
+      setIsRecordingAudio(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsRecordingAudio(true);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   const handleStartInterview = () => {
     const generated = generateQuestions(targetRole, focus, numQuestions);
     setQuestions(generated);
@@ -148,6 +232,10 @@ export default function MockInterviewPage() {
   };
 
   const handleNextQuestion = () => {
+    if (isRecordingAudio && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecordingAudio(false);
+    }
     if (currentQIndex < questions.length - 1) {
       setCurrentQIndex(prev => prev + 1);
     } else {
@@ -156,6 +244,10 @@ export default function MockInterviewPage() {
   };
 
   const handleEndInterview = () => {
+    if (isRecordingAudio && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecordingAudio(false);
+    }
     setIsInterviewing(false);
     setIsFinished(false);
     setQuestions([]);
@@ -164,11 +256,15 @@ export default function MockInterviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] font-main selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-gradient-to-br from-[#F0EEFF] via-[#F0F4FB] to-[#EDE8FE] font-main selection:bg-blue-100 selection:text-blue-900 relative overflow-hidden">
+      {/* Decorative Background Orbs */}
+      <div className="fixed top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-200/30 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-[-15%] left-[-5%] w-[500px] h-[500px] bg-purple-200/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[40%] left-[50%] w-[400px] h-[400px] bg-blue-100/15 rounded-full blur-[80px] pointer-events-none" />
       
       {/* Immersive Header */}
       {!isInterviewing && (
-        <div className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-10 sticky top-0 z-50 shadow-sm transition-all duration-300">
+        <div className="bg-white/70 backdrop-blur-2xl border-b border-white/50 px-8 py-10 sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.04)] transition-all duration-300">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 max-w-7xl mx-auto">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
@@ -188,10 +284,10 @@ export default function MockInterviewPage() {
               </p>
             </div>
 
-            <div className="flex p-1.5 bg-slate-100/50 rounded-[2rem] border border-slate-100 shadow-inner overflow-x-auto hide-scrollbar">
+            <div className="flex p-1.5 bg-white/60 rounded-[2rem] border border-white/80 shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-x-auto hide-scrollbar backdrop-blur-md">
               <button
                 onClick={() => navigate('/interviews')}
-                className="flex items-center gap-3 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all bg-white text-slate-400 border border-slate-100 hover:text-blue-600 hover:border-blue-100 hover:shadow-lg shadow-slate-100"
+                className="flex items-center gap-3 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all bg-white/80 text-slate-400 border border-white/60 hover:text-blue-600 hover:border-blue-100 hover:shadow-lg shadow-slate-100"
               >
                 <Calendar size={14} /> Book Human Interview
               </button>
@@ -320,7 +416,9 @@ export default function MockInterviewPage() {
                   <div className="h-8 w-[1px] bg-slate-800" />
                   <div className="flex items-center gap-3 text-slate-400">
                      <Clock size={16} />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Nexus Uptime: Active</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest">
+                       Time Remaining: <span className={timeLeft <= 5 ? "text-rose-500 text-sm ml-1" : "text-white text-sm ml-1"}>00:{timeLeft.toString().padStart(2, '0')}</span>
+                     </span>
                   </div>
                 </div>
                 <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 relative z-10">
@@ -329,17 +427,12 @@ export default function MockInterviewPage() {
               </div>
 
               {/* Simulation Environment */}
-              <div className="flex-1 p-10 md:p-20 flex flex-col relative w-full">
+              <div className="flex-1 p-6 md:p-10 flex flex-col relative w-full">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:32px_32px] opacity-30 pointer-events-none" />
                 
                 <motion.div key={currentQIndex} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="relative z-10 w-full flex flex-col flex-grow">
-                   <div className="max-w-4xl mx-auto w-full text-center mb-16">
-                     <div className="flex items-center justify-center gap-3 mb-6">
-                       <span className="h-[1px] w-12 bg-slate-100" />
-                       <p className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.4em]">Simulator Prompt</p>
-                       <span className="h-[1px] w-12 bg-slate-100" />
-                     </div>
-                     <h3 className="text-3xl md:text-5xl font-black text-[#0F172A] leading-tight tracking-tight px-4">
+                   <div className="max-w-4xl mx-auto w-full text-center mb-8">
+                     <h3 className="text-2xl md:text-4xl font-semibold text-slate-800 leading-tight tracking-normal px-4">
                        {questions[currentQIndex]}
                      </h3>
                    </div>
@@ -350,10 +443,19 @@ export default function MockInterviewPage() {
                      <div className="relative z-10 flex flex-col flex-grow">
                         <div className="flex justify-between items-center mb-4 px-2">
                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">User Input Node</label>
-                           <div className="flex gap-2">
-                              <span className="w-2 h-2 rounded-full bg-slate-100" />
-                              <span className="w-2 h-2 rounded-full bg-slate-100" />
-                              <span className="w-2 h-2 rounded-full bg-slate-100" />
+                           <div className="flex items-center gap-4">
+                              <button 
+                                onClick={toggleRecording}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isRecordingAudio ? 'bg-rose-100 text-rose-600 shadow-inner' : 'bg-slate-100 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'}`}
+                              >
+                                {isRecordingAudio ? <MicOff size={14} className="animate-pulse" /> : <Mic size={14} />}
+                                {isRecordingAudio ? 'Stop Dictation' : 'Voice Dictation'}
+                              </button>
+                              <div className="flex gap-2">
+                                <span className="w-2 h-2 rounded-full bg-slate-100" />
+                                <span className="w-2 h-2 rounded-full bg-slate-100" />
+                                <span className="w-2 h-2 rounded-full bg-slate-100" />
+                              </div>
                            </div>
                         </div>
                         <textarea
@@ -365,7 +467,7 @@ export default function MockInterviewPage() {
                             setAnswers(newAnswers);
                           }}
                           placeholder="Initialize response sequence..."
-                          className="w-full flex-grow min-h-[250px] p-10 text-lg md:text-xl border-2 border-slate-50 bg-white/80 backdrop-blur-xl rounded-[2.2rem] resize-none focus:outline-none focus:border-indigo-400 focus:shadow-2xl focus:shadow-indigo-100/50 shadow-xl shadow-slate-100/50 transition-all text-[#0F172A] placeholder:text-slate-200 font-bold leading-relaxed scrollbar-hide"
+                          className="w-full flex-grow min-h-[200px] p-6 text-lg md:text-xl border-2 border-slate-50 bg-white/80 backdrop-blur-xl rounded-[2.2rem] resize-none focus:outline-none focus:border-indigo-400 focus:shadow-2xl focus:shadow-indigo-100/50 shadow-xl shadow-slate-100/50 transition-all text-[#0F172A] placeholder:text-slate-200 font-bold leading-relaxed scrollbar-hide"
                         />
                      </div>
                    </div>
@@ -414,9 +516,28 @@ export default function MockInterviewPage() {
                      <Users size={14} /> Analytics Syncing
                    </div>
                 </div>
-                <p className="text-slate-400 mb-12 max-w-md mx-auto text-lg font-medium leading-relaxed">
-                  Sequence benchmarks have been recorded. Maintain simulation frequency to optimize your professional throughput.
+                <p className="text-slate-400 mb-8 max-w-xl mx-auto text-lg font-medium leading-relaxed">
+                  Sequence benchmarks have been recorded. Review your performance transcript below. Maintain simulation frequency to optimize your professional throughput.
                 </p>
+
+                <div className="bg-slate-50 shadow-inner rounded-3xl p-8 text-left mb-12 max-h-[400px] overflow-y-auto border border-slate-100 mx-auto w-full max-w-3xl custom-scrollbar">
+                  <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                    <Terminal size={14} /> Simulation Transcript
+                  </h3>
+                  <div className="space-y-8">
+                    {questions.map((q, i) => (
+                      <div key={i} className="space-y-3">
+                        <p className="text-base font-bold text-[#0F172A] flex gap-3 leading-snug">
+                          <span className="text-indigo-400">0{i + 1}</span> {q}
+                        </p>
+                        <div className="bg-white border border-slate-100 rounded-2xl p-5 text-sm text-slate-600 leading-relaxed relative shadow-sm">
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-emerald-400 rounded-r-full" />
+                          {answers[i] || <span className="text-slate-400 italic">No response sequence captured...</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 
                 <div className="flex flex-col sm:flex-row justify-center gap-6">
                   <button 
