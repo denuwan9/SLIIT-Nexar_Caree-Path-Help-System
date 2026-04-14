@@ -435,8 +435,11 @@ const StudyPlanPage: React.FC = () => {
             const events = await googleCalendarService.getEvents();
             const sorted = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
             setCalendarEvents(sorted);
-        } catch {
-            toast.error('Failed to load Google Calendar events');
+        } catch (error: any) {
+            if ([400, 401, 403].includes(error?.response?.status)) {
+                setIsCalendarLinked(false);
+            }
+            toast.error(error?.response?.data?.message || 'Failed to load Google Calendar events');
         } finally {
             setIsLoadingCalendarEvents(false);
         }
@@ -460,41 +463,79 @@ const StudyPlanPage: React.FC = () => {
             await loadCalendarEvents();
         };
 
+        if (isCalendarLinked) {
+            syncSelectedPlan()
+                .catch((error: any) => {
+                    const status = error?.response?.status;
+                    const shouldRelink = status === 400 || status === 401 || status === 403;
+
+                    if (shouldRelink) {
+                        setIsCalendarLinked(false);
+                        toast.error('Google Calendar needs reconnection. Click Sync again and approve Google access.');
+                        return;
+                    }
+
+                    toast.error(error?.response?.data?.message || 'Sync failed');
+                })
+                .finally(() => setIsSyncing(false));
+
+            return;
+        }
+
+        let finished = false;
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            setIsSyncing(false);
+        };
+
+        const timeoutId = window.setTimeout(() => {
+            if (finished) return;
+            toast.error('Google popup did not open. Please allow popups for localhost and try again.');
+            finish();
+        }, 15000);
+
         const client = (window as any).google?.accounts.oauth2.initCodeClient({
             client_id: '741747269992-1d9m8m0hbcfa593ssaf7t86qr1vfk9oq.apps.googleusercontent.com',
             scope: 'openid email profile https://www.googleapis.com/auth/calendar.events',
+            access_type: 'offline',
+            prompt: 'consent',
             ux_mode: 'popup',
             redirect_uri: 'postmessage',
+            error_callback: (oauthError: any) => {
+                window.clearTimeout(timeoutId);
+                toast.error(oauthError?.message || 'Google authorization popup was closed or blocked.');
+                finish();
+            },
             callback: async (response: any) => {
-                if (response.code) {
-                    try {
-                        await googleCalendarService.linkAccount(response.code);
-                        setIsCalendarLinked(true);
-                        await syncSelectedPlan();
-                    } catch (error: any) {
-                        toast.error(error.response?.data?.message || 'Sync failed');
-                    } finally {
-                        setIsSyncing(false);
-                    }
-                } else {
-                    setIsSyncing(false);
+                window.clearTimeout(timeoutId);
+
+                if (!response?.code) {
+                    toast.error(response?.error || 'Google authorization was cancelled.');
+                    finish();
+                    return;
+                }
+
+                try {
+                    await googleCalendarService.linkAccount(response.code);
+                    setIsCalendarLinked(true);
+                    await syncSelectedPlan();
+                } catch (error: any) {
+                    toast.error(error?.response?.data?.message || 'Sync failed');
+                } finally {
+                    finish();
                 }
             },
         });
 
-        if (isCalendarLinked) {
-            // If already linked, just trigger sync
-            syncSelectedPlan()
-                .catch(() => toast.error('Sync failed'))
-                .finally(() => setIsSyncing(false));
-        } else {
-            if (!client) {
-                toast.error('Google authentication is not ready. Please reload and try again.');
-                setIsSyncing(false);
-                return;
-            }
-            client.requestCode();
+        if (!client) {
+            window.clearTimeout(timeoutId);
+            toast.error('Google authentication is not ready. Please reload and try again.');
+            finish();
+            return;
         }
+
+        client.requestCode();
     };
 
     const handleViewCalendar = () => {

@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const logger = require('../utils/logger');
 const User = require('../models/User');
+const AppError = require('../utils/AppError');
 
 const APP_TAG = 'nexar-study';
 const COLOR_IDS = ['1', '2', '3', '4', '5', '7', '8', '9', '10', '11'];
@@ -75,24 +76,65 @@ const listCalendarEvents = async (calendar, params = {}) => {
     return all;
 };
 
+const isGoogleInvalidGrant = (error) => {
+    const reason = error?.response?.data?.error || error?.code || '';
+    const message = error?.message || '';
+    return String(reason).includes('invalid_grant') || String(message).includes('invalid_grant');
+};
+
+const isGoogleInsufficientScope = (error) => {
+    const message = error?.message || '';
+    const status = error?.response?.status;
+    return status === 403 && String(message).toLowerCase().includes('insufficient authentication scopes');
+};
+
+const isGoogleQuotaError = (error) => {
+    const message = String(error?.message || '').toLowerCase();
+    const status = error?.response?.status;
+    return status === 429 || message.includes('quota exceeded') || message.includes('rate limit exceeded');
+};
+
+const toCalendarAppError = (error) => {
+    if (error instanceof AppError) return error;
+
+    if (isGoogleInvalidGrant(error)) {
+        return new AppError('Google Calendar authorization expired. Please reconnect your Google account and sync again.', 401);
+    }
+
+    if (isGoogleInsufficientScope(error)) {
+        return new AppError('Google Calendar permissions are outdated. Please reconnect and grant calendar access again.', 403);
+    }
+
+    if (isGoogleQuotaError(error)) {
+        return new AppError('Google Calendar API quota exceeded. Please wait a minute and try syncing again.', 429);
+    }
+
+    return new AppError('Google Calendar sync failed. Please try again.', 500);
+};
+
 /**
  * Exchange Authorization Code for Access & Refresh Tokens
  */
 exports.exchangeCode = async (code, userId) => {
     try {
-        const { tokens } = await oauth2Client.getToken(code);
+        const { tokens } = await oauth2Client.getToken({
+            code,
+            redirect_uri: 'postmessage',
+        });
         
-        // Persist the refresh token to the User if available
-        if (tokens.refresh_token) {
-            await User.findByIdAndUpdate(userId, { 
-                googleRefreshToken: tokens.refresh_token 
-            });
+        // A refresh token is required for server-side sync to keep working.
+        if (!tokens.refresh_token) {
+            throw new AppError('Google did not return a refresh token. Please reconnect and grant full calendar permissions.', 400);
         }
+
+        await User.findByIdAndUpdate(userId, {
+            googleRefreshToken: tokens.refresh_token,
+        });
         
         return tokens;
     } catch (error) {
         logger.error(`OAuth Code Exchange Error: ${error.message}`);
-        throw new Error('Failed to exchange Google auth code');
+        throw toCalendarAppError(error);
     }
 };
 
@@ -114,6 +156,16 @@ const getCalendarClient = async (user) => {
         refresh_token: user.googleRefreshToken
     });
 
+    try {
+        // Force token refresh now so invalid/revoked refresh tokens are detected early.
+        await client.getAccessToken();
+    } catch (error) {
+        if (isGoogleInvalidGrant(error)) {
+            await User.findByIdAndUpdate(user._id, { googleRefreshToken: null });
+        }
+        throw toCalendarAppError(error);
+    }
+
     return google.calendar({ version: 'v3', auth: client });
 };
 
@@ -122,22 +174,29 @@ const getCalendarClient = async (user) => {
  * Only returns events with privateExtendedProperty: app=nexar-study
  */
 exports.fetchNexarEvents = async (user) => {
-    const calendar = await getCalendarClient(user);
-    const events = await listCalendarEvents(calendar, {
-        privateExtendedProperty: `app=${APP_TAG}`,
-        orderBy: 'startTime',
-    });
+    try {
+        const calendar = await getCalendarClient(user);
+        const events = await listCalendarEvents(calendar, {
+            privateExtendedProperty: `app=${APP_TAG}`,
+            orderBy: 'startTime',
+        });
 
-    return events
-        .filter((event) => event.status !== 'cancelled')
-        .map((event) => ({
-            id: event.id,
-            title: event.summary,
-            start: event.start?.dateTime || event.start?.date,
-            end: event.end?.dateTime || event.end?.date,
-            description: event.description,
-            link: event.htmlLink,
-        }));
+        return events
+            .filter((event) => event.status !== 'cancelled')
+            .map((event) => ({
+                id: event.id,
+                title: event.summary,
+                start: event.start?.dateTime || event.start?.date,
+                end: event.end?.dateTime || event.end?.date,
+                description: event.description,
+                link: event.htmlLink,
+            }));
+    } catch (error) {
+        if (isGoogleInvalidGrant(error) || isGoogleInsufficientScope(error)) {
+            await User.findByIdAndUpdate(user._id, { googleRefreshToken: null });
+        }
+        throw toCalendarAppError(error);
+    }
 };
 
 /**
@@ -388,7 +447,10 @@ exports.syncPlanToCalendar = async (user, plan) => {
 
         return syncSummary;
     } catch (error) {
+        if (isGoogleInvalidGrant(error) || isGoogleInsufficientScope(error)) {
+            await User.findByIdAndUpdate(user._id, { googleRefreshToken: null });
+        }
         logger.error(`Critical Sync Error: ${error.message}`);
-        throw new Error('Sync failed. Please try again.');
+        throw toCalendarAppError(error);
     }
 };
