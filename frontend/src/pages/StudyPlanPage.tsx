@@ -37,6 +37,7 @@ import { createStudyPlan, createStudyPlanWithDocs, deleteStudyPlan, fetchStudyPl
 import { googleCalendarService } from '../services/googleCalendarService';
 import type { GoogleCalendarEvent, GoogleSyncSummary } from '../services/googleCalendarService';
 import { Share2, CalendarPlus } from 'lucide-react';
+import { useTimerStore } from '../store/useTimerStore';
 import type {
     CreateStudyPlanInput,
     StudyPlan,
@@ -51,8 +52,6 @@ type TaskTimer = {
     finishedAt?: number | null;
     lastUpdatedAt?: number | null;
 };
-
-type TimerMap = Record<string, TaskTimer>;
 
 const TIMER_MAP_KEY = 'studyPlanTaskTimers';
 
@@ -367,10 +366,16 @@ const StudyPlanPage: React.FC = () => {
     const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([]);
     const [workStartTime, setWorkStartTime] = useState('');
     const [workEndTime, setWorkEndTime] = useState('');
-    const [timers, setTimers] = useState<TimerMap>({});
-    const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
+    
+    // Timer Store integration
+    const timers = useTimerStore(state => state.timers);
+    const activeTimerId = useTimerStore(state => state.activeTimerId);
+    const startTimer = useTimerStore(state => state.startTimer);
+    const pauseTimer = useTimerStore(state => state.pauseTimer);
+    const resetTimer = useTimerStore(state => state.resetTimer);
+    const completeTimer = useTimerStore(state => state.completeTimer);
+
     const [openTrackerId, setOpenTrackerId] = useState<string | null>(null);
-    const [hydrated, setHydrated] = useState(false);
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [lastNotifiedTask, setLastNotifiedTask] = useState<string | null>(null);
     const [activeAlert, setActiveAlert] = useState<{ title: string; time: string; subject: string; id: string; planId?: string } | null>(null);
@@ -620,99 +625,6 @@ const StudyPlanPage: React.FC = () => {
             setHighlightedTaskId(null);
         }
     }, [highlightedTaskId, plans]);
-
-
-    const persistTimers = (nextTimers: TimerMap, activeId: string | null) => {
-        if (!hydrated) return; // avoid clobbering before hydration
-        try {
-            localStorage.setItem(TIMER_MAP_KEY, JSON.stringify({ timers: nextTimers, activeTimerId: activeId }));
-        } catch (err) {
-            console.error('Failed to persist timers', err);
-        }
-    };
-
-    const snapshotAndPersist = (activeId: string | null, source: 'tick' | 'unload' = 'tick') => {
-        setTimers((prev) => {
-            const now = Date.now();
-            const next: TimerMap = {};
-            Object.entries(prev).forEach(([id, t]) => {
-                if (t.isRunning && t.startedAt) {
-                    const last = t.lastUpdatedAt || t.startedAt;
-                    const elapsed = Math.max(0, Math.floor((now - last) / 1000));
-                    let newSeconds = t.seconds + elapsed;
-
-                    // Auto-stop logic: check against task duration limit
-                    const task = allTasksFlat.find(tk => tk.taskId === id);
-                    if (task) {
-                        const limitSeconds = (task.durationMinutes || Math.round((task.durationHours || 0) * 60)) * 60;
-                        if (newSeconds >= limitSeconds) {
-                            newSeconds = limitSeconds;
-                            next[id] = { ...t, seconds: newSeconds, isRunning: false, lastUpdatedAt: now, finishedAt: now };
-                        } else {
-                            next[id] = { ...t, seconds: newSeconds, lastUpdatedAt: now };
-                        }
-                    } else {
-                        next[id] = { ...t, seconds: newSeconds, lastUpdatedAt: now };
-                    }
-                } else {
-                    next[id] = { ...t, lastUpdatedAt: t.lastUpdatedAt || now };
-                }
-            });
-            persistTimers(next, activeId);
-            return source === 'unload' ? prev : next;
-        });
-    };
-
-    useEffect(() => {
-        const stored = localStorage.getItem(TIMER_MAP_KEY);
-        if (!stored) return;
-        try {
-            const parsed = JSON.parse(stored);
-            const savedTimers: TimerMap = parsed.timers || {};
-            const now = Date.now();
-            const adjusted: TimerMap = {};
-            Object.entries(savedTimers).forEach(([id, t]) => {
-                if (t.isRunning && t.startedAt) {
-                    const last = t.lastUpdatedAt || t.startedAt;
-                    const elapsed = Math.max(0, Math.floor((now - last) / 1000));
-                    adjusted[id] = { ...t, seconds: t.seconds + elapsed, startedAt: t.startedAt, lastUpdatedAt: now };
-                } else {
-                    adjusted[id] = { ...t, lastUpdatedAt: t.lastUpdatedAt || t.startedAt || now };
-                }
-            });
-            setTimers(adjusted);
-            const runningId = parsed.activeTimerId && adjusted[parsed.activeTimerId]?.isRunning ? parsed.activeTimerId : null;
-            setActiveTimerId(runningId);
-        } catch (err) {
-            console.error('Failed to restore timers', err);
-        }
-        setHydrated(true);
-    }, []);
-
-    useEffect(() => {
-        if (!hydrated) return;
-        persistTimers(timers, activeTimerId);
-    }, [timers, activeTimerId, hydrated]);
-
-    useEffect(() => {
-        if (!activeTimerId) return;
-        const interval = setInterval(() => {
-            snapshotAndPersist(activeTimerId, 'tick');
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [activeTimerId]);
-
-    useEffect(() => {
-        const handleVisibility = () => {
-            snapshotAndPersist(activeTimerId, 'unload');
-        };
-        window.addEventListener('beforeunload', handleVisibility);
-        document.addEventListener('visibilitychange', handleVisibility);
-        return () => {
-            window.removeEventListener('beforeunload', handleVisibility);
-            document.removeEventListener('visibilitychange', handleVisibility);
-        };
-    }, [activeTimerId]);
 
     const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
     const clampToToday = (value: string) => {
@@ -1373,18 +1285,7 @@ const StudyPlanPage: React.FC = () => {
     const totalHours = selectedPlan?.sessions?.reduce((s, sess) => s + (sess.totalStudyHours || 0), 0) || 0;
 
     const handleStartTimer = (taskId: string, sessionId?: string, subjectIdx?: number) => {
-        setTimers((prev) => {
-            const next: TimerMap = { ...prev };
-            if (activeTimerId && activeTimerId !== taskId && next[activeTimerId]) {
-                next[activeTimerId] = { ...next[activeTimerId], isRunning: false };
-            }
-            const current = next[taskId] || { seconds: 0, isRunning: false, startedAt: null };
-            const startedAt = current.startedAt ?? Date.now();
-            next[taskId] = { ...current, isRunning: true, startedAt, finishedAt: null, lastUpdatedAt: Date.now() };
-            persistTimers(next, taskId);
-            return next;
-        });
-        setActiveTimerId(taskId);
+        startTimer(taskId);
         setOpenTrackerId(taskId);
         if (sessionId && typeof subjectIdx === 'number') {
             handleStatusChange(sessionId, subjectIdx, 'in-progress');
@@ -1392,44 +1293,16 @@ const StudyPlanPage: React.FC = () => {
     };
 
     const handlePauseTimer = (taskId: string) => {
-        setTimers((prev) => {
-            const current = prev[taskId];
-            if (!current) return prev;
-            const next = { ...prev, [taskId]: { ...current, isRunning: false, lastUpdatedAt: Date.now() } };
-            persistTimers(next, activeTimerId === taskId ? null : activeTimerId);
-            return next;
-        });
-        if (activeTimerId === taskId) setActiveTimerId(null);
+        pauseTimer(taskId);
     };
 
     const handleResetTimer = (taskId: string) => {
-        setTimers((prev) => {
-            const current = prev[taskId];
-            if (!current) return prev;
-            const next = { ...prev, [taskId]: { ...current, seconds: 0, isRunning: false, startedAt: null, finishedAt: null, lastUpdatedAt: Date.now() } };
-            persistTimers(next, activeTimerId === taskId ? null : activeTimerId);
-            return next;
-        });
-        if (activeTimerId === taskId) setActiveTimerId(null);
+        resetTimer(taskId);
     };
 
     const handleCompleteTask = async (sessionId: string, subjectIdx: number, taskId: string) => {
-        const now = Date.now();
         const updatedPlan = await handleStatusChange(sessionId, subjectIdx, 'completed');
-        
-        setTimers((prev) => {
-            const current = prev[taskId] || { seconds: 0, isRunning: false, startedAt: null, finishedAt: null, lastUpdatedAt: null };
-            const lastTick = current.lastUpdatedAt || current.startedAt || now;
-            const extra = current.isRunning && current.startedAt ? Math.max(0, Math.floor((now - lastTick) / 1000)) : 0;
-            const updatedSeconds = current.seconds + extra;
-            const startedAt = current.startedAt ?? now;
-            const updated: TaskTimer = { ...current, seconds: updatedSeconds, isRunning: false, startedAt, finishedAt: now, lastUpdatedAt: now };
-            const next = { ...prev, [taskId]: updated };
-            persistTimers(next, activeTimerId === taskId ? null : activeTimerId);
-            return next;
-        });
-
-        if (activeTimerId === taskId) setActiveTimerId(null);
+        completeTimer(taskId);
 
         // Auto-trigger next task alert
         if (updatedPlan) {

@@ -1,10 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../auth/AuthProvider';
+import { useTimerStore } from '../../store/useTimerStore';
 
 export const Layout: React.FC = () => {
     const { user } = useAuth();
+    const tick = useTimerStore(state => state.tick);
+    const activeTimerId = useTimerStore(state => state.activeTimerId);
+
+    // Global background ticker for Study Tasks
+    useEffect(() => {
+        if (!activeTimerId) return;
+
+        const interval = setInterval(() => {
+            tick();
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [activeTimerId, tick]);
+
     const fullName = user ? `${user.firstName} ${user.lastName}` : 'Student Demo';
     const roleLabel = user?.role === 'admin' ? 'Administrator' : 'Student';
     const avatarUrl = user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=1e293b&color=fff`;
