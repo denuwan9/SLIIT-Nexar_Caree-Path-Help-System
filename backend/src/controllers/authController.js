@@ -52,7 +52,7 @@ exports.register = async (req, res, next) => {
         const verificationToken = user.createVerificationToken();
         await user.save({ validateBeforeSave: false });
 
-        const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email/${verificationToken}`;
+        const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
         
         try {
             await sendVerificationEmail(user, verificationUrl);

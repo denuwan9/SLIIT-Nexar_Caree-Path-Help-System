@@ -13,7 +13,7 @@ const VerifyEmailPage: React.FC = () => {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/v1/auth/verify-email/${token}`);
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/verify-email/${token}`);
         setStatus('success');
         setMessage(response.data.message || 'Email verified successfully!');
         toast.success('Email verified! You can now log in.');
