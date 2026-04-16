@@ -125,6 +125,11 @@ ${profileJson}
      *   3. Parse and return. Throw with a debug snippet on failure.
      */
     _extractJSON(raw) {
+        if (!raw) {
+            logger.error('[GroqService] JSON extraction failed: Input is null or undefined');
+            throw new Error('AI response was empty');
+        }
+
         // Step 1: strip ALL markdown code fences (```json, ```, etc.)
         let text = raw.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
 
@@ -371,6 +376,55 @@ Use exactly this structure:
 
         const raw = completion.choices[0].message.content;
         logger.info(`[GroqService] resume raw length: ${raw.length}`);
+        return this._extractJSON(raw);
+    }
+
+    /**
+     * NEW: Generates 5 personalized recommendations for the dashboard.
+     * Categories: SKILLS, PROJECTS, CAREER
+     */
+    async generateRecommendations(studentProfile) {
+        const profileJson = this._buildProfileContext(studentProfile);
+
+        const systemPrompt = `You are NEXAR, an elite AI Career Coach.
+Based on the student's profile, generate 5 "Featured Recommendations" for their dashboard.
+Categories: SKILLS (learning targets), PROJECTS (portfolio ideas), CAREER (interview or placement strategy).
+
+STUDENT PROFILE:
+${profileJson}
+
+OUTPUT FORMAT: Respond with ONLY a valid JSON object.
+Use exactly this structure:
+{
+  "recommendations": [
+    {
+      "tag": "SKILLS" | "PROJECTS" | "CAREER",
+      "title": "<High-impact, engaging title>",
+      "category": "AI Strategy",
+      "author": "Nexar Advisor"
+    }
+  ]
+}
+
+Make titles short (under 60 chars), punchy, and highly relevant to their target role or current skill gaps.`;
+
+        const completion = await this.client.chat.completions.create({
+            model: JSON_MODEL,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: "Generate 5 personalized recommendations." },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.6,
+            max_tokens: 1000,
+        });
+
+        const raw = completion.choices[0].message.content;
+        if (!raw) {
+            logger.error('[GroqService] Recommendations failed: AI returned empty content');
+            throw new Error('AI could not generate recommendations at this time');
+        }
+
         return this._extractJSON(raw);
     }
 }

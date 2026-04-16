@@ -21,14 +21,34 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { StudentProfile } from '../types/profile';
+import { getRecommendations } from '../services/aiService';
+import type { FeaturedRecommendation } from '../services/aiService';
+import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
     const { boot, bootData, isLoading, error } = useSystemBoot();
     const navigate = useNavigate();
 
+    const [recs, setRecs] = React.useState<FeaturedRecommendation[]>([]);
+    const [currentIndex, setCurrentIndex] = React.useState(0);
+    const [isRecsLoading, setIsRecsLoading] = React.useState(false);
+
+    const fetchDynamicRecs = async () => {
+        try {
+            setIsRecsLoading(true);
+            const data = await getRecommendations();
+            setRecs(data);
+        } catch (err) {
+            console.error('Failed to fetch recommendations', err);
+        } finally {
+            setIsRecsLoading(false);
+        }
+    };
+
     useEffect(() => {
         boot();
+        fetchDynamicRecs();
     }, [boot]);
 
     if (isLoading || !bootData) return <DashboardSkeleton />;
@@ -55,29 +75,27 @@ const Dashboard: React.FC = () => {
     const targetRole = profile?.careerGoals?.targetRoles?.[0] || 'Software Engineer';
     const completeness = profile?.profileCompleteness || 0;
 
-    // Dynamic Recommendations based on role
-    const getRecommendations = (role: string) => {
-        const baseRecs = [
-            { 
-                tag: 'SKILLS', 
-                title: `Mastering Core ${role} Fundamentals`, 
-                img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=600' 
-            },
-            { 
-                tag: 'PROJECTS', 
-                title: `Building a Production-Ready ${role} Portfolio`, 
-                img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600' 
-            },
-            { 
-                tag: 'CAREER', 
-                title: `Interview Strategies for top tier ${role} roles`, 
-                img: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=600' 
-            }
-        ];
-        return baseRecs;
+    // Dynamic images for tags
+    const getRecImage = (tag: string, index: number) => {
+        const images = {
+            SKILLS: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=600',
+            PROJECTS: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600',
+            CAREER: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=600'
+        };
+        return images[tag as keyof typeof images] || images.SKILLS;
     };
 
-    const recommendations = getRecommendations(targetRole);
+    const nextSlide = () => {
+        if (recs.length <= 3) return;
+        setCurrentIndex((prev) => Math.min(prev + 1, recs.length - 3));
+    };
+
+    const prevSlide = () => {
+        if (recs.length <= 3) return;
+        setCurrentIndex((prev) => Math.max(prev - 1, 0));
+    };
+
+    const displayedRecs = recs.length > 0 ? recs.slice(currentIndex, currentIndex + 3) : [];
 
     // Roadmap Milestones
     const milestones = [
@@ -169,43 +187,77 @@ const Dashboard: React.FC = () => {
                         <div className="flex justify-between items-center mb-5 mt-2 px-1">
                             <h2 className="text-[18px] font-bold text-[#0F172A]">Featured Recommendations</h2>
                             <div className="flex gap-2">
-                                <button className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-[#94A3B8] hover:bg-slate-50 transition-colors">
-                                    <ChevronLeft size={16} />
+                                <button 
+                                    onClick={prevSlide}
+                                    disabled={currentIndex === 0 || recs.length <= 3}
+                                    className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-[#94A3B8] hover:bg-white hover:text-purple-600 hover:border-purple-200 hover:shadow-md hover:-translate-x-0.5 active:scale-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:translate-x-0"
+                                >
+                                    <ChevronLeft size={20} />
                                 </button>
-                                <button className="w-8 h-8 rounded-full bg-[#0F172A] flex items-center justify-center text-white hover:bg-black transition-colors shadow-md">
-                                    <ChevronRight size={16} />
+                                <button 
+                                    onClick={nextSlide}
+                                    disabled={currentIndex >= recs.length - 3 || recs.length <= 3}
+                                    className="w-10 h-10 rounded-full bg-[#0F172A] flex items-center justify-center text-white hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-100 hover:translate-x-0.5 active:scale-90 transition-all shadow-md disabled:bg-slate-300 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:shadow-none"
+                                >
+                                    <ChevronRight size={20} />
                                 </button>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {recommendations.map((rec, i) => (
-                                <div key={i} className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100/50 hover:shadow-md transition-all cursor-pointer group">
-                                    <div className="w-full h-32 bg-[#F8FAFC] rounded-2xl mb-4 overflow-hidden relative border border-slate-100">
-                                       <img 
-                                          src={rec.img} 
-                                          alt={rec.tag} 
-                                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                                          onError={(e) => { 
-                                              (e.target as HTMLImageElement).src = `https://placehold.co/600x400/F1F5F9/64748B?text=${rec.tag}`;
-                                          }}
-                                       />
-                                       <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"></div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-500">
+                            {isRecsLoading ? (
+                                Array(3).fill(0).map((_, i) => (
+                                    <div key={i} className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100/50 animate-pulse">
+                                        <div className="w-full h-32 bg-slate-100 rounded-2xl mb-4" />
+                                        <div className="w-16 h-4 bg-slate-100 rounded mb-3" />
+                                        <div className="w-full h-4 bg-slate-100 rounded mb-2" />
+                                        <div className="w-3/4 h-4 bg-slate-100 rounded" />
                                     </div>
-                                    <div className="mb-3">
-                                        <span className="px-2 py-1 bg-purple-50 text-purple-600 text-[9px] font-black uppercase tracking-widest rounded-md border border-purple-100">{rec.tag}</span>
-                                    </div>
-                                    <h3 className="text-[13px] font-bold text-[#0F172A] leading-snug mb-5 group-hover:text-purple-600 transition-colors h-10 line-clamp-2">{rec.title}</h3>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-[#0F172A] flex items-center justify-center">
-                                            <Zap size={10} className="text-white" />
+                                ))
+                            ) : displayedRecs.length > 0 ? (
+                                displayedRecs.map((rec, i) => (
+                                    <div 
+                                        key={i} 
+                                        onClick={() => {
+                                            toast.success(`Starting analysis for: ${rec.title}`);
+                                            navigate('/advisor', { state: { chatPrompt: `I'm interested in the recommendation: "${rec.title}". Can you give me more details and steps?` } });
+                                        }}
+                                        className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100/50 hover:shadow-md transition-all cursor-pointer group animate-in fade-in zoom-in duration-500"
+                                    >
+                                        <div className="w-full h-32 bg-[#F8FAFC] rounded-2xl mb-4 overflow-hidden relative border border-slate-100">
+                                        <img 
+                                            src={getRecImage(rec.tag, i)} 
+                                            alt={rec.tag} 
+                                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                                            onError={(e) => { 
+                                                (e.target as HTMLImageElement).src = `https://placehold.co/600x400/F1F5F9/64748B?text=${rec.tag}`;
+                                            }}
+                                        />
+                                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"></div>
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-[#0F172A] leading-tight">Nexar Advisor</span>
-                                            <span className="text-[9px] font-medium text-[#94A3B8] leading-tight">AI Strategy</span>
+                                        <div className="mb-3">
+                                            <span className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-md border ${
+                                                rec.tag === 'SKILLS' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
+                                                rec.tag === 'PROJECTS' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                                'bg-rose-50 text-rose-600 border-rose-100'
+                                            }`}>{rec.tag}</span>
+                                        </div>
+                                        <h3 className="text-[13px] font-bold text-[#0F172A] leading-snug mb-5 group-hover:text-purple-600 transition-colors h-10 line-clamp-2">{rec.title}</h3>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-[#0F172A] flex items-center justify-center">
+                                                <Zap size={10} className="text-white" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-bold text-[#0F172A] leading-tight">{rec.author || 'Nexar Advisor'}</span>
+                                                <span className="text-[9px] font-medium text-[#94A3B8] leading-tight">{rec.category || 'AI Strategy'}</span>
+                                            </div>
                                         </div>
                                     </div>
+                                ))
+                            ) : (
+                                <div className="col-span-3 py-10 text-center">
+                                    <p className="text-slate-400 text-sm italic">No recommendations yet. Complete your profile for better insights!</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 
@@ -213,7 +265,12 @@ const Dashboard: React.FC = () => {
                     <div className="mt-2">
                         <div className="flex justify-between items-center mb-5 px-1">
                             <h2 className="text-[18px] font-bold text-[#0F172A]">Current Skill Assets</h2>
-                            <button className="text-[13px] font-bold text-[#0F172A] hover:underline">Manage All</button>
+                            <button 
+                                onClick={() => navigate('/profile')}
+                                className="text-sm font-semibold text-[#0F172A] hover:text-purple-600 transition-colors"
+                            >
+                                Manage All
+                            </button>
                         </div>
                         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100/50">
                             <div className="w-full">

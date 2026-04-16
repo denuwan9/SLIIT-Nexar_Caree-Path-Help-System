@@ -53,3 +53,17 @@ export const extractTextFromFile = async (file: File): Promise<string> => {
     );
     return res.data.data.text as string;
 };
+
+// ── 5. Dashboard Recommendations ───────────────────────────────────────────
+export interface FeaturedRecommendation {
+    tag: 'SKILLS' | 'PROJECTS' | 'CAREER';
+    title: string;
+    category: string;
+    author: string;
+    img?: string;
+}
+
+export const getRecommendations = async (): Promise<FeaturedRecommendation[]> => {
+    const res = await api.get('/ai/recommendations');
+    return res.data.data as FeaturedRecommendation[];
+};

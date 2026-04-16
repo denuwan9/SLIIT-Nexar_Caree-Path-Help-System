@@ -34,7 +34,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     }
 
     if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        return <Navigate to="/unauthorized" replace />;
+        // Instead of a generic unauthorized page, redirect to the user's home dashboard
+        const dashboardPath = user.role === 'admin' ? '/admin' : '/dashboard';
+        return <Navigate to={dashboardPath} replace />;
     }
 
     return children ? <>{children}</> : <Outlet />;

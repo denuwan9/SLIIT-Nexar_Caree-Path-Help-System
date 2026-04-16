@@ -57,6 +57,10 @@ exports.chat = async (req, res, next) => {
             history
         );
 
+        if (!reply) {
+            return next(new AppError('AI failed to generate a response.', 502));
+        }
+
         res.status(200).json({
             status: 'success',
             data: { reply },
@@ -89,6 +93,7 @@ exports.simulateCareer = async (req, res, next) => {
         let roadmap;
         try {
             roadmap = await groqService.simulateCareerPath(profile, targetRole.trim(), currentLevel);
+            if (!roadmap) throw new Error('Empty response');
         } catch (_parseErr) {
             return next(new AppError('AI returned an unexpected format. Please try again.', 502));
         }
@@ -199,5 +204,23 @@ exports.extractText = async (req, res, next) => {
         });
     } catch (error) {
         return next(new AppError(`Text extraction failed: ${error.message}`, 500));
+    }
+};
+
+/**
+ * GET /api/v1/ai/recommendations
+ * Generates personalized featured cards for the dashboard.
+ */
+exports.getRecommendations = async (req, res, next) => {
+    try {
+        const profile = await getStudentProfile(req.user._id);
+        const data = await groqService.generateRecommendations(profile);
+
+        res.status(200).json({
+            status: 'success',
+            data: data?.recommendations || []
+        });
+    } catch (error) {
+        next(error);
     }
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './components/auth/AuthProvider';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { PublicRoute } from './components/auth/PublicRoute';
 import { Layout } from './components/layout/Layout';
 import { Toaster } from 'react-hot-toast';
 
@@ -28,6 +29,13 @@ const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage'));
 const RootRedirect: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  return <Navigate to="/dashboard" replace />;
+};
+
+const NotFoundRedirect: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) return <div className="flex h-screen items-center justify-center font-bold text-slate-500 text-xl">404 - Not Found</div>;
   if (user?.role === 'admin') return <Navigate to="/admin" replace />;
   return <Navigate to="/dashboard" replace />;
 };
@@ -59,14 +67,29 @@ const App: React.FC = () => {
           />
           <div className="mesh-bg" />
           <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
+            {/* Public Routes - Only accessible when NOT logged in */}
+            <Route element={<PublicRoute />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+            </Route>
+
+            {/* Email Verification - Special case public route */}
             <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              {/* Student Only */}
+              {/* Admin Area - Catch-all for /admin prefix */}
+              <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminDashboard />} />
+                <Route path="profiles" element={<AdminCareerProfiles />} />
+                <Route path="profiles/:id" element={<AdminStudentPreview />} />
+                <Route path="job-posts" element={<AdminJobPosts />} />
+                {/* Catch any other /admin/subpath and redirect to main admin dashboard */}
+                <Route path="*" element={<Navigate to="/admin" replace />} />
+              </Route>
+
+              {/* Student Only Routes */}
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<ProfilePage />} />
@@ -78,24 +101,16 @@ const App: React.FC = () => {
                 <Route path="/job-postings/:id" element={<JobPostDetails />} />
               </Route>
 
-              {/* Shared Routes */}
+              {/* Shared Protected Routes */}
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/interviews" element={<InterviewSchedulingPage />} />
               <Route path="/mock-interview" element={<MockInterviewPage />} />
-
-              {/* Admin Only */}
-              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/profiles" element={<AdminCareerProfiles />} />
-                <Route path="/admin/profiles/:id" element={<AdminStudentPreview />} />
-                <Route path="/admin/job-posts" element={<AdminJobPosts />} />
-              </Route>
             </Route>
 
-            {/* Redirects */}
+            {/* Global Redirects & Fallbacks */}
             <Route path="/" element={<RootRedirect />} />
             <Route path="/unauthorized" element={<div className="flex h-screen items-center justify-center font-bold text-red-500 text-xl">403 - Unauthorized</div>} />
-            <Route path="*" element={<div className="flex h-screen items-center justify-center font-bold text-slate-500 text-xl">404 - Not Found</div>} />
+            <Route path="*" element={<NotFoundRedirect />} />
           </Routes>
         </React.Suspense>
       </Router>
