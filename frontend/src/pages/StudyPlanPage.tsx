@@ -38,6 +38,7 @@ import { googleCalendarService } from '../services/googleCalendarService';
 import type { GoogleCalendarEvent, GoogleSyncSummary } from '../services/googleCalendarService';
 import { Share2, CalendarPlus } from 'lucide-react';
 import { useTimerStore } from '../store/useTimerStore';
+import type { TimerMap } from '../store/useTimerStore';
 import type {
     CreateStudyPlanInput,
     StudyPlan,
@@ -45,15 +46,7 @@ import type {
     StudyTaskStatus,
 } from '../types/studyPlan';
 
-type TaskTimer = {
-    seconds: number;
-    isRunning: boolean;
-    startedAt: number | null;
-    finishedAt?: number | null;
-    lastUpdatedAt?: number | null;
-};
 
-const TIMER_MAP_KEY = 'studyPlanTaskTimers';
 
 function formatTimer(totalSeconds: number) {
     const mins = Math.floor(totalSeconds / 60);
@@ -832,7 +825,7 @@ const StudyPlanPage: React.FC = () => {
             if (task) {
                 const limitSeconds = (task.durationMinutes || Math.round((task.durationHours || 0) * 60)) * 60;
                 if (timers[activeTimerId].seconds >= limitSeconds) {
-                    setActiveTimerId(null);
+                    pauseTimer(activeTimerId);
                     toast(`Time is over for: ${task.title || task.topic || task.subjectName}`, {
                         icon: '⏰',
                         duration: 6000,

@@ -34,7 +34,7 @@ export const useTimerStore = create<TimerState>()(
             activeTimerId: null,
             hydrated: false,
 
-            startTimer: (taskId, extraData) => {
+            startTimer: (taskId, _extraData) => {
                 const now = Date.now();
                 set((state) => {
                     const current = state.timers[taskId] || { seconds: 0, isRunning: false, startedAt: null };
@@ -149,7 +149,7 @@ export const useTimerStore = create<TimerState>()(
         {
             name: TIMER_MAP_KEY,
             storage: createJSONStorage(() => localStorage),
-            onRehydrateStorage: (state) => {
+            onRehydrateStorage: (_state) => {
                 return (state, error) => {
                     if (error) {
                         console.error('An error occurred during hydration', error);

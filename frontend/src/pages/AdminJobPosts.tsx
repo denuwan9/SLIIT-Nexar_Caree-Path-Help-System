@@ -58,7 +58,7 @@ const AdminJobPosts: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalAnimating, setIsModalAnimating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
-  const [clickOrigin, setClickOrigin] = useState<{ x: number; y: number } | null>(null);
+
   const [isAIFilterModalOpen, setIsAIFilterModalOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
   const [aiResults, setAiResults] = useState<JobPostWithAI[]>([]);
@@ -126,12 +126,7 @@ const AdminJobPosts: React.FC = () => {
     setIsDropdownOpen(false);
   };
 
-  const handleJobPostClick = (jobPost: JobPost, event: React.MouseEvent) => {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    setClickOrigin({
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2
-    });
+  const handleJobPostClick = (jobPost: JobPost, _event: React.MouseEvent) => {
     setSelectedJobPost(jobPost);
     setIsModalOpen(true);
     setTimeout(() => setIsModalAnimating(true), 10);

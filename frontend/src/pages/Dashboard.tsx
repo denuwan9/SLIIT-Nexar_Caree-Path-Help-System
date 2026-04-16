@@ -76,7 +76,7 @@ const Dashboard: React.FC = () => {
     const completeness = profile?.profileCompleteness || 0;
 
     // Dynamic images for tags
-    const getRecImage = (tag: string, index: number) => {
+    const getRecImage = (tag: string) => {
         const images = {
             SKILLS: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=600',
             PROJECTS: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=600',
@@ -225,7 +225,7 @@ const Dashboard: React.FC = () => {
                                     >
                                         <div className="w-full h-32 bg-[#F8FAFC] rounded-2xl mb-4 overflow-hidden relative border border-slate-100">
                                         <img 
-                                            src={getRecImage(rec.tag, i)} 
+                                            src={getRecImage(rec.tag)} 
                                             alt={rec.tag} 
                                             className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                                             onError={(e) => { 
