@@ -1,0 +1,35 @@
+# ── Dependencies ──────────────────────────────────────────────────────────
+node_modules/
+
+# ── Environment Variables (NEVER commit these) ────────────────────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# ── Build Output ──────────────────────────────────────────────────────────
+dist/
+frontend/dist/
+build/
+
+# ── Logs ──────────────────────────────────────────────────────────────────
+*.log
+logs/
+backend/logs/
+error.log
+combined.log
+
+# ── Local Uploads (use Cloudinary in production) ───────────────────────────
+uploads/
+backend/uploads/
+
+# ── OS / Editor ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ── Vercel ────────────────────────────────────────────────────────────────
+.vercel

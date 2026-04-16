@@ -1,39 +1,19 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const { cloudinary } = require('./cloudinaryUpload');
 const AppError = require('../utils/AppError');
 
-// ── Ensure upload directories exist ────────────────────────────────
-const AVATAR_DIR = path.join(process.cwd(), 'uploads', 'avatars');
-const STUDY_DOCS_DIR = path.join(process.cwd(), 'uploads', 'study-plans');
-if (!fs.existsSync(AVATAR_DIR)) fs.mkdirSync(AVATAR_DIR, { recursive: true });
-if (!fs.existsSync(STUDY_DOCS_DIR)) fs.mkdirSync(STUDY_DOCS_DIR, { recursive: true });
-
-// ── Disk storage configuration: avatars ────────────────────────────
-const avatarStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, AVATAR_DIR),
-    filename: (req, _file, cb) => {
-        const ext = path.extname(_file.originalname).toLowerCase();
-        cb(null, `avatar-${req.user._id}-${Date.now()}${ext}`);
-    },
-});
-
-// ── Disk storage configuration: study documents ────────────────────
-const studyDocsStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, STUDY_DOCS_DIR),
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `studydoc-${req.user._id}-${Date.now()}${ext}`);
+// ── Cloudinary storage configuration: study documents ───────────
+const studyDocsStorage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+        folder: 'nexar/study-plans',
+        // 'auto' allows raw files like PDF, DOCX, TXT as well as images
+        resource_type: 'auto',
     },
 });
 
 // ── File type validation ──────────────────────────────────────────
-const avatarFilter = (_req, file, cb) => {
-    const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (ALLOWED_TYPES.includes(file.mimetype)) return cb(null, true);
-    cb(new AppError('Only JPEG, PNG, and WebP images are allowed.', 415), false);
-};
-
 const studyDocsFilter = (_req, file, cb) => {
     const ALLOWED_TYPES = [
         'application/pdf',
@@ -56,38 +36,12 @@ const studyDocsFilter = (_req, file, cb) => {
     cb(new AppError('Unsupported file type for study documents.', 415), false);
 };
 
-// ── Multer instances ──────────────────────────────────────────────
-const uploadAvatar = multer({
-    storage: avatarStorage,
-    fileFilter: avatarFilter,
-    limits: { fileSize: 2 * 1024 * 1024, files: 1 },
-});
-
+// ── Multer instance ──────────────────────────────────────────────
 const uploadStudyDocs = multer({
     storage: studyDocsStorage,
     fileFilter: studyDocsFilter,
-    limits: { fileSize: 5 * 1024 * 1024, files: 5 },
+    limits: { fileSize: 5 * 1024 * 1024, files: 5 }, // 5 MB per file
 });
-
-/**
- * Middleware factory for single avatar upload.
- * Wraps multer errors into AppError for the global error handler.
- */
-const uploadAvatarMiddleware = (req, res, next) => {
-    const uploadSingle = uploadAvatar.single('avatar');
-    uploadSingle(req, res, (err) => {
-        if (!err) return next();
-
-        if (err instanceof multer.MulterError) {
-            if (err.code === 'LIMIT_FILE_SIZE') {
-                return next(new AppError('File too large. Maximum size is 2 MB.', 413));
-            }
-            return next(new AppError(`Upload error: ${err.message}`, 400));
-        }
-
-        next(err); // pass AppError from fileFilter
-    });
-};
 
 /**
  * Middleware for study documents upload.
@@ -107,4 +61,5 @@ const uploadStudyDocsMiddleware = (req, res, next) => {
     });
 };
 
-module.exports = { uploadAvatarMiddleware, uploadStudyDocsMiddleware };
+module.exports = { uploadStudyDocsMiddleware };
+

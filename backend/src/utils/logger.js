@@ -24,16 +24,19 @@ const logger = winston.createLogger({
                 logFormat
             ),
         }),
-        // Error log file
-        new winston.transports.File({
-            filename: path.join('logs', 'error.log'),
-            level: 'error',
-        }),
-        // Combined log file
-        new winston.transports.File({
-            filename: path.join('logs', 'combined.log'),
-        }),
     ],
 });
+
+// ── Only add File transports in development ─────────────────────────────
+// Vercel serverless has a read-only filesystem, trying to write logs crashes it
+if (process.env.NODE_ENV !== 'production') {
+    logger.add(new winston.transports.File({
+        filename: path.join('logs', 'error.log'),
+        level: 'error',
+    }));
+    logger.add(new winston.transports.File({
+        filename: path.join('logs', 'combined.log'),
+    }));
+}
 
 module.exports = logger;

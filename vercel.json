@@ -20,12 +20,8 @@
       "destination": "/api/index.js"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": "https://res.cloudinary.com/dywmynn2c/image/upload/v1/$1"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/frontend/$1"
+      "destination": "/index.html"
     }
   ],
   "env": {

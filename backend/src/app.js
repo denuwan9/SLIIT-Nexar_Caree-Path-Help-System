@@ -31,7 +31,9 @@ const app = express();
 app.use(helmet());
 app.use(
     cors({
-        origin: process.env.CLIENT_URL || 'http://localhost:5173',
+        // FRONTEND_URL is the canonical variable name set in Vercel env vars.
+        // CLIENT_URL kept as fallback for local .env.example backwards-compat.
+        origin: process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173',
         credentials: true,
     })
 );
@@ -50,9 +52,6 @@ app.use(cookieParser());
 app.use(mongoSanitize()); // Prevent NoSQL Injection
 app.use(xss());           // Prevent XSS
 app.use(hpp());           // Prevent Parameter Pollution
-
-// ── Static files: serve uploaded avatars ──────────────────────────
-app.use('/uploads', express.static('uploads'));
 
 // ── Global rate limiter ────────────────────────────────────────────
 app.use('/api', globalLimiter);
