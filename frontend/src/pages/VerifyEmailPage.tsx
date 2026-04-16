@@ -6,12 +6,16 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const VerifyEmailPage: React.FC = () => {
+  const hasRequested = React.useRef(false);
   const { token } = useParams<{ token: string }>();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     const verifyEmail = async () => {
+      if (hasRequested.current) return;
+      hasRequested.current = true;
+
       try {
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/auth/verify-email/${token}`);
         setStatus('success');
