@@ -23,6 +23,18 @@
       "destination": "/frontend/assets/$1"
     },
     {
+      "source": "/favicon-nexar.svg",
+      "destination": "/frontend/favicon-nexar.svg"
+    },
+    {
+      "source": "/logo.png",
+      "destination": "/frontend/logo.png"
+    },
+    {
+      "source": "/vite.svg",
+      "destination": "/frontend/vite.svg"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/frontend/index.html"
     }
