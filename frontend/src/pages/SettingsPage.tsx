@@ -15,7 +15,7 @@ import {
 } from '../features/profile/settingsSchemas';
 import {
     Loader2, Lock, Trash2, Eye, EyeOff, AlertTriangle,
-    CheckCircle, Shield, ChevronRight, User, Key,
+    CheckCircle, Shield, User, Key,
     MailCheck, Fingerprint, LogOut
 } from 'lucide-react';
 
