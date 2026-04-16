@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "moduleResolution": "node",
+    "target": "es2022"
+  },
+  "exclude": [
+    "frontend",
+    "node_modules"
+  ]
+}
