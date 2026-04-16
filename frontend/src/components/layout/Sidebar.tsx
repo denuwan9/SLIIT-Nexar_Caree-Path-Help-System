@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import {
     LayoutDashboard,
     User,
@@ -58,6 +58,8 @@ export const Sidebar: React.FC = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
 
     const currentNavItems = user?.role === 'admin' ? adminNavItems : navItems;
+    const logoRoute = user?.role === 'admin' ? '/admin' : '/dashboard';
+
 
     return (
         <>
@@ -65,9 +67,9 @@ export const Sidebar: React.FC = () => {
             <aside className="hidden md:flex w-64 lg:w-[260px] h-screen flex-col py-8 bg-white border-r border-[#F1F5F9] z-40 flex-shrink-0 relative overflow-visible">
                 <div className="flex flex-col h-full w-full">
                     {/* Logo */}
-                    <div className="px-8 cursor-pointer mb-8 shrink-0">
+                    <Link to={logoRoute} className="px-8 cursor-pointer mb-8 shrink-0 block">
                         <img src={logoImg} alt="Nexar Logo" className="h-12 w-auto object-contain" onError={(e) => (e.currentTarget.src = "/logo.png")} />
-                    </div>
+                    </Link>
 
                     {/* MENU Subtitle */}
                     <div className="px-9 mb-3 shrink-0">
@@ -99,12 +101,12 @@ export const Sidebar: React.FC = () => {
             {/* ─── Mobile Header Bar ─── */}
             <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-b border-slate-200/50">
                 <div className="flex items-center justify-between px-6 h-16">
-                    <div className="flex items-center gap-3">
+                    <Link to={logoRoute} className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-cyan-500 flex items-center justify-center shadow-md">
                             <span className="text-white font-black text-lg">N</span>
                         </div>
                         <span className="font-black text-slate-900 tracking-widest text-base uppercase">Nexar</span>
-                    </div>
+                    </Link>
                     <button
                         onClick={() => setMobileOpen(v => !v)}
                         className="w-11 h-11 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 active:scale-90 transition-transform"

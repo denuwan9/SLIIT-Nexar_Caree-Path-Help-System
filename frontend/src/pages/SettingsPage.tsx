@@ -213,8 +213,8 @@ const SettingsPage: React.FC = () => {
                     </div>
 
                     {/* Operational Overview Card */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/10 p-8">
-                        <div className="flex items-center gap-6 border-r border-white/5 pr-6 last:border-0 last:pr-0">
+                    <div className="bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/10 p-8">
+                        <div className="flex items-center gap-6">
                             <div className="relative group/avatar">
                                 <div className="absolute inset-0 bg-blue-500/20 rounded-full blur group-hover/avatar:blur-md transition-all" />
                                 <div className="relative w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-2 border-white/20 shadow-xl transition-transform group-hover/avatar:scale-105">
@@ -229,19 +229,6 @@ const SettingsPage: React.FC = () => {
                                 <p className="text-xl font-black text-white tracking-tight">{user?.firstName} {user?.lastName}</p>
                                 <p className="text-xs font-medium text-slate-500 mt-0.5">{user?.email}</p>
                             </div>
-                        </div>
-                        <div className="flex items-center justify-between pl-6 md:pl-0">
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Clearance Level</p>
-                                <p className="text-sm font-black text-blue-400 uppercase tracking-widest">Active Student</p>
-                            </div>
-                            <button 
-                                onClick={() => navigate('/profile')} 
-                                className="group/btn flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white text-hover transition-all"
-                            >
-                                <span className="group-hover/btn:text-slate-900">View Dossier</span>
-                                <ChevronRight size={16} className="text-blue-400 group-hover/btn:text-slate-900 group-hover/btn:translate-x-1 transition-all" />
-                            </button>
                         </div>
                     </div>
                 </div>
