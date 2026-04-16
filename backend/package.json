@@ -4,8 +4,8 @@
   "description": "Production-ready backend for Career Path Simulator System",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node init && node src/index.js",
+    "dev": "node init && nodemon src/index.js",
     "lint": "eslint src/**/*.js"
   },
   "dependencies": {
