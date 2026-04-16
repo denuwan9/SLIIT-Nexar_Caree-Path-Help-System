@@ -53,26 +53,6 @@ const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string
     </NavLink>
 );
 
-const MobileNavItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
-    <NavLink
-        to={to}
-        end
-        className={({ isActive }) => `
-            flex flex-col items-center gap-1.5 px-3 py-2 transition-all duration-300
-            ${isActive ? 'text-purple-600 scale-110' : 'text-slate-400'}
-        `}
-    >
-        {({ isActive }) => (
-            <>
-                <div className={`p-2.5 rounded-2xl transition-all duration-500 ${isActive ? 'bg-purple-100 shadow-sm' : ''}`}>
-                    <Icon size={20} />
-                </div>
-                <span className={`text-[8px] font-black uppercase tracking-widest leading-none ${isActive ? 'opacity-100' : 'opacity-40'}`}>{label}</span>
-            </>
-        )}
-    </NavLink>
-);
-
 export const Sidebar: React.FC = () => {
     const { user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -159,15 +139,6 @@ export const Sidebar: React.FC = () => {
                         </button>
                     </nav>
                 )}
-            </div>
-
-            {/* ─── Mobile Bottom Nav Bar ─── */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl border-t border-white/50 pb-safe">
-                <nav className="flex items-center justify-around px-2 py-2.5">
-                    {currentNavItems.map(item => (
-                        <MobileNavItem key={item.to} {...item} />
-                    ))}
-                </nav>
             </div>
         </>
     );
