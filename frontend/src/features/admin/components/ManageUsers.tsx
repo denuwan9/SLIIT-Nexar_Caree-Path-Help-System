@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import adminService from '../adminService';
 import type { UserDTO } from '../adminService';
-import { Loader2, UserX, Shield, User as UserIcon, Trash2, Power, PowerOff, Key, ChevronDown, Search } from 'lucide-react';
+import { Loader2, UserX, Shield, User as UserIcon, Trash2, Power, PowerOff, Key, ChevronDown, Search, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { InputModal } from '../../../components/ui/InputModal';
+import { generateUserReport } from '../../../utils/reportGenerator';
 
 export const ManageUsers: React.FC = () => {
     const [users, setUsers] = useState<UserDTO[]>([]);
@@ -146,7 +147,17 @@ export const ManageUsers: React.FC = () => {
             {/* Search & Filter - Tactical Controls */}
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/40">
                 <div>
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">System Registry</h3>
+                    <div className="flex items-center gap-4">
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">System Registry</h3>
+                        <button
+                            onClick={() => generateUserReport(filteredUsers)}
+                            className="group/btn flex items-center gap-2 px-5 py-2.5 bg-indigo-50 hover:bg-indigo-600 border border-indigo-100 hover:border-indigo-600 rounded-2xl transition-all duration-500 shadow-sm hover:shadow-xl hover:shadow-indigo-500/20 active:scale-95"
+                            title="Generate Operational Report"
+                        >
+                            <FileText className="text-indigo-600 group-hover/btn:text-white transition-colors" size={18} />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700 group-hover/btn:text-white transition-colors">Generate Report</span>
+                        </button>
+                    </div>
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">Operational Personnel Management</p>
                 </div>
                 
