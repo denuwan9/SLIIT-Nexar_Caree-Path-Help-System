@@ -146,11 +146,11 @@ export default function MockInterviewPage() {
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  const [timeLeft, setTimeLeft] = useState(25);
+  const [timeLeft, setTimeLeft] = useState(60);
 
   useEffect(() => {
     if (isInterviewing && !isFinished) {
-      setTimeLeft(25);
+      setTimeLeft(60);
     }
   }, [currentQIndex, isInterviewing, isFinished]);
 
@@ -432,7 +432,9 @@ export default function MockInterviewPage() {
                   <div className="flex items-center gap-3 text-slate-400">
                      <Clock size={16} />
                      <span className="text-[10px] font-black uppercase tracking-widest">
-                       Time Remaining: <span className={timeLeft <= 5 ? "text-rose-500 text-sm ml-1" : "text-white text-sm ml-1"}>00:{timeLeft.toString().padStart(2, '0')}</span>
+                       Time Remaining: <span className={timeLeft <= 10 ? "text-rose-500 text-sm ml-1" : "text-white text-sm ml-1"}>
+                         {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
+                       </span>
                      </span>
                   </div>
                 </div>
