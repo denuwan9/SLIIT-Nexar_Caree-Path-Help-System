@@ -64,6 +64,9 @@ const AdminJobPosts: React.FC = () => {
   const [isAppliedJobsLoading, setIsAppliedJobsLoading] = useState(false);
   const [appliedJobsError, setAppliedJobsError] = useState<string | null>(null);
 
+  const [isApplicationMessageModalOpen, setIsApplicationMessageModalOpen] = useState(false);
+  const [applicationMessage, setApplicationMessage] = useState('');
+
   const [isAIFilterModalOpen, setIsAIFilterModalOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
   const [aiResults, setAiResults] = useState<JobPostWithAI[]>([]);
@@ -87,8 +90,12 @@ const AdminJobPosts: React.FC = () => {
     const load = async () => {
       try {
         setIsLoading(true);
-        const fetched = await fetchAllJobPosts();
+        const [fetched, myApps] = await Promise.all([
+          fetchAllJobPosts(),
+          fetchMyApplications().catch(() => [])
+        ]);
         setPosts(fetched);
+        setAppliedJobs(myApps || []);
       } catch (err: any) {
         setError(err?.response?.data?.message || 'Unable to load job posts');
       } finally {
@@ -145,12 +152,18 @@ const AdminJobPosts: React.FC = () => {
     }, 300); // Match the animation duration
   };
 
-  const handleApply = async () => {
+  const handleApplyClick = () => {
+    setApplicationMessage('');
+    setIsApplicationMessageModalOpen(true);
+  };
+
+  const handleConfirmApply = async () => {
     if (!selectedJobPost) return;
     setIsApplying(true);
     try {
-      await applyForJob(selectedJobPost._id);
+      await applyForJob(selectedJobPost._id, applicationMessage);
       alert('Application submitted successfully!');
+      setIsApplicationMessageModalOpen(false);
       handleCloseModal();
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Failed to apply');
@@ -334,10 +347,22 @@ const AdminJobPosts: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {filteredPosts.length === 0 ? (
               <div className="col-span-full p-6 text-center text-slate-500">No job posts found.</div>
-            ) : filteredPosts.map((post) => (
+            ) : filteredPosts.map((post) => {
+              const myApp = appliedJobs.find(app => app.jobPost && typeof app.jobPost === 'object' ? (app.jobPost as any)._id === post._id : app.jobPost === post._id);
+              
+              return (
               <div key={post._id} className="border border-slate-100 rounded-2xl p-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={(e) => handleJobPostClick(post, e)}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-bold text-[#0F172A]">{post.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-[#0F172A]">{post.title}</h3>
+                    {myApp && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        myApp.status === 'accepted' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200'
+                      }`}>
+                        {myApp.status === 'accepted' ? 'ACCEPTED' : 'APPLIED'}
+                      </span>
+                    )}
+                  </div>
                   {isAIFilterActive && post.aiScore !== undefined && (
                     <span className={`text-xs font-bold px-2 py-1 rounded-full border ${getAIScoreColor(post.aiScore)}`}>
                       {post.aiScore}%
@@ -351,7 +376,7 @@ const AdminJobPosts: React.FC = () => {
                   <span>{(post.viewCount || 0)} views</span>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}
@@ -473,13 +498,28 @@ const AdminJobPosts: React.FC = () => {
               )}
 
               <div className="flex justify-end pt-4 border-t border-slate-200">
-                <button
-                  onClick={handleApply}
-                  disabled={isApplying}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-indigo-300/30 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-60 transition-all transform hover:scale-105"
-                >
-                  {isApplying ? 'Applying...' : 'Apply for this Job'}
-                </button>
+                {(() => {
+                  const hasApplied = appliedJobs.some(app => app.jobPost && typeof app.jobPost === 'object' ? (app.jobPost as any)._id === selectedJobPost._id : app.jobPost === selectedJobPost._id);
+                  return (
+                    <button
+                      onClick={() => {
+                        if (hasApplied) {
+                          alert('Already applied to this job post');
+                          return;
+                        }
+                        handleApplyClick();
+                      }}
+                      disabled={isApplying}
+                      className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-white font-semibold text-sm shadow-lg transition-all transform ${
+                        hasApplied 
+                          ? 'bg-slate-400 cursor-not-allowed shadow-none' 
+                          : 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-indigo-300/30 hover:from-indigo-700 hover:to-purple-700 hover:scale-105 disabled:opacity-60'
+                      }`}
+                    >
+                      {isApplying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply for this Job'}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -643,6 +683,46 @@ const AdminJobPosts: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Application Message Modal */}
+      {isApplicationMessageModalOpen && (
+        <div
+          onClick={() => setIsApplicationMessageModalOpen(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          style={{ paddingLeft: '280px', paddingRight: '20px' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6"
+          >
+            <h2 className="text-xl font-bold text-slate-900 mb-4">Application Details</h2>
+            <p className="text-sm text-slate-600 mb-4">
+              Please enter any important messages (e.g., what to bring, date, time, venue, etc.):
+            </p>
+            <textarea
+              value={applicationMessage}
+              onChange={(e) => setApplicationMessage(e.target.value)}
+              placeholder="Enter important details here..."
+              className="w-full h-32 p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 resize-none text-sm mb-4"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setIsApplicationMessageModalOpen(false)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmApply}
+                disabled={isApplying}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium text-sm shadow-lg shadow-indigo-200"
+              >
+                {isApplying ? 'Sending...' : 'Done'}
+              </button>
             </div>
           </div>
         </div>

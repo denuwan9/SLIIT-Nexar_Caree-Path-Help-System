@@ -4,7 +4,7 @@ import { Plus, Briefcase, UserCheck, Calendar, Percent, Trash2 } from 'lucide-re
 import toast from 'react-hot-toast';
 import { useAuth } from '../components/auth/AuthProvider';
 import { fetchMyJobPosts, deleteJobPost } from '../services/jobPostService';
-import { fetchApplicationsForJobPost, type Application } from '../services/applicationService';
+import { fetchApplicationsForJobPost, updateApplicationStatus, type Application } from '../services/applicationService';
 import type { JobPost } from '../services/jobPostService';
 
 const JobPostingDashboard: React.FC = () => {
@@ -38,6 +38,21 @@ const JobPostingDashboard: React.FC = () => {
       toast.success('Job post deleted successfully.');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to delete job post.');
+    }
+  };
+
+  const handleAcceptApplication = async (appId: string, postId: string) => {
+    try {
+      await updateApplicationStatus(appId, 'accepted');
+      toast.success('Application accepted!');
+      setApplications(prev => ({
+        ...prev,
+        [postId]: prev[postId].map(app => 
+          app._id === appId ? { ...app, status: 'accepted' as const } : app
+        )
+      }));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to accept application.');
     }
   };
 
@@ -277,8 +292,18 @@ const JobPostingDashboard: React.FC = () => {
                       </p>
                       {app.coverLetter && (
                         <div>
-                          <h4 className="font-medium text-[#0F172A] text-sm">Cover Letter</h4>
+                          <h4 className="font-medium text-[#0F172A] text-sm">Application Details</h4>
                           <p className="text-sm text-[#64748B]">{app.coverLetter}</p>
+                        </div>
+                      )}
+                      {app.status !== 'accepted' && (
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            onClick={() => handleAcceptApplication(app._id, selectedPost._id)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
+                          >
+                            Accept
+                          </button>
                         </div>
                       )}
                     </div>
