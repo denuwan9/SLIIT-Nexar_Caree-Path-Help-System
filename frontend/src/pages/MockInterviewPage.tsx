@@ -299,7 +299,7 @@ export default function MockInterviewPage() {
               </p>
             </div>
 
-            <div className="flex p-1.5 bg-white/60 rounded-[2rem] border border-white/80 shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-x-auto hide-scrollbar backdrop-blur-md">
+            <div className="flex p-1.5 bg-white/60 rounded-[2rem] border border-white/80 shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-x-auto scrollbar-hide backdrop-blur-md">
               <button
                 onClick={() => navigate('/interviews')}
                 className="flex items-center gap-3 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all bg-white/80 text-slate-400 border border-white/60 hover:text-blue-600 hover:border-blue-100 hover:shadow-lg shadow-slate-100"

@@ -20,12 +20,12 @@ import type { IInterviewEvent, IMyBooking, IEventStats, ICompany, ISlot } from '
 const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-3 px-6 py-3.5 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 whitespace-nowrap
+    className={`flex items-center gap-2 px-8 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 whitespace-nowrap
       ${active
-        ? 'bg-[#151B2B] text-white shadow-inner border border-white/10'
-        : 'text-slate-400 hover:text-white bg-transparent border border-transparent hover:bg-white/5 hover:border-white/5'}`}
+        ? 'bg-[#0F172A] text-white shadow-lg shadow-blue-900/10'
+        : 'text-slate-400 hover:text-[#0F172A] bg-transparent hover:bg-slate-50'}`}
   >
-    <Icon size={14} className={active ? "text-blue-400" : ""} />
+    <Icon size={12} className={active ? "text-blue-400" : "text-slate-300"} />
     {label}
   </button>
 );
@@ -1197,7 +1197,7 @@ export default function InterviewSchedulingPage() {
       {/* Dark Theme Standalone Header Card */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-50">
         <div className="bg-[#0B1121] rounded-[2rem] p-8 md:p-12 shadow-2xl shadow-blue-900/10 border border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
-          <div className="space-y-4 max-w-2xl">
+          <div className="space-y-4 max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 w-fit">
               <Bot size={12} className="text-blue-400" />
               <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Nexus Network Active</span>
@@ -1225,7 +1225,7 @@ export default function InterviewSchedulingPage() {
           </div>
 
           {/* Precision Navigation Tabs */}
-          <div className="flex p-1.5 bg-[#050810] border border-white/5 rounded-[2.5rem] overflow-x-auto hide-scrollbar w-full lg:w-auto">
+          <div className="flex p-1 bg-white border border-slate-100 rounded-full scrollbar-hide overflow-hidden w-full lg:w-auto shadow-sm">
             {!isAdmin ? (
               <>
                 <TabButton active={activeTab === 'browse'} onClick={() => setActiveTab('browse')} icon={Search} label="Browse Events" />
