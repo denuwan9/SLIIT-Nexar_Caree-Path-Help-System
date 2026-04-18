@@ -6,7 +6,7 @@ type JobPostWithAI = JobPost & {
   aiScore?: number;
   aiReason?: string;
 };
-import { applyForJob } from '../services/applicationService';
+import { applyForJob, fetchMyApplications, type Application } from '../services/applicationService';
 import api from '../api/axios';
 
 const targetRolesList = [
@@ -58,6 +58,11 @@ const AdminJobPosts: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalAnimating, setIsModalAnimating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+
+  const [isAppliedModalOpen, setIsAppliedModalOpen] = useState(false);
+  const [appliedJobs, setAppliedJobs] = useState<Application[]>([]);
+  const [isAppliedJobsLoading, setIsAppliedJobsLoading] = useState(false);
+  const [appliedJobsError, setAppliedJobsError] = useState<string | null>(null);
 
   const [isAIFilterModalOpen, setIsAIFilterModalOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -151,6 +156,20 @@ const AdminJobPosts: React.FC = () => {
       alert(error?.response?.data?.message || 'Failed to apply');
     } finally {
       setIsApplying(false);
+    }
+  };
+
+  const handleOpenAppliedJobs = async () => {
+    setIsAppliedModalOpen(true);
+    setIsAppliedJobsLoading(true);
+    setAppliedJobsError(null);
+    try {
+      const applications = await fetchMyApplications();
+      setAppliedJobs(applications || []);
+    } catch (err: any) {
+      setAppliedJobsError(err?.response?.data?.message || 'Failed to load applied jobs');
+    } finally {
+      setIsAppliedJobsLoading(false);
     }
   };
 
@@ -302,7 +321,15 @@ const AdminJobPosts: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-[#0F172A]">All Job Listings</h2>
-            <span className="text-xs text-slate-500 font-semibold">{filteredPosts.length} postings</span>
+            <div className="flex items-center gap-4">
+              <button 
+                className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl font-semibold text-sm transition-colors border border-indigo-100"
+                onClick={handleOpenAppliedJobs}
+              >
+                View Applied Jobs
+              </button>
+              <span className="text-xs text-slate-500 font-semibold">{filteredPosts.length} postings</span>
+            </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {filteredPosts.length === 0 ? (
@@ -559,6 +586,68 @@ const AdminJobPosts: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Applied Jobs Modal */}
+      {isAppliedModalOpen && (
+        <div
+          onClick={() => setIsAppliedModalOpen(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          style={{ paddingLeft: '280px', paddingRight: '20px' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col"
+          >
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-slate-900">My Applied Jobs</h2>
+              <button
+                onClick={() => setIsAppliedModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              {isAppliedJobsLoading ? (
+                <div className="text-center text-slate-500 py-8">Loading your applications...</div>
+              ) : appliedJobsError ? (
+                <div className="text-center text-red-500 py-8">{appliedJobsError}</div>
+              ) : appliedJobs.length === 0 ? (
+                <div className="text-center text-slate-500 py-8">You haven't applied to any jobs yet.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {appliedJobs.map((app) => (
+                    <div key={app._id} className="border border-slate-200 rounded-xl p-4 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={(e) => {
+                       if (app.jobPost && typeof app.jobPost === 'object') {
+                         handleJobPostClick(app.jobPost as any, e as any);
+                         setIsAppliedModalOpen(false);
+                       }
+                    }}>
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold text-slate-900">
+                           {app.jobPost && typeof app.jobPost === 'object' ? (app.jobPost as any).title : 'Deleted Job Post'}
+                        </h4>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
+                          app.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                          app.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {app.status ? app.status.toUpperCase() : 'PENDING'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 mb-2">
+                        Applied on: {app.appliedAt ? new Date(app.appliedAt).toLocaleDateString() : 'Unknown date'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

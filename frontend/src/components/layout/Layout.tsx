@@ -244,7 +244,7 @@ export const Layout: React.FC = () => {
                 </header>
 
                 <div className="w-full flex-1 p-6 lg:p-8 pt-0">
-                    <div className="max-w-[1500px] mx-auto w-full h-full">
+                    <div className="max-w-[1500px] mx-auto w-full min-h-full">
                         <Outlet />
                     </div>
                 </div>

@@ -7,6 +7,9 @@ const { applicationValidator } = require('../middleware/validators');
 
 router.use(protect);
 
+// Get current user's applications
+router.get('/me', applicationController.getMyApplications);
+
 // Apply for a job post (students and admin can apply)
 router.post('/', applicationValidator, validate, applicationController.applyForJob);
 

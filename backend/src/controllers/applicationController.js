@@ -123,3 +123,25 @@ exports.updateApplicationStatus = async (req, res, next) => {
         next(error);
     }
 };
+
+// Get my applications
+exports.getMyApplications = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+
+        // Get applications where applicant is the current user
+        const applications = await Application.find({ applicant: userId })
+            .populate('jobPost')
+            .sort('-appliedAt');
+
+        res.status(200).json({
+            status: 'success',
+            results: applications.length,
+            data: {
+                applications,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
