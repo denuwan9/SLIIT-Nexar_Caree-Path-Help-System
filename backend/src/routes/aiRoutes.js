@@ -33,6 +33,9 @@ router.post('/resume', aiController.analyzeResume);
 // GET /api/v1/ai/recommendations — personalized dashboard cards
 router.get('/recommendations', aiController.getRecommendations);
 
+// POST /api/v1/ai/evaluate-interview — mock interview answer evaluation
+router.post('/evaluate-interview', aiController.evaluateInterview);
+
 // POST /api/v1/ai/extract-text — PDF text extraction
 router.post('/extract-text', upload.single('resume'), aiController.extractText);
 

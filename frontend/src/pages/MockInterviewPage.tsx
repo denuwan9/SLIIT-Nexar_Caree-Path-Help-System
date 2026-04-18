@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Zap, CheckCircle2, ChevronRight, RefreshCcw, Bot, Terminal, Clock, Sparkles, Users, Mic, MicOff } from 'lucide-react';
+import { Calendar, Zap, CheckCircle2, ChevronRight, RefreshCcw, Bot, Terminal, Clock, Sparkles, Users, Mic, MicOff, Loader2, AlertTriangle, XCircle, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { evaluateInterview, type InterviewEvaluation } from '../services/aiService';
+import { toast } from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // ─── Question Bank ─────────────────────────────────────────────────────────────
 const QUESTION_BANK: Record<string, Record<string, string[]>> = {
@@ -100,6 +104,63 @@ const QUESTION_BANK: Record<string, Record<string, string[]>> = {
       "You discover through user testing that a core feature you designed is highly confusing. How do you pivot?",
       "You need to design a complex data dashboard for a mobile app. Describe your approach."
     ]
+  },
+  'Cybersecurity Analyst': {
+    Technical: [
+      "Explain the difference between Symmetric and Asymmetric encryption.",
+      "What is a Man-in-the-Middle (MITM) attack, and how do you prevent it?",
+      "Describe the CIA Triad in information security.",
+      "How does a Web Application Firewall (WAF) protect against SQL injection?",
+      "What is the principle of Least Privilege?"
+    ],
+    Behavioral: [
+      "How do you stay calm during a security breach incident?",
+      "Tell me about a time you found a vulnerability in a system you were building.",
+      "How do you explain technical risks to a non-technical manager?"
+    ],
+    Situational: [
+      "You suspect an employee's account has been compromised. What is your immediate response?",
+      "Your company wants to move all data to a public cloud. What are your primary security concerns?",
+      "A critical security patch is released for a production server, but it's during peak hours. What do you do?"
+    ]
+  },
+  'Mobile App Developer (React Native/Flutter)': {
+    Technical: [
+      "Explain the bridge architecture in React Native.",
+      "What are the lifecycle methods in a mobile application?",
+      "How do you handle push notifications on both iOS and Android?",
+      "Describe the difference between Hot Reload and Hot Restart.",
+      "How do you optimize mobile app performance for low-end devices?"
+    ],
+    Behavioral: [
+      "Tell me about a tricky UI challenge you solved on mobile.",
+      "How do you handle differences in UX/UI patterns between Android and iOS?",
+      "Describe a project where you had to integrate a complex third-party SDK."
+    ],
+    Situational: [
+      "An app update is causing crashes for a specific iOS version. How do you troubleshoot?",
+      "You need to implement offline-first functionality. What stack do you choose?",
+      "The client wants a feature that uses excessive background battery. How do you advise them?"
+    ]
+  },
+  'Cloud Engineer (AWS/Azure)': {
+    Technical: [
+      "What is Infrastructure as Code (IaC), and why is it important?",
+      "Explain the shared responsibility model in cloud computing.",
+      "How do you scale a database horizontally on AWS?",
+      "What is a VPC, and how do you configure subnets for security?",
+      "Describe the difference between Serverless (Lambda) and Containers (ECS)."
+    ],
+    Behavioral: [
+      "Tell me about a time you optimized cloud costs for a project.",
+      "How do you handle a production outage in a distributed system?",
+      "Describe a challenging migration from on-premise to cloud."
+    ],
+    Situational: [
+      "A cloud service is down in your primary region. How does your DR plan kick in?",
+      "You notice an unusual spike in your AWS bill. What are your steps to investigate?",
+      "A developer needs root access to production to debug an issue. How do you handle this?"
+    ]
   }
 };
 
@@ -129,6 +190,7 @@ export default function MockInterviewPage() {
   const navigate = useNavigate();
   const [targetRole, setTargetRole] = useState('Full Stack Developer (MERN)');
   const [focus, setFocus] = useState('All');
+  const [difficulty, setDifficulty] = useState('Intermediate');
   const [numQuestions, setNumQuestions] = useState(5);
 
   // Interview Session State
@@ -137,16 +199,18 @@ export default function MockInterviewPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluation, setEvaluation] = useState<InterviewEvaluation | null>(null);
 
   // Audio Recording State
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  const [timeLeft, setTimeLeft] = useState(25);
+  const [timeLeft, setTimeLeft] = useState(60);
 
   useEffect(() => {
     if (isInterviewing && !isFinished) {
-      setTimeLeft(25);
+      setTimeLeft(60);
     }
   }, [currentQIndex, isInterviewing, isFinished]);
 
@@ -231,7 +295,7 @@ export default function MockInterviewPage() {
     setIsInterviewing(true);
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (isRecordingAudio && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsRecordingAudio(false);
@@ -239,7 +303,17 @@ export default function MockInterviewPage() {
     if (currentQIndex < questions.length - 1) {
       setCurrentQIndex(prev => prev + 1);
     } else {
+      setIsEvaluating(true);
       setIsFinished(true);
+      try {
+        const result = await evaluateInterview(questions, answers);
+        setEvaluation(result);
+      } catch (error) {
+        console.error('Evaluation failed:', error);
+        toast.error('Evaluation failed. Please try again.');
+      } finally {
+        setIsEvaluating(false);
+      }
     }
   };
 
@@ -253,6 +327,76 @@ export default function MockInterviewPage() {
     setQuestions([]);
     setAnswers([]);
     setCurrentQIndex(0);
+    setEvaluation(null);
+  };
+
+  const handleExportPDF = () => {
+    if (!evaluation) return;
+
+    const doc = new jsPDF();
+    const primaryColor = [15, 23, 42]; // #0F172A
+
+    // Header
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('NEXAR INTERVIEW PERFORMANCE REPORT', 15, 25);
+    
+    doc.setFontSize(10);
+    doc.text(`DATE: ${new Date().toLocaleDateString()}`, 160, 25);
+
+    // Summary Box
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(14);
+    doc.text('EXECUTIVE SUMMARY', 15, 55);
+    
+    autoTable(doc, {
+      startY: 60,
+      head: [['Metric', 'Value']],
+      body: [
+        ['Target Role', targetRole],
+        ['Difficulty Level', difficulty],
+        ['Aggregate Score', `${evaluation.overallScore}%`],
+        ['Correct Answers', `${evaluation.evaluations.filter(e => e.status === 'Correct').length}/${evaluation.evaluations.length}`],
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    const splitFeedback = doc.splitTextToSize(`Summary: ${evaluation.overallFeedback}`, 180);
+    doc.text(splitFeedback, 15, (doc as any).lastAutoTable.finalY + 15);
+
+    // Detailed Evaluations
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DETAILED EVALUATIONS', 15, (doc as any).lastAutoTable.finalY + 35);
+
+    const tableData = evaluation.evaluations.map((ev, i) => [
+      `Q0${i + 1}`,
+      ev.question,
+      ev.status,
+      ev.feedback
+    ]);
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 40,
+      head: [['ID', 'Question', 'Status', 'Feedback']],
+      body: tableData,
+      columnStyles: {
+        0: { cellWidth: 10 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 80 }
+      },
+      headStyles: { fillColor: primaryColor }
+    });
+
+    doc.save(`Nexar_Interview_Report_${targetRole.replace(/\s+/g, '_')}.pdf`);
+    toast.success('Performance Report Exported!');
   };
 
   return (
@@ -323,7 +467,7 @@ export default function MockInterviewPage() {
                 </div>
 
                 <div className="p-10 md:p-14 space-y-12">
-                  <div className="grid md:grid-cols-2 gap-12">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">
                      <div className="space-y-4">
                         <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Target Occupation</label>
                         <div className="relative">
@@ -336,9 +480,21 @@ export default function MockInterviewPage() {
                               <option key={role} value={role}>{role}</option>
                             ))}
                           </select>
-                          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                             <ChevronRight size={20} className="rotate-90" />
-                          </div>
+                        </div>
+                     </div>
+
+                     <div className="space-y-4">
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Competency Level</label>
+                        <div className="flex bg-slate-100 p-1 rounded-2xl">
+                          {['Beginner', 'Intermediate', 'Expert'].map(lv => (
+                            <button
+                              key={lv}
+                              onClick={() => setDifficulty(lv)}
+                              className={`flex-1 py-3 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${difficulty === lv ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                            >
+                              {lv}
+                            </button>
+                          ))}
                         </div>
                      </div>
 
@@ -353,10 +509,6 @@ export default function MockInterviewPage() {
                             onChange={(e) => setNumQuestions(parseInt(e.target.value))}
                             className="w-full h-3 bg-slate-100 rounded-full appearance-none cursor-pointer accent-indigo-600 shadow-inner"
                           />
-                          <div className="flex justify-between text-[10px] font-black text-slate-300 mt-4 uppercase tracking-widest">
-                            <span>Precision Strike (1)</span>
-                            <span>Endurance Run (10)</span>
-                          </div>
                         </div>
                      </div>
                   </div>
@@ -417,7 +569,9 @@ export default function MockInterviewPage() {
                   <div className="flex items-center gap-3 text-slate-400">
                      <Clock size={16} />
                      <span className="text-[10px] font-black uppercase tracking-widest">
-                       Time Remaining: <span className={timeLeft <= 5 ? "text-rose-500 text-sm ml-1" : "text-white text-sm ml-1"}>00:{timeLeft.toString().padStart(2, '0')}</span>
+                       Time Remaining: <span className={timeLeft <= 5 ? "text-rose-500 text-sm ml-1" : "text-white text-sm ml-1"}>
+                         {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
+                       </span>
                      </span>
                   </div>
                 </div>
@@ -487,7 +641,8 @@ export default function MockInterviewPage() {
                     onClick={handleNextQuestion} 
                     className="px-12 py-5 bg-[#0F172A] text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-3 hover:bg-indigo-600 hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-slate-300"
                   >
-                    {currentQIndex === questions.length - 1 ? 'Execute Evaluation' : 'Next Sequence'} <ChevronRight size={18} />
+                    {currentQIndex === questions.length - 1 ? (isEvaluating ? 'Calibrating...' : 'Execute Evaluation') : 'Next Sequence'} 
+                    {isEvaluating ? <Loader2 size={18} className="animate-spin" /> : <ChevronRight size={18} />}
                   </button>
                 </div>
               </div>
@@ -520,26 +675,119 @@ export default function MockInterviewPage() {
                   Sequence benchmarks have been recorded. Review your performance transcript below. Maintain simulation frequency to optimize your professional throughput.
                 </p>
 
-                <div className="bg-slate-50 shadow-inner rounded-3xl p-8 text-left mb-12 max-h-[400px] overflow-y-auto border border-slate-100 mx-auto w-full max-w-3xl custom-scrollbar">
-                  <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-                    <Terminal size={14} /> Simulation Transcript
-                  </h3>
-                  <div className="space-y-8">
-                    {questions.map((q, i) => (
-                      <div key={i} className="space-y-3">
-                        <p className="text-base font-bold text-[#0F172A] flex gap-3 leading-snug">
-                          <span className="text-indigo-400">0{i + 1}</span> {q}
-                        </p>
-                        <div className="bg-white border border-slate-100 rounded-2xl p-5 text-sm text-slate-600 leading-relaxed relative shadow-sm">
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-emerald-400 rounded-r-full" />
-                          {answers[i] || <span className="text-slate-400 italic">No response sequence captured...</span>}
+                <div className="bg-slate-50 shadow-inner rounded-3xl p-8 text-left mb-12 max-h-[600px] overflow-y-auto border border-slate-100 mx-auto w-full max-w-3xl custom-scrollbar relative">
+                  {isEvaluating ? (
+                    <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                      <div className="relative">
+                        <Loader2 size={48} className="text-indigo-600 animate-spin" />
+                        <div className="absolute inset-0 blur-lg bg-indigo-400/20 animate-pulse" />
+                      </div>
+                      <p className="text-xs font-black text-indigo-500 uppercase tracking-[0.3em]">AI Evaluator analyzing responses...</p>
+                    </div>
+                  ) : evaluation ? (
+                    <div className="space-y-10">
+                      <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aggregate Performance Score</p>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-3">
+                              <p className="text-4xl font-black text-[#0F172A]">{evaluation.overallScore}<span className="text-indigo-600 text-xl"> %</span></p>
+                              <div className="h-8 w-px bg-slate-200" />
+                              <div className="flex flex-col">
+                                <p className="text-xl font-black text-emerald-600 leading-none">
+                                  {evaluation.evaluations.filter(e => e.status === 'Correct').length}/{evaluation.evaluations.length}
+                                </p>
+                                <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400">Correct Answers</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="w-16 h-16 rounded-full border-4 border-indigo-50 flex items-center justify-center relative">
+                          <div className="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin-slow" style={{ clipPath: `conic-gradient(from 0deg, #6366f1 ${evaluation.overallScore}%, transparent 0)` }} />
+                          <Target size={24} className="text-indigo-600" />
                         </div>
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="space-y-2">
+                        <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                          <Bot size={14} /> Evaluator Summary
+                        </h3>
+                        <p className="text-slate-600 text-sm leading-relaxed font-medium bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                          {evaluation.overallFeedback}
+                        </p>
+                      </div>
+
+                      <div className="space-y-8">
+                        {evaluation.evaluations.map((ev, i) => (
+                          <div key={i} className="space-y-4">
+                             <div className="flex items-start justify-between gap-4">
+                                <p className="text-base font-bold text-[#0F172A] flex gap-3 leading-snug">
+                                  <span className="text-indigo-400">0{i + 1}</span> {ev.question}
+                                </p>
+                                <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0
+                                  ${ev.status === 'Correct' ? 'bg-emerald-100 text-emerald-600' : 
+                                    ev.status === 'Partially Correct' ? 'bg-amber-100 text-amber-600' : 
+                                    'bg-rose-100 text-rose-600'}`}
+                                >
+                                  {ev.status === 'Correct' ? <CheckCircle2 size={12} /> : 
+                                   ev.status === 'Partially Correct' ? <AlertTriangle size={12} /> : 
+                                   <XCircle size={12} />}
+                                  {ev.status}
+                                </div>
+                             </div>
+
+                             <div className="space-y-3 pl-8 border-l-2 border-slate-100 ml-3">
+                                <div className="space-y-1">
+                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Your Response</p>
+                                  <p className="text-sm text-slate-600 leading-relaxed bg-white p-4 rounded-xl border border-slate-50 italic">
+                                    "{ev.answer || 'No response captured...'}"
+                                  </p>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">AI Feedback</p>
+                                  <p className="text-sm text-slate-700 font-bold leading-relaxed">
+                                    {ev.feedback}
+                                  </p>
+                                </div>
+                                <div className="bg-slate-100/50 p-3 rounded-xl flex items-center gap-3">
+                                   <Sparkles size={14} className="text-amber-500 shrink-0" />
+                                   <p className="text-[11px] text-slate-500 font-medium italic">
+                                      <span className="font-black uppercase text-[9px] mr-2">Pro Tip:</span>
+                                      {ev.idealPointer}
+                                   </p>
+                                </div>
+                             </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-8 text-center py-10">
+                       <p className="text-slate-400 font-medium italic">Reviewing raw transcript...</p>
+                       <div className="space-y-8 text-left">
+                        {questions.map((q, i) => (
+                          <div key={i} className="space-y-3">
+                            <p className="text-base font-bold text-[#0F172A] flex gap-3 leading-snug">
+                              <span className="text-indigo-400">0{i + 1}</span> {q}
+                            </p>
+                            <div className="bg-white border border-slate-100 rounded-2xl p-5 text-sm text-slate-600 leading-relaxed relative shadow-sm">
+                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-emerald-400 rounded-r-full" />
+                              {answers[i] || <span className="text-slate-400 italic">No response sequence captured...</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex flex-col sm:flex-row justify-center gap-6">
+                  <button 
+                    onClick={handleExportPDF} 
+                    className="px-12 py-5 bg-white border-2 border-indigo-600 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <ClipboardList size={18} /> Export PDF
+                  </button>
                   <button 
                     onClick={handleEndInterview} 
                     className="px-12 py-5 bg-[#0F172A] text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-600 hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-slate-200"

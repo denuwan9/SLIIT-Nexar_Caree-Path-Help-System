@@ -67,3 +67,21 @@ export const getRecommendations = async (): Promise<FeaturedRecommendation[]> =>
     const res = await api.get('/ai/recommendations');
     return res.data.data as FeaturedRecommendation[];
 };
+
+// ── 6. Mock Interview Evaluator ──────────────────────────────────────────
+export interface InterviewEvaluation {
+    overallScore: number;
+    evaluations: {
+        question: string;
+        answer: string;
+        status: 'Correct' | 'Partially Correct' | 'Incorrect';
+        feedback: string;
+        idealPointer: string;
+    }[];
+    overallFeedback: string;
+}
+
+export const evaluateInterview = async (questions: string[], answers: string[]): Promise<InterviewEvaluation> => {
+    const res = await api.post('/ai/evaluate-interview', { questions, answers });
+    return res.data.data.report as InterviewEvaluation;
+};

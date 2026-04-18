@@ -224,3 +224,34 @@ exports.getRecommendations = async (req, res, next) => {
         next(error);
     }
 };
+/**
+ * POST /api/v1/ai/evaluate-interview
+ * Body: { questions: string[], answers: string[] }
+ * Returns overallScore, evaluations[], overallFeedback
+ */
+exports.evaluateInterview = async (req, res, next) => {
+    try {
+        const { questions, answers } = req.body;
+
+        if (!questions || !Array.isArray(questions) || questions.length === 0) {
+            return next(new AppError('Questions are required.', 400));
+        }
+        if (!answers || !Array.isArray(answers)) {
+            return next(new AppError('Answers are required.', 400));
+        }
+
+        const profile = await getStudentProfile(req.user._id);
+
+        let report;
+        try {
+            report = await groqService.evaluateInterviewAnswers(profile, questions, answers);
+        } catch (_parseErr) {
+            return next(new AppError('AI returned an unexpected format. Please try again.', 502));
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: { report },
+        });
+    } catch (error) { next(error); }
+};

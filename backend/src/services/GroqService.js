@@ -427,6 +427,64 @@ Make titles short (under 60 chars), punchy, and highly relevant to their target 
 
         return this._extractJSON(raw);
     }
+
+    /**
+     * TASK: Evaluate Mock Interview Answers
+     * Compares student answers vs. questions and provides feedback/scores.
+     */
+    async evaluateInterviewAnswers(studentProfile, questions, answers) {
+        const profileJson = this._buildProfileContext(studentProfile);
+
+        const systemPrompt = `You are NEXAR, an elite AI Interview Evaluator.
+Analyse the student's mock interview performance. For each question and answer pair, determine if the answer was "Correct" (highly relevant and accurate), "Partially Correct", or "Incorrect/Weak".
+
+### SCORING LOGIC (CRITICAL)
+- "Correct": 100% value for that question.
+- "Partially Correct": 50% value for that question.
+- "Incorrect": 0% value for that question.
+- "overallScore": The average percentage across ALL questions. (e.g., if 5 questions and 4 are Correct, 1 is Incorrect, score = 80).
+
+STUDENT PROFILE:
+${profileJson}
+
+INTERVIEW DATA:
+Questions and Answers are provided in the user message.
+
+OUTPUT FORMAT: Respond with ONLY a valid JSON object.
+Use exactly this structure:
+{
+  "overallScore": <integer 0-100 calculated using SCORING LOGIC>,
+  "evaluations": [
+    {
+      "question": "<the question>",
+      "answer": "<the user's answer>",
+      "status": "Correct" | "Partially Correct" | "Incorrect",
+      "feedback": "<1-2 sentence constructive critique>",
+      "idealPointer": "<brief point on what a perfect answer should have included>"
+    }
+  ],
+  "overallFeedback": "<2-3 sentence executive summary of the performance>"
+}
+
+Be fair but professional. If an answer is empty or "no response captured", mark it as Incorrect.`;
+
+        const interviewContent = questions.map((q, i) => `Q${i + 1}: ${q}\nA${i + 1}: ${answers[i] || 'No response captured'}`).join('\n\n');
+
+        const completion = await this.client.chat.completions.create({
+            model: JSON_MODEL,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Analyze this interview:\n\n${interviewContent}` },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+            max_tokens: 2500,
+        });
+
+        const raw = completion.choices[0].message.content;
+        logger.info(`[GroqService] interview evaluation raw length: ${raw ? raw.length : 0}`);
+        return this._extractJSON(raw);
+    }
 }
 
 module.exports = GroqService.getInstance();

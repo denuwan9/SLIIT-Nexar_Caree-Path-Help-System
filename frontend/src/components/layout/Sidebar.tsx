@@ -11,7 +11,8 @@ import {
     Settings,
     LogOut,
     Menu,
-    X
+    X,
+    Bot
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -24,6 +25,7 @@ const navItems = [
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
     { to: '/study', icon: BookOpen, label: 'Study' },
     { to: '/job-postings', icon: ClipboardList, label: 'Job Posts' },
+    { to: '/mock-interview', icon: Bot, label: 'Mock Interview' },
 ];
 
 const adminNavItems = [
@@ -31,6 +33,7 @@ const adminNavItems = [
     { to: '/admin/profiles', icon: Briefcase, label: 'Career Profiles' },
     { to: '/admin/job-posts', icon: ClipboardList, label: 'Job Posts' },
     { to: '/interviews', icon: Calendar, label: 'Interviews' },
+    { to: '/mock-interview', icon: Bot, label: 'Mock Interview' },
 ];
 
 const SidebarItem: React.FC<{ to: string; icon: React.ElementType; label: string }> = ({ to, icon: Icon, label }) => (
