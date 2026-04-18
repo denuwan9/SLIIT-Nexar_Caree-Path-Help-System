@@ -155,10 +155,24 @@ export const Layout: React.FC = () => {
                                             {notifications.length > 0 ? (
                                                 notifications.map((n, i) => {
                                                     const isRead = readNotifications.includes(n.slotId);
+                                                    const eventDate = new Date(n.eventDate);
+                                                    const today = new Date();
+                                                    today.setHours(0, 0, 0, 0);
+                                                    
+                                                    const diffTime = eventDate.getTime() - today.getTime();
+                                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                    
+                                                    let statusLabel = '';
+                                                    let statusColor = 'text-slate-400';
+                                                    if (diffDays === 0) { statusLabel = 'TODAY'; statusColor = 'text-rose-500'; }
+                                                    else if (diffDays === 1) { statusLabel = 'TOMORROW'; statusColor = 'text-amber-500'; }
+                                                    else if (diffDays > 1) { statusLabel = `${diffDays} DAYS TO GO`; statusColor = 'text-emerald-500'; }
+                                                    else { statusLabel = 'PAST SESSION'; statusColor = 'text-slate-400'; }
+
                                                     return (
                                                         <div 
                                                             key={i} 
-                                                            className={`px-6 py-4 transition-colors cursor-pointer group border-b border-slate-50 last:border-0 relative ${isRead ? 'opacity-60 bg-white' : 'hover:bg-slate-50 bg-indigo-50/20'}`}
+                                                            className={`px-6 py-4 transition-colors cursor-pointer group border-b border-slate-50 last:border-0 relative ${isRead ? 'opacity-60 bg-white' : 'hover:bg-slate-50 bg-indigo-50/10'}`}
                                                             onClick={() => markAsRead(n.slotId)}
                                                         >
                                                             <div className="flex items-start gap-4">
@@ -167,8 +181,13 @@ export const Layout: React.FC = () => {
                                                                 </div>
                                                                 <div className="flex-1 space-y-1">
                                                                     <div className="flex items-center justify-between">
-                                                                        <p className={`text-[13px] font-bold line-clamp-1 group-hover:text-indigo-600 transition-colors ${isRead ? 'text-slate-500' : 'text-slate-800'}`}>{n.eventTitle}</p>
-                                                                        {!isRead && <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />}
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className={`text-[13px] font-bold line-clamp-1 group-hover:text-indigo-600 transition-colors ${isRead ? 'text-slate-500' : 'text-slate-800'}`}>{n.eventTitle}</p>
+                                                                            {!isRead && <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />}
+                                                                        </div>
+                                                                        <span className={`text-[9px] font-black uppercase tracking-widest ${statusColor}`}>
+                                                                            {statusLabel}
+                                                                        </span>
                                                                     </div>
                                                                     <p className="text-[11px] font-medium text-slate-400">{n.companyName || 'General Session'}</p>
                                                                     <div className="flex items-center gap-3 pt-1">
