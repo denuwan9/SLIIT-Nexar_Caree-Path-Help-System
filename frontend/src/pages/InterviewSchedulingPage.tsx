@@ -1225,7 +1225,7 @@ export default function InterviewSchedulingPage() {
           </div>
 
           {/* Precision Navigation Tabs */}
-          <div className="flex p-1 bg-white border border-slate-100 rounded-full scrollbar-hide overflow-hidden w-full lg:w-auto shadow-sm">
+          <div className="flex p-1 bg-white border border-slate-100 rounded-full scrollbar-hide overflow-visible w-full lg:w-auto shadow-sm flex-shrink-0">
             {!isAdmin ? (
               <>
                 <TabButton active={activeTab === 'browse'} onClick={() => setActiveTab('browse')} icon={Search} label="Browse Events" />
