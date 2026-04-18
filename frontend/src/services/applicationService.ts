@@ -25,6 +25,11 @@ export const applyForJob = async (jobPostId: string, coverLetter?: string, resum
   }
 };
 
+export const fetchMyApplications = async (): Promise<Application[]> => {
+  const res = await api.get('/applications/me');
+  return res.data.data.applications as Application[];
+};
+
 export const fetchApplicationsForJobPost = async (jobPostId: string): Promise<Application[]> => {
   const res = await api.get(`/applications/${jobPostId}`);
   return res.data.data.applications as Application[];

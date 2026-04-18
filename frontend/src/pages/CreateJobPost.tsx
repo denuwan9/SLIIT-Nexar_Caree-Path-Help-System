@@ -159,7 +159,7 @@ const CreateJobPost: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+    <div className="bg-white rounded-3xl p-6 pb-12 border border-slate-100 shadow-sm mb-12">
       <button
         onClick={() => navigate('/job-postings')}
         className="inline-flex items-center gap-2 text-sm text-slate-600 font-semibold mb-4"

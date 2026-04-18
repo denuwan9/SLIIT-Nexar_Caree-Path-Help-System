@@ -4,7 +4,7 @@ import { Plus, Briefcase, UserCheck, Calendar, Percent, Trash2 } from 'lucide-re
 import toast from 'react-hot-toast';
 import { useAuth } from '../components/auth/AuthProvider';
 import { fetchMyJobPosts, deleteJobPost } from '../services/jobPostService';
-import { fetchApplicationsForJobPost, type Application } from '../services/applicationService';
+import { fetchApplicationsForJobPost, updateApplicationStatus, type Application } from '../services/applicationService';
 import type { JobPost } from '../services/jobPostService';
 
 const JobPostingDashboard: React.FC = () => {
@@ -18,6 +18,11 @@ const JobPostingDashboard: React.FC = () => {
   const [applications, setApplications] = useState<Record<string, Application[]>>({});
   const [selectedPost, setSelectedPost] = useState<JobPost | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAllApplicationsModalOpen, setIsAllApplicationsModalOpen] = useState(false);
+
+  const flattenedApplications = useMemo(() => {
+    return Object.values(applications).flat().sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
+  }, [applications]);
 
   const handleDeletePost = async (postId: string) => {
     const confirmed = window.confirm('Delete this job post? This action cannot be undone.');
@@ -38,6 +43,21 @@ const JobPostingDashboard: React.FC = () => {
       toast.success('Job post deleted successfully.');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to delete job post.');
+    }
+  };
+
+  const handleAcceptApplication = async (appId: string, postId: string) => {
+    try {
+      await updateApplicationStatus(appId, 'accepted');
+      toast.success('Application accepted!');
+      setApplications(prev => ({
+        ...prev,
+        [postId]: prev[postId].map(app => 
+          app._id === appId ? { ...app, status: 'accepted' as const } : app
+        )
+      }));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to accept application.');
     }
   };
 
@@ -115,29 +135,18 @@ const JobPostingDashboard: React.FC = () => {
               </div>
               <p className="text-3xl font-bold text-[#0F172A]">{posts.length}</p>
             </div>
-            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+            <div 
+              onClick={() => setIsAllApplicationsModalOpen(true)}
+              className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors group"
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Total Applications</span>
-                <UserCheck size={18} className="text-slate-400" />
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-600 transition-colors">Total Applications</span>
+                <UserCheck size={18} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
               </div>
               <p className="text-3xl font-bold text-[#0F172A]">{totalApplications}</p>
+              
             </div>
-            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Profile Sync</span>
-                <Calendar size={18} className="text-slate-400" />
-              </div>
-              <p className="text-3xl font-bold text-[#0F172A]">Enabled</p>
-              <p className="text-xs text-[#64748B] mt-1">Education, skills, experience sync</p>
-            </div>
-            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Engagement</span>
-                <Percent size={18} className="text-slate-400" />
-              </div>
-              <p className="text-3xl font-bold text-[#0F172A]">{engagementRate}%</p>
-              <p className="text-xs text-[#64748B] mt-1">Profile and post visibility metrics</p>
-            </div>
+            
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
@@ -163,30 +172,24 @@ const JobPostingDashboard: React.FC = () => {
                     <p className="text-sm text-[#64748B]">{post.preferredLocation || 'Any location'} • {post.isRemoteOk ? 'Remote okay' : 'Onsite only'}</p>
                     <div className="mt-3 flex items-center justify-between text-[12px] text-slate-500">
                       <span>{new Date(post.createdAt || '').toLocaleDateString()}</span>
-                      <span>{(post.viewCount || 0)} views</span>
                     </div>
 
                     <div className="mt-4 space-y-3">
                       <div className="flex items-center justify-between gap-3 text-[13px] text-slate-600">
-                        <span className="font-medium">Applications received</span>
-                        <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold">{postApplications.length}</span>
-                      </div>
-
-                      {postApplications.length > 0 ? (
-                        <div className="space-y-1 text-sm text-slate-500">
-                          {postApplications.slice(0, 2).map((app) => (
-                            <div key={app._id} className="flex items-center justify-between gap-2">
-                              <span className="truncate">{app.applicant.name}</span>
-                              <span className="text-[11px] uppercase tracking-wider text-slate-400">{app.status}</span>
-                            </div>
-                          ))}
-                          {postApplications.length > 2 && (
-                            <p className="text-xs text-slate-400">+{postApplications.length - 2} more application{postApplications.length - 2 > 1 ? 's' : ''}</p>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Applications received</span>
+                          <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold">{postApplications.length}</span>
                         </div>
-                      ) : (
-                        <p className="text-sm text-slate-400">No applications yet. Click to edit or view details.</p>
-                      )}
+                        {postApplications.length > 0 && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            postApplications.some(a => a.status === 'accepted') ? 'bg-green-100 text-green-700 border-green-200' :
+                            postApplications.some(a => a.status === 'rejected') ? 'bg-red-100 text-red-700 border-red-200' :
+                            'bg-amber-100 text-amber-700 border-amber-200'
+                          }`}>
+                            {(postApplications.find(a => a.status === 'accepted') || postApplications[0]).status.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -263,13 +266,13 @@ const JobPostingDashboard: React.FC = () => {
                           <h3 className="font-semibold text-[#0F172A]">{app.applicant.name}</h3>
                           <p className="text-sm text-[#64748B]">{app.applicant.email}</p>
                         </div>
-                        <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
-                          app.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                          app.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          app.status === 'reviewed' ? 'bg-blue-100 text-blue-700' :
-                          'bg-yellow-100 text-yellow-700'
+                        <span className={`px-2 py-1 text-xs rounded-full font-semibold border ${
+                          app.status === 'accepted' ? 'bg-green-100 text-green-700 border-green-200' :
+                          app.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                          app.status === 'reviewed' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                          'bg-amber-100 text-amber-700 border-amber-200'
                         }`}>
-                          {app.status}
+                          {app.status.toUpperCase()}
                         </span>
                       </div>
                       <p className="text-sm text-[#64748B] mb-2">
@@ -277,14 +280,111 @@ const JobPostingDashboard: React.FC = () => {
                       </p>
                       {app.coverLetter && (
                         <div>
-                          <h4 className="font-medium text-[#0F172A] text-sm">Cover Letter</h4>
+                          <h4 className="font-medium text-[#0F172A] text-sm font-bold uppercase tracking-wider mb-1">Application Details</h4>
                           <p className="text-sm text-[#64748B]">{app.coverLetter}</p>
+                        </div>
+                      )}
+                      {app.status !== 'accepted' && (
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            onClick={() => handleAcceptApplication(app._id, selectedPost._id)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors shadow-sm"
+                          >
+                            Accept 
+                          </button>
                         </div>
                       )}
                     </div>
                   ))
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Applications Modal */}
+      {isAllApplicationsModalOpen && (
+        <div
+          onClick={() => setIsAllApplicationsModalOpen(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          style={{ paddingLeft: '280px', paddingRight: '20px' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+          >
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-xl font-bold text-[#0F172A]">All Received Applications</h2>
+                  <p className="text-sm text-slate-500 mt-1">Showing {flattenedApplications.length} total applications across all your posts.</p>
+                </div>
+                <button
+                  onClick={() => setIsAllApplicationsModalOpen(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {flattenedApplications.length === 0 ? (
+                <div className="text-center py-12">
+                  <UserCheck size={48} className="mx-auto text-slate-200 mb-3" />
+                  <p className="text-slate-500">No applications received yet.</p>
+                </div>
+              ) : (
+                flattenedApplications.map((app) => {
+                  // Find the post title for this application
+                  const post = posts.find(p => p._id === app.jobPost);
+                  return (
+                    <div key={app._id} className="border border-slate-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-[#0F172A]">{app.applicant.name}</h3>
+                            <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase font-bold">
+                              {post?.title || 'Unknown Post'}
+                            </span>
+                          </div>
+                          <p className="text-sm text-[#64748B]">{app.applicant.email}</p>
+                        </div>
+                        <span className={`px-2 py-1 text-xs rounded-full font-semibold border ${
+                          app.status === 'accepted' ? 'bg-green-100 text-green-700 border-green-200' :
+                          app.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                          app.status === 'reviewed' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                          'bg-amber-100 text-amber-700 border-amber-200'
+                        }`}>
+                          {app.status.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#64748B] mb-3">
+                        Applied on {new Date(app.appliedAt).toLocaleDateString()}
+                      </p>
+                      
+                      {app.coverLetter && (
+                        <div className="bg-slate-50 p-3 rounded-lg mb-4">
+                          <h4 className="font-medium text-[#0F172A] text-xs uppercase tracking-wider mb-1">Application Details</h4>
+                          <p className="text-sm text-[#64748B] line-clamp-3 hover:line-clamp-none cursor-default transition-all">{app.coverLetter}</p>
+                        </div>
+                      )}
+
+                      {app.status !== 'accepted' && (
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => handleAcceptApplication(app._id, app.jobPost)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors shadow-sm"
+                          >
+                            Accept 
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
