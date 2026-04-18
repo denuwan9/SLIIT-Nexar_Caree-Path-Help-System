@@ -4,8 +4,6 @@ import { Calendar, Zap, CheckCircle2, ChevronRight, RefreshCcw, Bot, Terminal, C
 import { useNavigate } from 'react-router-dom';
 import { evaluateInterview, type InterviewEvaluation } from '../services/aiService';
 import { toast } from 'react-hot-toast';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 // ─── Question Bank ─────────────────────────────────────────────────────────────
 const QUESTION_BANK: Record<string, Record<string, string[]>> = {
@@ -104,63 +102,6 @@ const QUESTION_BANK: Record<string, Record<string, string[]>> = {
       "You discover through user testing that a core feature you designed is highly confusing. How do you pivot?",
       "You need to design a complex data dashboard for a mobile app. Describe your approach."
     ]
-  },
-  'Cybersecurity Analyst': {
-    Technical: [
-      "Explain the difference between Symmetric and Asymmetric encryption.",
-      "What is a Man-in-the-Middle (MITM) attack, and how do you prevent it?",
-      "Describe the CIA Triad in information security.",
-      "How does a Web Application Firewall (WAF) protect against SQL injection?",
-      "What is the principle of Least Privilege?"
-    ],
-    Behavioral: [
-      "How do you stay calm during a security breach incident?",
-      "Tell me about a time you found a vulnerability in a system you were building.",
-      "How do you explain technical risks to a non-technical manager?"
-    ],
-    Situational: [
-      "You suspect an employee's account has been compromised. What is your immediate response?",
-      "Your company wants to move all data to a public cloud. What are your primary security concerns?",
-      "A critical security patch is released for a production server, but it's during peak hours. What do you do?"
-    ]
-  },
-  'Mobile App Developer (React Native/Flutter)': {
-    Technical: [
-      "Explain the bridge architecture in React Native.",
-      "What are the lifecycle methods in a mobile application?",
-      "How do you handle push notifications on both iOS and Android?",
-      "Describe the difference between Hot Reload and Hot Restart.",
-      "How do you optimize mobile app performance for low-end devices?"
-    ],
-    Behavioral: [
-      "Tell me about a tricky UI challenge you solved on mobile.",
-      "How do you handle differences in UX/UI patterns between Android and iOS?",
-      "Describe a project where you had to integrate a complex third-party SDK."
-    ],
-    Situational: [
-      "An app update is causing crashes for a specific iOS version. How do you troubleshoot?",
-      "You need to implement offline-first functionality. What stack do you choose?",
-      "The client wants a feature that uses excessive background battery. How do you advise them?"
-    ]
-  },
-  'Cloud Engineer (AWS/Azure)': {
-    Technical: [
-      "What is Infrastructure as Code (IaC), and why is it important?",
-      "Explain the shared responsibility model in cloud computing.",
-      "How do you scale a database horizontally on AWS?",
-      "What is a VPC, and how do you configure subnets for security?",
-      "Describe the difference between Serverless (Lambda) and Containers (ECS)."
-    ],
-    Behavioral: [
-      "Tell me about a time you optimized cloud costs for a project.",
-      "How do you handle a production outage in a distributed system?",
-      "Describe a challenging migration from on-premise to cloud."
-    ],
-    Situational: [
-      "A cloud service is down in your primary region. How does your DR plan kick in?",
-      "You notice an unusual spike in your AWS bill. What are your steps to investigate?",
-      "A developer needs root access to production to debug an issue. How do you handle this?"
-    ]
   }
 };
 
@@ -190,7 +131,6 @@ export default function MockInterviewPage() {
   const navigate = useNavigate();
   const [targetRole, setTargetRole] = useState('Full Stack Developer (MERN)');
   const [focus, setFocus] = useState('All');
-  const [difficulty, setDifficulty] = useState('Intermediate');
   const [numQuestions, setNumQuestions] = useState(5);
 
   // Interview Session State
@@ -206,11 +146,11 @@ export default function MockInterviewPage() {
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(25);
 
   useEffect(() => {
     if (isInterviewing && !isFinished) {
-      setTimeLeft(60);
+      setTimeLeft(25);
     }
   }, [currentQIndex, isInterviewing, isFinished]);
 
@@ -330,75 +270,6 @@ export default function MockInterviewPage() {
     setEvaluation(null);
   };
 
-  const handleExportPDF = () => {
-    if (!evaluation) return;
-
-    const doc = new jsPDF();
-    const primaryColor = [15, 23, 42]; // #0F172A
-
-    // Header
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('NEXAR INTERVIEW PERFORMANCE REPORT', 15, 25);
-    
-    doc.setFontSize(10);
-    doc.text(`DATE: ${new Date().toLocaleDateString()}`, 160, 25);
-
-    // Summary Box
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14);
-    doc.text('EXECUTIVE SUMMARY', 15, 55);
-    
-    autoTable(doc, {
-      startY: 60,
-      head: [['Metric', 'Value']],
-      body: [
-        ['Target Role', targetRole],
-        ['Difficulty Level', difficulty],
-        ['Aggregate Score', `${evaluation.overallScore}%`],
-        ['Correct Answers', `${evaluation.evaluations.filter(e => e.status === 'Correct').length}/${evaluation.evaluations.length}`],
-      ],
-      theme: 'striped',
-      headStyles: { fillColor: primaryColor }
-    });
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    const splitFeedback = doc.splitTextToSize(`Summary: ${evaluation.overallFeedback}`, 180);
-    doc.text(splitFeedback, 15, (doc as any).lastAutoTable.finalY + 15);
-
-    // Detailed Evaluations
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DETAILED EVALUATIONS', 15, (doc as any).lastAutoTable.finalY + 35);
-
-    const tableData = evaluation.evaluations.map((ev, i) => [
-      `Q0${i + 1}`,
-      ev.question,
-      ev.status,
-      ev.feedback
-    ]);
-
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 40,
-      head: [['ID', 'Question', 'Status', 'Feedback']],
-      body: tableData,
-      columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 60 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 80 }
-      },
-      headStyles: { fillColor: primaryColor }
-    });
-
-    doc.save(`Nexar_Interview_Report_${targetRole.replace(/\s+/g, '_')}.pdf`);
-    toast.success('Performance Report Exported!');
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F0EEFF] via-[#F0F4FB] to-[#EDE8FE] font-main selection:bg-blue-100 selection:text-blue-900 relative overflow-hidden">
       {/* Decorative Background Orbs */}
@@ -467,7 +338,7 @@ export default function MockInterviewPage() {
                 </div>
 
                 <div className="p-10 md:p-14 space-y-12">
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">
+                  <div className="grid md:grid-cols-2 gap-12">
                      <div className="space-y-4">
                         <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Target Occupation</label>
                         <div className="relative">
@@ -480,21 +351,9 @@ export default function MockInterviewPage() {
                               <option key={role} value={role}>{role}</option>
                             ))}
                           </select>
-                        </div>
-                     </div>
-
-                     <div className="space-y-4">
-                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Competency Level</label>
-                        <div className="flex bg-slate-100 p-1 rounded-2xl">
-                          {['Beginner', 'Intermediate', 'Expert'].map(lv => (
-                            <button
-                              key={lv}
-                              onClick={() => setDifficulty(lv)}
-                              className={`flex-1 py-3 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${difficulty === lv ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
-                            >
-                              {lv}
-                            </button>
-                          ))}
+                          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                             <ChevronRight size={20} className="rotate-90" />
+                          </div>
                         </div>
                      </div>
 
@@ -509,6 +368,10 @@ export default function MockInterviewPage() {
                             onChange={(e) => setNumQuestions(parseInt(e.target.value))}
                             className="w-full h-3 bg-slate-100 rounded-full appearance-none cursor-pointer accent-indigo-600 shadow-inner"
                           />
+                          <div className="flex justify-between text-[10px] font-black text-slate-300 mt-4 uppercase tracking-widest">
+                            <span>Precision Strike (1)</span>
+                            <span>Endurance Run (10)</span>
+                          </div>
                         </div>
                      </div>
                   </div>
@@ -569,9 +432,7 @@ export default function MockInterviewPage() {
                   <div className="flex items-center gap-3 text-slate-400">
                      <Clock size={16} />
                      <span className="text-[10px] font-black uppercase tracking-widest">
-                       Time Remaining: <span className={timeLeft <= 5 ? "text-rose-500 text-sm ml-1" : "text-white text-sm ml-1"}>
-                         {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
-                       </span>
+                       Time Remaining: <span className={timeLeft <= 5 ? "text-rose-500 text-sm ml-1" : "text-white text-sm ml-1"}>00:{timeLeft.toString().padStart(2, '0')}</span>
                      </span>
                   </div>
                 </div>
@@ -782,12 +643,6 @@ export default function MockInterviewPage() {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row justify-center gap-6">
-                  <button 
-                    onClick={handleExportPDF} 
-                    className="px-12 py-5 bg-white border-2 border-indigo-600 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    <ClipboardList size={18} /> Export PDF
-                  </button>
                   <button 
                     onClick={handleEndInterview} 
                     className="px-12 py-5 bg-[#0F172A] text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-600 hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-slate-200"
