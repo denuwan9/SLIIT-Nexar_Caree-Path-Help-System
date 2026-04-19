@@ -95,7 +95,7 @@ test('student creates a job post and admin filters/analyzes it', async ({ page }
   await expect(jobCardText).toBeVisible({ timeout: 10000 });
 
   // Try to click the actual action button if it appears
-  const applyButton = page.getByRole('button', { name: /Apply for this Job/i });
+  const applyButton = page.getByRole('button', { name: /Interested/i });
 
   if (await applyButton.isVisible().catch(() => false)) {
     await applyButton.scrollIntoViewIfNeeded();

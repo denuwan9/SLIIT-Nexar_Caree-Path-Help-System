@@ -516,7 +516,7 @@ const AdminJobPosts: React.FC = () => {
                           : 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-indigo-300/30 hover:from-indigo-700 hover:to-purple-700 hover:scale-105 disabled:opacity-60'
                       }`}
                     >
-                      {isApplying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Apply for this Job'}
+                      {isApplying ? 'Applying...' : hasApplied ? 'Already Applied' : 'Interested'}
                     </button>
                   );
                 })()}
