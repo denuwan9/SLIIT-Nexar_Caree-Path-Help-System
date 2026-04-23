@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Briefcase, UserCheck, Calendar, Percent, Trash2 } from 'lucide-react';
+import { Plus, Briefcase, UserCheck, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../components/auth/AuthProvider';
 import { fetchMyJobPosts, deleteJobPost } from '../services/jobPostService';
@@ -100,11 +100,7 @@ const JobPostingDashboard: React.FC = () => {
     return Object.values(applications).reduce((total, apps) => total + apps.length, 0);
   }, [applications]);
 
-  const totalVisitors = useMemo(() => {
-    return posts.reduce((total, post) => total + (post.viewCount || 0), 0);
-  }, [posts]);
 
-  const engagementRate = posts.length > 0 ? Math.min(100, Math.round((totalApplications / Math.max(1, totalVisitors)) * 100)) : 0;
 
   return (
     <div className="w-full h-full">

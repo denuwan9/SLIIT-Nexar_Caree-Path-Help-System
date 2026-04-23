@@ -4,7 +4,7 @@ import { Sidebar } from './Sidebar';
 import { useAuth } from '../auth/AuthProvider';
 import { useTimerStore } from '../../store/useTimerStore';
 import { getMyBookings, type IMyBooking } from '../../services/interviewService';
-import { Bell, Calendar, Clock, ChevronRight, X } from 'lucide-react';
+import { Bell, Calendar, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const Layout: React.FC = () => {
